@@ -7,6 +7,8 @@ DOCKLITE_USER="${DOCKLITE_USER:-docklite}"
 DOCKLITE_GROUP="${DOCKLITE_GROUP:-docklite}"
 NODE_MAJOR="${NODE_MAJOR:-20}"
 GO_VERSION="${GO_VERSION:-1.22.6}"
+AGENT_PORT="${AGENT_PORT:-3000}"
+GUI_PORT="${GUI_PORT:-$((AGENT_PORT + 1))}"
 INSTALL_MODE="${INSTALL_MODE:-full}"
 if [[ "${HEADLESS:-}" == "1" ]]; then
   INSTALL_MODE="headless"
@@ -117,6 +119,8 @@ if [[ "${REPO_DIR}" != "${INSTALL_DIR}" ]]; then
   $SUDO rsync -a --delete \
     --exclude node_modules \
     --exclude .next \
+    --exclude .bun \
+    --exclude .git \
     --exclude data \
     --exclude "*.log" \
     "${REPO_DIR}/" "${INSTALL_DIR}/"
@@ -134,7 +138,7 @@ $SUDO chmod 755 /var/www/sites
 
 TOKEN_FILE="/etc/docklite/docklite-agent.env"
 WEB_FILE="/etc/docklite/docklite-web.env"
-NEXTJS_URL_VALUE="http://127.0.0.1:3001"
+NEXTJS_URL_VALUE="http://127.0.0.1:${GUI_PORT}"
 if [[ "${INSTALL_MODE}" == "headless" ]]; then
   NEXTJS_URL_VALUE="disabled"
 fi
@@ -142,7 +146,7 @@ fi
 if [[ ! -f "${TOKEN_FILE}" ]]; then
   DOCKLITE_TOKEN="$(openssl rand -hex 32)"
   cat <<EOF | $SUDO tee "${TOKEN_FILE}" >/dev/null
-LISTEN_ADDR=:3000
+LISTEN_ADDR=:${AGENT_PORT}
 NEXTJS_URL=${NEXTJS_URL_VALUE}
 DOCKER_SOCKET_PATH=unix:///var/run/docker.sock
 DATABASE_PATH=${INSTALL_DIR}/data/docklite.db
@@ -155,7 +159,8 @@ if [[ "${INSTALL_MODE}" != "headless" && ! -f "${WEB_FILE}" ]]; then
   DOCKLITE_TOKEN="$(grep -E '^DOCKLITE_TOKEN=' "${TOKEN_FILE}" | cut -d= -f2)"
   cat <<EOF | $SUDO tee "${WEB_FILE}" >/dev/null
 NODE_ENV=production
-AGENT_URL=http://127.0.0.1:3000
+PORT=${GUI_PORT}
+AGENT_URL=http://127.0.0.1:${AGENT_PORT}
 AGENT_TOKEN=${DOCKLITE_TOKEN}
 DATABASE_PATH=${INSTALL_DIR}/data/docklite.db
 SESSION_SECRET=${SESSION_SECRET}
@@ -163,11 +168,11 @@ EOF
 fi
 
 echo "Installing Node dependencies..."
-$SUDO -u "${DOCKLITE_USER}" bash -lc "cd '${INSTALL_DIR}' && bun install"
+$SUDO -u "${DOCKLITE_USER}" bash -lc "cd '${INSTALL_DIR}/webapp' && bun install"
 
 if [[ "${INSTALL_MODE}" != "headless" ]]; then
   echo "Building Next.js..."
-  $SUDO -u "${DOCKLITE_USER}" bash -lc "cd '${INSTALL_DIR}' && AGENT_URL=http://127.0.0.1:3000 bun run build"
+  $SUDO -u "${DOCKLITE_USER}" bash -lc "cd '${INSTALL_DIR}/webapp' && AGENT_URL=http://127.0.0.1:${AGENT_PORT} bun run build"
 fi
 
 echo "Building agent..."
@@ -211,7 +216,7 @@ $SUDO rm -f /etc/sudoers.d/docklite-update
 
 echo "Done."
 if [[ "${INSTALL_MODE}" != "headless" ]]; then
-  echo "DockLite is running on http://localhost:3000 (agent proxy)."
+  echo "DockLite is running on http://localhost:${AGENT_PORT} (agent proxy)."
 else
-  echo "DockLite agent is running on http://localhost:3000 (headless mode)."
+  echo "DockLite agent is running on http://localhost:${AGENT_PORT} (headless mode)."
 fi

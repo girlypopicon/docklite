@@ -7,7 +7,7 @@
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start -H 0.0.0.0",
-    "start:systemd": "next start -H 0.0.0.0 -p 3000",
+    "start:systemd": "next start -H 0.0.0.0",
     "lint": "next lint"
   },
   "dependencies": {

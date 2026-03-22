@@ -33,7 +33,7 @@ fi
 
 # 2. Install Node dependencies
 log "Installing Node dependencies..."
-cd "$INSTALL_DIR"
+cd "$INSTALL_DIR/webapp"
 bun install --frozen-lockfile
 
 # 3. Build Next.js app
@@ -44,9 +44,14 @@ log "Web app built successfully."
 # 4. Build Go agent
 log "Building Go agent..."
 cd "$INSTALL_DIR/go-app"
-PATH="$GO_BIN:$PATH" go build -o "$INSTALL_DIR/bin/docklite-agent.new" ./cmd/docklite-agent
-mv "$INSTALL_DIR/bin/docklite-agent.new" "$INSTALL_DIR/bin/docklite-agent"
-log "Go agent built successfully."
+if PATH="$GO_BIN:$PATH" go build -o "$INSTALL_DIR/bin/docklite-agent.new" ./cmd/docklite-agent; then
+    mv "$INSTALL_DIR/bin/docklite-agent.new" "$INSTALL_DIR/bin/docklite-agent"
+    log "Go agent built successfully."
+else
+    log "ERROR: Go agent build failed, keeping existing binary"
+    rm -f "$INSTALL_DIR/bin/docklite-agent.new"
+    exit 1
+fi
 
 # 5. Restart services
 log "Restarting docklite-web.service..."

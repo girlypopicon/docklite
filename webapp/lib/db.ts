@@ -29,8 +29,11 @@ import { runMigrations } from './migrations';
 const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'docklite.db');
 const db = new Database(dbPath);
 
-// Enable foreign keys
+// Enable foreign keys and configure for better concurrency
 db.pragma('foreign_keys = ON');
+db.pragma('journal_mode = WAL');      // Write-Ahead Logging for better concurrency
+db.pragma('busy_timeout = 5000');     // Wait up to 5s for locks instead of failing
+db.pragma('synchronous = NORMAL');    // Balance between safety and performance
 
 // Initialize tables
 export function initializeDatabase() {

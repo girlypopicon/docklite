@@ -22,7 +22,14 @@ func ProxyHandler(nextjsURL string) http.Handler {
 		origHost := req.Host
 		originalDirector(req)
 		req.Header.Set("X-Forwarded-Host", origHost)
-		req.Header.Set("X-Forwarded-Proto", "http")
+		// Preserve the original protocol if set by upstream proxy, otherwise detect from request
+		if proto := req.Header.Get("X-Forwarded-Proto"); proto != "" {
+			// Keep existing X-Forwarded-Proto from upstream proxy
+		} else if req.TLS != nil {
+			req.Header.Set("X-Forwarded-Proto", "https")
+		} else {
+			req.Header.Set("X-Forwarded-Proto", "http")
+		}
 		req.Host = target.Host
 	}
 

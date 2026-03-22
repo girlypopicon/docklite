@@ -2,7 +2,7 @@
 # DockLite Build Script
 # Builds all binaries and prepares for distribution
 
-set -e
+set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_DIR"
@@ -22,9 +22,9 @@ if ! command -v go >/dev/null 2>&1; then
     exit 1
 fi
 
-# Check Node.js
-if ! command -v node >/dev/null 2>&1; then
-    echo -e "${RED}Node.js is not installed${NC}"
+# Check bun
+if ! command -v bun >/dev/null 2>&1; then
+    echo -e "${RED}bun is not installed${NC}"
     exit 1
 fi
 
@@ -59,8 +59,8 @@ fi
 echo ""
 echo -e "${YELLOW}Building Next.js app...${NC}"
 cd webapp
-npm install
-npm run build
+bun install
+bun run build
 cd ..
 if [[ -d "webapp/.next" ]]; then
     echo -e "${GREEN}✓ Next.js built${NC}"

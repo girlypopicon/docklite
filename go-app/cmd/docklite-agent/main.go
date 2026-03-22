@@ -54,6 +54,9 @@ func main() {
 		Addr:              cfg.ListenAddr,
 		Handler:           router,
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       5 * time.Minute,  // Allow time for large file uploads
+		WriteTimeout:      10 * time.Minute, // Allow time for large responses (logs, backups)
+		IdleTimeout:       120 * time.Second,
 	}
 
 	shutdown := make(chan os.Signal, 1)

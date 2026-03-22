@@ -37,10 +37,16 @@ mkdir -p ./data
 # Check if database exists
 if [ ! -f "$DATABASE_PATH" ]; then
     echo -e "${YELLOW}Database not found at $DATABASE_PATH${NC}"
-    echo -e "${YELLOW}Creating empty database file...${NC}"
-    touch "$DATABASE_PATH"
-    chmod 644 "$DATABASE_PATH"
-    echo -e "${GREEN}✓ Empty database file created${NC}"
+    echo -e "${YELLOW}Creating empty SQLite database...${NC}"
+    # Create a valid empty SQLite database (not just an empty file)
+    if command -v sqlite3 >/dev/null 2>&1; then
+        sqlite3 "$DATABASE_PATH" "VACUUM;"
+    else
+        # Fallback: create minimal SQLite header
+        printf '\x53\x51\x4c\x69\x74\x65\x20\x66\x6f\x72\x6d\x61\x74\x20\x33\x00' > "$DATABASE_PATH"
+    fi
+    chmod 660 "$DATABASE_PATH"
+    echo -e "${GREEN}✓ Empty database created${NC}"
     echo "Note: Run with Next.js GUI first to initialize tables via migrations."
     echo ""
 fi

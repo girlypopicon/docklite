@@ -1,6 +1,7 @@
 [Unit]
 Description=DockLite Web (Next.js)
-After=network.target
+After=network.target docklite-agent.service
+Requires=docklite-agent.service
 
 [Service]
 Type=simple
@@ -8,7 +9,6 @@ User=docklite
 Group=docklite
 WorkingDirectory=__INSTALL_DIR__/webapp
 EnvironmentFile=/etc/docklite/docklite-web.env
-Environment=PORT=3001
 ExecStart=/usr/local/bin/bun run start:systemd
 Restart=on-failure
 RestartSec=3
