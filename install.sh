@@ -73,6 +73,67 @@ detect_existing() {
   [[ -f "$AGENT_ENV_FILE" ]]
 }
 
+# ── detect and handle existing DockLite containers ────────────────────────────
+detect_existing_containers() {
+  if ! command -v docker >/dev/null 2>&1; then return 1; fi
+  docker ps --filter label=docklite.managed=true --format '{{.Names}}' 2>/dev/null
+}
+
+list_existing_containers() {
+  local containers; containers=$(detect_existing_containers)
+  [[ -z "$containers" ]] && return 1
+  echo "$containers"
+}
+
+handle_existing_containers() {
+  local containers; containers=$(detect_existing_containers)
+  [[ -z "$containers" ]] && return 0
+
+  local count; count=$(echo "$containers" | wc -l)
+  echo ""
+  step "Existing DockLite containers detected"
+  echo "  Found ${count} container(s) from a previous installation:"
+  echo ""
+  while IFS= read -r name; do
+    local img status
+    img=$(docker inspect "$name" --format '{{.Config.Image}}' 2>/dev/null || echo '?')
+    status=$(docker inspect "$name" --format '{{.State.Status}}' 2>/dev/null || echo '?')
+    echo -e "    ${YELLOW}●${NC} ${BOLD}${name}${NC}  (${img} · ${status})"
+  done <<< "$containers"
+  echo ""
+  echo "  What would you like to do with these containers?"
+  echo ""
+  echo "  1) Stop & remove  — clean slate, removes all containers and data"
+  echo "  2) Keep running   — leave them, they won't be managed by this install"
+  echo "  3) Cancel         — abort fresh install"
+  echo ""
+  local choice=""
+  while [[ "$choice" != "1" && "$choice" != "2" && "$choice" != "3" ]]; do
+    echo -en "${BLUE}Choose${NC} ${YELLOW}[3]${NC}: "
+    read -r choice; choice="${choice:-3}"
+  done
+
+  if [[ "$choice" == "3" ]]; then
+    echo "Aborted."
+    exit 0
+  fi
+
+  if [[ "$choice" == "1" ]]; then
+    step "Removing existing containers"
+    while IFS= read -r name; do
+      if docker stop "$name" >/dev/null 2>&1; then
+        docker rm "$name" >/dev/null 2>&1 && ok "Stopped & removed: $name" || warn "Removed (was already stopped): $name"
+      else
+        docker rm "$name" >/dev/null 2>&1 && ok "Removed: $name" || warn "Could not remove: $name"
+      fi
+    done <<< "$containers"
+    ok "All old containers removed"
+  else
+    echo ""
+    warn "Containers are left running — they won't be managed by this installation."
+  fi
+}
+
 read_existing_config() {
   INSTALL_DIR="$REPO_DIR"
   AGENT_PORT="3000"
@@ -709,6 +770,7 @@ if detect_existing; then
   done
   echo ""
   if [[ "$ENTRY_CHOICE" == "1" ]]; then
+    handle_existing_containers
     run_fresh_install
   else
     run_repair
@@ -717,5 +779,6 @@ else
   echo -e "  No existing installation detected. Starting fresh install."
   echo -e "  Press ${YELLOW}Enter${NC} to accept defaults shown in brackets."
   echo ""
+  handle_existing_containers
   run_fresh_install
 fi
