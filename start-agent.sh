@@ -31,6 +31,20 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
+# Validate Docker socket path and permissions for clearer startup diagnostics.
+if [[ "$DOCKER_SOCKET_PATH" == unix://* ]]; then
+    DOCKER_SOCKET_FILE="${DOCKER_SOCKET_PATH#unix://}"
+    if [ ! -S "$DOCKER_SOCKET_FILE" ]; then
+        echo -e "${RED}Error: Docker socket not found at $DOCKER_SOCKET_FILE${NC}"
+        exit 1
+    fi
+
+    socket_perms=$(stat -c "%a" "$DOCKER_SOCKET_FILE" 2>/dev/null || true)
+    if [[ "$socket_perms" =~ [2367]$ ]]; then
+        echo -e "${YELLOW}Warning: Docker socket is writable by others (permissions: $socket_perms)${NC}"
+    fi
+fi
+
 # Create data directory if it doesn't exist
 mkdir -p ./data
 
@@ -39,19 +53,24 @@ if [ ! -f "$DATABASE_PATH" ]; then
     echo -e "${YELLOW}Database not found at $DATABASE_PATH${NC}"
     echo -e "${YELLOW}Creating empty database file...${NC}"
     touch "$DATABASE_PATH"
-    chmod 644 "$DATABASE_PATH"
+    chmod 600 "$DATABASE_PATH"
     echo -e "${GREEN}✓ Empty database file created${NC}"
     echo "Note: Run with Next.js GUI first to initialize tables via migrations."
     echo ""
 fi
+
+# Ensure secure permissions for existing database files as well
+chmod 600 "$DATABASE_PATH" 2>/dev/null || true
 
 # Generate token if not set
 if [ -z "$DOCKLITE_TOKEN" ]; then
     echo -e "${YELLOW}Warning: DOCKLITE_TOKEN not set${NC}"
     echo "Generating random token..."
     DOCKLITE_TOKEN=$(openssl rand -hex 32)
-    echo -e "${GREEN}Generated token: $DOCKLITE_TOKEN${NC}"
-    echo "Save this token for TUI client access!"
+    umask 077
+    printf "%s\n" "$DOCKLITE_TOKEN" > ./data/docklite.token
+    echo -e "${GREEN}Generated token and saved to ./data/docklite.token${NC}"
+    echo "Use this token for TUI client access."
     echo ""
 fi
 
@@ -61,7 +80,7 @@ echo "  Listen Address: $LISTEN_ADDR"
 echo "  Database Path: $DATABASE_PATH"
 echo "  Docker Socket: $DOCKER_SOCKET_PATH"
 echo "  Next.js URL: $NEXTJS_URL"
-echo "  Token: ${DOCKLITE_TOKEN:0:16}..."
+echo "  Token: (set)"
 echo ""
 
 # Check mode

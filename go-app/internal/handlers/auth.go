@@ -33,12 +33,12 @@ func (h *Handlers) AuthLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clearCookie(w, "docklite_session")
-	clearCookie(w, delegationCookieName)
+	clearCookie(w, r, "docklite_session")
+	clearCookie(w, r, delegationCookieName)
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
-func clearCookie(w http.ResponseWriter, name string) {
+func clearCookie(w http.ResponseWriter, r *http.Request, name string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",
@@ -46,5 +46,7 @@ func clearCookie(w http.ResponseWriter, name string) {
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   shouldUseSecureCookies(r),
 	})
 }

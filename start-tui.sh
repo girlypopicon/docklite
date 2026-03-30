@@ -32,7 +32,7 @@ fi
 echo "Configuration:"
 echo "  Agent URL: $DOCKLITE_URL"
 if [ -n "$DOCKLITE_TOKEN" ]; then
-    echo "  Token: ${DOCKLITE_TOKEN:0:16}..."
+    echo "  Token: (set)"
 else
     echo "  Token: (will prompt)"
 fi

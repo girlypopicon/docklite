@@ -18,7 +18,7 @@ mkdir -p "$(dirname "$DATABASE_PATH")"
 sqlite3 "$DATABASE_PATH" "VACUUM;" 2>/dev/null
 
 if [ -f "$DATABASE_PATH" ]; then
-    chmod 644 "$DATABASE_PATH"
+    chmod 600 "$DATABASE_PATH"
     echo -e "${GREEN}✓ Database initialized at $DATABASE_PATH${NC}"
     echo "The Next.js GUI will populate it with tables on first startup."
 else

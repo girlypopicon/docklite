@@ -18,6 +18,8 @@ DATABASE_PATH="${DATABASE_PATH:-./data/docklite.db}"
 DOCKLITE_TOKEN="${DOCKLITE_TOKEN:-}"
 AGENT_PORT="${AGENT_PORT:-3000}"
 GUI_PORT="${GUI_PORT:-3002}"
+ENABLE_DB_DEBUG="${ENABLE_DB_DEBUG:-false}"
+SESSION_SECRET="${SESSION_SECRET:-}"
 
 # Kill any existing processes on the target ports
 for port in $AGENT_PORT $GUI_PORT; do
@@ -99,18 +101,23 @@ if [ ! -f "$DATABASE_PATH" ]; then
     echo -e "${YELLOW}Database not found at $DATABASE_PATH${NC}"
     echo -e "${YELLOW}Creating empty database file...${NC}"
     touch "$DATABASE_PATH"
-    chmod 644 "$DATABASE_PATH"
+    chmod 600 "$DATABASE_PATH"
     echo -e "${GREEN}✓ Empty database file created${NC}"
     echo "The GUI will initialize tables on first startup."
     echo ""
 fi
 
+# Ensure secure database permissions even for existing files
+chmod 600 "$DATABASE_PATH" 2>/dev/null || true
+
 # Generate token if not set
 if [ -z "$DOCKLITE_TOKEN" ]; then
     echo -e "${YELLOW}Generating authentication token...${NC}"
     DOCKLITE_TOKEN=$(openssl rand -hex 32)
-    echo -e "${GREEN}Generated token: $DOCKLITE_TOKEN${NC}"
-    echo "Save this for TUI/API access!"
+    umask 077
+    printf "%s\n" "$DOCKLITE_TOKEN" > ./data/docklite.token
+    echo -e "${GREEN}Generated token and saved to ./data/docklite.token${NC}"
+    echo "Use this token for TUI/API access."
     echo ""
 fi
 
@@ -119,7 +126,8 @@ echo -e "${BLUE}Configuration:${NC}"
 echo "  Database: $DATABASE_PATH"
 echo "  Agent Port: $AGENT_PORT"
 echo "  GUI Port: $GUI_PORT"
-echo "  Token: ${DOCKLITE_TOKEN:0:16}..."
+echo "  Token: (set)"
+echo "  DB Debug: $ENABLE_DB_DEBUG"
 echo ""
 
 # Create log directory
@@ -128,12 +136,18 @@ mkdir -p ./logs
 # Start Next.js GUI
 echo -e "${GREEN}Starting Next.js GUI on port $GUI_PORT...${NC}"
 cd webapp
+# Avoid weak predictable secrets; generate an ephemeral secret if one is not provided.
+if [ -z "$SESSION_SECRET" ]; then
+    SESSION_SECRET=$(openssl rand -hex 32)
+    echo -e "${YELLOW}Warning: SESSION_SECRET not set, using ephemeral secret for this run only.${NC}"
+fi
+
 PORT=$GUI_PORT \
 HOSTNAME="0.0.0.0" \
 DATABASE_PATH="../$DATABASE_PATH" \
 AGENT_URL="http://localhost:$AGENT_PORT" \
 AGENT_TOKEN="$DOCKLITE_TOKEN" \
-SESSION_SECRET="${SESSION_SECRET:-development-secret-please-change-in-production}" \
+SESSION_SECRET="$SESSION_SECRET" \
 npm start > ../logs/nextjs.log 2>&1 &
 GUI_PID=$!
 cd ..
@@ -148,7 +162,7 @@ DATABASE_PATH="$DATABASE_PATH" \
 DOCKER_SOCKET_PATH="unix:///var/run/docker.sock" \
 NEXTJS_URL="http://127.0.0.1:$GUI_PORT" \
 DOCKLITE_TOKEN="$DOCKLITE_TOKEN" \
-ENABLE_DB_DEBUG="true" \
+ENABLE_DB_DEBUG="$ENABLE_DB_DEBUG" \
 ./bin/docklite-agent > ./logs/agent.log 2>&1 &
 AGENT_PID=$!
 
@@ -187,7 +201,7 @@ echo ""
 echo -e "${BLUE}Access:${NC}"
 echo "  🌐 Web GUI:   http://localhost:$AGENT_PORT"
 echo "  🔧 Agent API: http://localhost:$AGENT_PORT/api/*"
-echo "  💻 TUI:       DOCKLITE_URL=http://localhost:$AGENT_PORT DOCKLITE_TOKEN=$DOCKLITE_TOKEN ./bin/docklite-tui"
+echo "  💻 TUI:       DOCKLITE_URL=http://localhost:$AGENT_PORT DOCKLITE_TOKEN=<token> ./bin/docklite-tui"
 echo ""
 echo -e "${YELLOW}For remote access, use your server's IP:${NC}"
 echo "  🌐 Web GUI:   http://YOUR_SERVER_IP:$AGENT_PORT"
