@@ -155,16 +155,18 @@ generate_ecosystem() {
     local nextjs_url="http://127.0.0.1:${GUI_PORT}"
     [[ "$MODE" == "headless" ]] && nextjs_url=""
 
+    # The webapp depends on better-sqlite3 (a native Node addon), which Bun
+    # does not support (https://github.com/oven-sh/bun/issues/4290) — it
+    # fails ERR_DLOPEN_FAILED on startup. Always run the GUI under node.
+    #
+    # Use an absolute path, not the bare word "node": on boxes where a
+    # per-user tool manager (nvm, etc.) has shadowed /usr/local/bin/node
+    # with a symlink into someone's home directory, PATH resolution would
+    # hand PM2 a binary the `docklite` user can't execute.
     local gui_script gui_args gui_interpreter
-    if command -v bun >/dev/null 2>&1; then
-        gui_interpreter="$(command -v bun)"
-        gui_script="run"
-        gui_args="start -H 0.0.0.0"
-    else
-        gui_script="${SCRIPT_DIR}/webapp/node_modules/.bin/next"
-        gui_args="start -H 0.0.0.0"
-        gui_interpreter="node"
-    fi
+    gui_script="${SCRIPT_DIR}/webapp/node_modules/.bin/next"
+    gui_args="start -H 0.0.0.0"
+    gui_interpreter="/usr/bin/node"
 
     cat > "$ECOSYSTEM" <<JSEOF
 module.exports = {

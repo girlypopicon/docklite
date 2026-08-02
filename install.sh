@@ -344,8 +344,12 @@ setup_sudoers() {
     local calling_user="${SUDO_USER:-$USER}"
     local pm2_path
     pm2_path="$(command -v pm2 2>/dev/null || echo "/usr/bin/pm2")"
+    # setup_nginx_default (run by `docklite setup`, which executes as
+    # calling_user, not docklite — see install.sh's handoff) needs the same
+    # NOPASSWD grants as docklite itself, or it silently no-ops.
     $SUDO tee /etc/sudoers.d/docklite >/dev/null <<EOF
 docklite ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /usr/bin/tee /etc/nginx/sites-available/*, /usr/bin/ln -sf /etc/nginx/sites-available/* /etc/nginx/sites-enabled/*, /usr/bin/rm -f /etc/nginx/sites-enabled/*, /usr/bin/certbot, /usr/bin/ls /etc/letsencrypt/live, /usr/bin/ls /etc/letsencrypt/live/*, /usr/bin/cat /etc/letsencrypt/live/*, /usr/bin/openssl
+${calling_user} ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /usr/bin/tee /etc/nginx/sites-available/*, /usr/bin/ln -sf /etc/nginx/sites-available/* /etc/nginx/sites-enabled/*, /usr/bin/rm -f /etc/nginx/sites-enabled/*, /usr/bin/certbot, /usr/bin/ls /etc/letsencrypt/live, /usr/bin/ls /etc/letsencrypt/live/*, /usr/bin/cat /etc/letsencrypt/live/*, /usr/bin/openssl
 ${calling_user} ALL=(ALL) NOPASSWD: ${pm2_path}
 ${calling_user} ALL=(docklite) NOPASSWD: ALL
 EOF
