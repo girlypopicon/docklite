@@ -4,6 +4,8 @@ data/
 logs/
 .docklite-token
 .docklite-session
+.docklite.conf
+ecosystem.config.js
 
 # Built binaries
 bin/docklite-agent

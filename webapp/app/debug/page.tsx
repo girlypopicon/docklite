@@ -306,7 +306,7 @@ export default function DebugPage() {
           <div className="space-y-2 text-status-warning/80">
             <p><strong>Database Issues:</strong> Check if the data/docklite.db file exists and is writable.</p>
             <p><strong>Docker Issues:</strong> Ensure Docker daemon is running and the socket path is correct.</p>
-            <p><strong>Authentication Issues:</strong> Try logging in at /login - default credentials are admin/admin.</p>
+            <p><strong>Authentication Issues:</strong> Try logging in at /login with the credentials configured during setup.</p>
             <p><strong>Container Issues:</strong> Check Docker logs and ensure containers are properly created.</p>
           </div>
         </div>

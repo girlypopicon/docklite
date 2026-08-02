@@ -122,8 +122,9 @@ func (h *Handlers) DBCleanup(w http.ResponseWriter, r *http.Request) {
 
 func ensureUserHomeFolder(username string) error {
 	userPath := filepath.Join(sitesBasePath, username)
-	if err := os.MkdirAll(userPath, 0o755); err != nil {
+	if err := os.MkdirAll(userPath, 0o775); err != nil {
 		return err
 	}
+	chownDocklite(userPath)
 	return nil
 }

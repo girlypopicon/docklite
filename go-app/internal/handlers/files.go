@@ -110,12 +110,12 @@ func (h *Handlers) CreatePath(w http.ResponseWriter, r *http.Request) {
 	}
 	switch strings.ToLower(req.Type) {
 	case "folder":
-		if err := os.MkdirAll(target, 0o755); err != nil {
+		if err := os.MkdirAll(target, 0o775); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	case "file":
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(target), 0o775); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -303,7 +303,7 @@ func (h *Handlers) saveFile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(target), 0o775); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

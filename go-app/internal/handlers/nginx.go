@@ -103,6 +103,23 @@ func reloadNginx() error {
 	return nil
 }
 
+var proxyPassRegex = regexp.MustCompile(`(proxy_pass\s+http://127\.0\.0\.1:)\d+`)
+
+func updateNginxProxyPort(domain string, newPort int) error {
+	existing, err := readNginxSiteConfig(domain)
+	if err != nil || existing == "" {
+		return fmt.Errorf("no existing nginx config for %s", domain)
+	}
+	updated := proxyPassRegex.ReplaceAllString(existing, fmt.Sprintf("${1}%d", newPort))
+	if updated == existing {
+		return fmt.Errorf("could not find proxy_pass to update in nginx config")
+	}
+	if err := writeNginxSiteConfig(domain, updated); err != nil {
+		return err
+	}
+	return reloadNginx()
+}
+
 func setupNginxForDomain(domain string, includeWww bool, hostPort int) error {
 	config := nginxVhostConfig(domain, includeWww, hostPort)
 	if err := writeNginxSiteConfig(domain, config); err != nil {

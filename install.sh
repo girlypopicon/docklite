@@ -1,469 +1,501 @@
 #!/usr/bin/env bash
-# DockLite Installer
-# Usage: sudo bash install.sh
+# DockLite Installer — interactive setup wizard
+# Usage: sudo bash install.sh   (or: curl -fsSL .../install.sh | sudo bash)
 set -euo pipefail
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Colors & Brand
+# ══════════════════════════════════════════════════════════════════════════════
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
+PINK='\033[38;2;255;106;213m';   CORAL='\033[38;2;255;154;139m'
+GOLD='\033[38;2;255;209;102m';   MINT='\033[38;2;184;242;162m'
+SKY='\033[38;2;154;208;255m';    LAVENDER='\033[38;2;199;164;255m'
+
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_DIR="/opt/docklite"
 cd "$REPO_DIR"
 
-# ── colours ────────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+# ══════════════════════════════════════════════════════════════════════════════
+# Drawing helpers
+# ══════════════════════════════════════════════════════════════════════════════
 
-step()  { echo -e "\n${BOLD}── $* ──${NC}"; }
-ok()    { echo -e "  ${GREEN}✓${NC} $*"; }
-warn()  { echo -e "  ${YELLOW}⚠${NC}  $*"; }
-die()   { echo -e "  ${RED}✗${NC}  $*" >&2; exit 1; }
+COLS=$(tput cols 2>/dev/null || echo 60)
+[[ $COLS -gt 60 ]] && COLS=60
+
+rainbow_line() {
+    local chars="" i=0
+    local colors=("$PINK" "$CORAL" "$GOLD" "$MINT" "$SKY" "$LAVENDER")
+    while [[ $i -lt $COLS ]]; do
+        chars+="${colors[$((i % 6))]}━"
+        i=$((i + 1))
+    done
+    echo -e "${chars}${NC}"
+}
+
+banner() {
+    clear
+    echo ""
+    echo -e "${PINK}     ____             __   __    _ __       ${NC}"
+    echo -e "${CORAL}    / __ \\____  _____/ /__/ /   (_) /_____ ${NC}"
+    echo -e "${GOLD}   / / / / __ \\/ ___/ //_/ /   / / __/ _ \\${NC}"
+    echo -e "${MINT}  / /_/ / /_/ / /__/ ,< / /___/ / /_/  __/${NC}"
+    echo -e "${SKY}  \\____/\\____/\\___/_/|_/_____/_/\\__/\\___/ ${NC}"
+    echo -e "${LAVENDER}                              installer${NC}"
+    echo ""
+    rainbow_line
+    echo ""
+}
+
+# Current step tracking
+TOTAL_STEPS=0
+CURRENT_STEP=0
+
+set_total_steps() { TOTAL_STEPS=$1; CURRENT_STEP=0; }
+
+step_header() {
+    CURRENT_STEP=$((CURRENT_STEP + 1))
+    echo ""
+    echo -e "  ${CYAN}${BOLD}[$CURRENT_STEP/$TOTAL_STEPS]${NC} ${BOLD}$*${NC}"
+    echo -e "  ${DIM}$(printf '%.0s─' $(seq 1 $((COLS - 4))))${NC}"
+}
+
+ok()   { echo -e "  ${GREEN}✓${NC} $*"; }
+warn() { echo -e "  ${YELLOW}⚠${NC}  $*"; }
+fail() { echo -e "  ${RED}✗${NC}  $*"; }
+info() { echo -e "  ${DIM}$*${NC}"; }
+
+spin() {
+    local pid=$1 msg=$2
+    local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    local i=0
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r  ${CYAN}${frames[$((i % 10))]}${NC} %s" "$msg"
+        sleep 0.1
+        i=$((i + 1))
+    done
+    wait "$pid" 2>/dev/null
+    local rc=$?
+    printf "\r"
+    return $rc
+}
+
+ask() {
+    local var="$1" prompt="$2" default="$3"
+    echo -en "  ${BLUE}${prompt}${NC} ${YELLOW}[${default}]${NC}: "
+    local input; read -r input
+    printf -v "$var" '%s' "${input:-$default}"
+}
+
+ask_yn() {
+    local prompt="$1" default="${2:-Y}"
+    echo -en "  ${BLUE}${prompt}${NC} ${YELLOW}(${default}/$([ "$default" = Y ] && echo n || echo y))${NC}: "
+    local input; read -r input
+    input="${input:-$default}"
+    [[ "${input^^}" == "Y" ]]
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Dependency checks & installers
+# ══════════════════════════════════════════════════════════════════════════════
 
 SUDO=""
 [[ "${EUID}" -ne 0 ]] && SUDO="sudo"
 
-DOCKLITE_USER="docklite"
-AGENT_ENV_FILE="/etc/docklite/docklite-agent.env"
-WEB_ENV_FILE="/etc/docklite/docklite-web.env"
-INSTALL_DIR="/opt/docklite"
-SITE_BASE="/var/www/sites"
+need_install=()
 
-# ── helpers ────────────────────────────────────────────────────────────────────
-ask() {
-  local var="$1" prompt="$2" default="$3"
-  local input
-  echo -en "${BLUE}${prompt}${NC} ${YELLOW}[${default}]${NC}: "
-  read -r input
-  printf -v "$var" '%s' "${input:-$default}"
-}
+detect_deps() {
+    step_header "Checking your system"
+    echo ""
 
-ask_yn() {
-  local prompt="$1" default="${2:-Y}"
-  local input
-  echo -en "${BLUE}${prompt}${NC} ${YELLOW}(${default}/$([ "$default" = Y ] && echo n || echo Y))${NC}: "
-  read -r input
-  input="${input:-$default}"
-  [[ "${input^^}" == "Y" ]]
-}
-
-detect_existing() {
-  [[ -f "$AGENT_ENV_FILE" ]]
-}
-
-# ── stop any running DockLite instances ────────────────────────────────────────
-stop_docklite() {
-  step "Stopping existing DockLite"
-  local stopped=0
-  for svc in docklite-agent docklite-web docklite; do
-    if $SUDO systemctl is-active "${svc}.service" >/dev/null 2>&1; then
-      $SUDO systemctl stop "${svc}.service" 2>/dev/null && ok "Stopped ${svc}.service"
-      stopped=1
+    # Docker
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+        ok "Docker $(docker --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' | head -1)"
+    else
+        fail "Docker not found or not running"
+        need_install+=("docker")
     fi
-  done
-  if pgrep -x docklite-agent >/dev/null 2>&1; then
-    $SUDO pkill -9 -x docklite-agent 2>/dev/null && ok "Killed stray docklite-agent process"
-    stopped=1
-  fi
-  [[ $stopped -eq 0 ]] && ok "No running DockLite instances found"
-}
 
+    # Node.js
+    if command -v node >/dev/null 2>&1; then
+        local node_ver; node_ver=$(node -v 2>/dev/null)
+        ok "Node.js ${node_ver}"
+    else
+        fail "Node.js not found"
+        need_install+=("node")
+    fi
 
-# ── system packages ────────────────────────────────────────────────────────────
-install_system_packages() {
-  step "System packages"
-  $SUDO apt-get update -qq
-  $SUDO apt-get install -y -q \
-    ca-certificates curl git rsync openssl unzip \
-    build-essential pkg-config libsqlite3-dev python3
-  ok "System packages installed"
+    # Go
+    local go_bin=""
+    if command -v go >/dev/null 2>&1; then
+        go_bin="$(command -v go)"
+    elif [[ -x /usr/local/go/bin/go ]]; then
+        go_bin="/usr/local/go/bin/go"
+    elif [[ -x "$HOME/.local/go/bin/go" ]]; then
+        go_bin="$HOME/.local/go/bin/go"
+    fi
+    if [[ -n "$go_bin" ]]; then
+        ok "Go $($go_bin version 2>/dev/null | grep -oP 'go\d+\.\d+\.\d+' | head -1)"
+    else
+        fail "Go not found"
+        need_install+=("go")
+    fi
+
+    # PM2
+    if command -v pm2 >/dev/null 2>&1; then
+        ok "PM2 $(pm2 --version 2>/dev/null)"
+    else
+        fail "PM2 not found"
+        need_install+=("pm2")
+    fi
+
+    # nginx
+    if command -v nginx >/dev/null 2>&1; then
+        ok "Nginx $(nginx -v 2>&1 | grep -oP '\d+\.\d+\.\d+' | head -1)"
+    else
+        fail "Nginx not found"
+        need_install+=("nginx")
+    fi
+
+    # Agent binary
+    if [[ -x "${REPO_DIR}/bin/docklite-agent" ]]; then
+        ok "Agent binary found"
+    else
+        info "Agent binary will be built"
+        need_install+=("build-agent")
+    fi
+
+    # Webapp
+    if [[ -d "${REPO_DIR}/webapp/.next" ]]; then
+        ok "Webapp is built"
+    else
+        info "Webapp will be built"
+        need_install+=("build-webapp")
+    fi
+
+    echo ""
 }
 
 install_docker() {
-  step "Docker"
-  if command -v docker >/dev/null 2>&1; then
-    ok "Docker already installed: $(docker --version | head -1)"
-    return
-  fi
-  curl -fsSL https://get.docker.com | $SUDO sh
-  $SUDO usermod -aG docker "${DOCKLITE_USER}" 2>/dev/null || true
-  ok "Docker installed"
-}
-
-install_nginx_if_needed() {
-  [[ -z "${1:-}" ]] && return
-  if command -v nginx >/dev/null 2>&1; then
-    ok "Nginx already installed"
-    return
-  fi
-  $SUDO apt-get install -y -q nginx && ok "Nginx installed"
-}
-
-# ── runtimes ───────────────────────────────────────────────────────────────────
-BUN_CMD="/usr/local/bin/bun"
-
-install_bun() {
-  if [[ -x /usr/local/bin/bun ]]; then
-    ok "Bun already installed: $(/usr/local/bin/bun --version)"
-    return
-  fi
-  echo "  Installing bun..."
-  local arch; arch="$(uname -m)"
-  case "${arch}" in x86_64) arch="x64" ;; aarch64) arch="aarch64" ;; *) die "Unsupported arch: ${arch}" ;; esac
-  curl -fsSL "https://github.com/oven-sh/bun/releases/latest/download/bun-linux-${arch}.zip" -o /tmp/bun.zip
-  unzip -o /tmp/bun.zip -d /tmp/bun-install >/dev/null
-  $SUDO install -m 0755 "/tmp/bun-install/bun-linux-${arch}/bun" /usr/local/bin/bun
-  rm -rf /tmp/bun.zip /tmp/bun-install
-  ok "Bun installed: $(/usr/local/bin/bun --version)"
+    step_header "Installing Docker"
+    if command -v docker >/dev/null 2>&1; then
+        ok "Already installed"; return 0
+    fi
+    (curl -fsSL https://get.docker.com | $SUDO sh) >/dev/null 2>&1 &
+    spin $! "Installing Docker engine..." && ok "Docker installed" || { fail "Docker install failed"; return 1; }
+    $SUDO usermod -aG docker "${SUDO_USER:-$USER}" 2>/dev/null || true
+    ok "Added $(whoami) to docker group"
 }
 
 install_node() {
-  if command -v node >/dev/null 2>&1; then ok "Node.js already installed: $(node -v)"; return; fi
-  echo "  Installing Node.js 22.x..."
-  curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO bash - >/dev/null 2>&1
-  $SUDO apt-get install -y -q nodejs && ok "Node.js installed: $(node -v)"
+    step_header "Installing Node.js"
+    if command -v node >/dev/null 2>&1; then
+        ok "Already installed: $(node -v)"; return 0
+    fi
+    (curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO bash - >/dev/null 2>&1 && \
+        $SUDO apt-get install -y -q nodejs >/dev/null 2>&1) &
+    spin $! "Installing Node.js 22..." && ok "Node.js installed: $(node -v)" || { fail "Node install failed"; return 1; }
 }
 
 install_go() {
-  if command -v go >/dev/null 2>&1 || [[ -x /usr/local/go/bin/go ]]; then
-    ok "Go already installed: $(PATH=/usr/local/go/bin:$PATH go version)"; return
-  fi
-  local ver="1.22.6" arch; arch="$(uname -m)"
-  [[ "$arch" == "x86_64" ]] && arch="amd64"; [[ "$arch" == "aarch64" ]] && arch="arm64"
-  echo "  Installing Go ${ver}..."
-  curl -fsSL "https://go.dev/dl/go${ver}.linux-${arch}.tar.gz" -o /tmp/go.tgz
-  $SUDO rm -rf /usr/local/go && $SUDO tar -C /usr/local -xzf /tmp/go.tgz && rm -f /tmp/go.tgz
-  ok "Go installed: $(PATH=/usr/local/go/bin:$PATH go version)"
+    step_header "Installing Go"
+    local go_bin=""
+    command -v go >/dev/null 2>&1 && go_bin="$(command -v go)"
+    [[ -z "$go_bin" && -x /usr/local/go/bin/go ]] && go_bin="/usr/local/go/bin/go"
+    [[ -z "$go_bin" && -x "$HOME/.local/go/bin/go" ]] && go_bin="$HOME/.local/go/bin/go"
+    if [[ -n "$go_bin" ]]; then
+        ok "Already installed"; return 0
+    fi
+
+    local arch; arch="$(uname -m)"
+    [[ "$arch" == "x86_64" ]] && arch="amd64"
+    [[ "$arch" == "aarch64" ]] && arch="arm64"
+
+    local install_dir="/usr/local"
+    if [[ -n "$SUDO" ]] && ! sudo -n true 2>/dev/null; then
+        install_dir="$HOME/.local"
+    fi
+
+    (curl -fsSL "https://go.dev/dl/go1.22.10.linux-${arch}.tar.gz" -o /tmp/go.tgz && \
+        if [[ "$install_dir" == "/usr/local" ]]; then
+            $SUDO rm -rf /usr/local/go && $SUDO tar -C /usr/local -xzf /tmp/go.tgz
+        else
+            mkdir -p "$install_dir" && rm -rf "${install_dir}/go" && tar -C "$install_dir" -xzf /tmp/go.tgz
+        fi && rm -f /tmp/go.tgz) &
+    spin $! "Installing Go 1.22..." && ok "Go installed to ${install_dir}/go" || { fail "Go install failed"; return 1; }
+
+    export PATH="${install_dir}/go/bin:$PATH"
 }
 
-# ── user + directories ─────────────────────────────────────────────────────────
-setup_user_and_dirs() {
-  step "User and directories"
-  if id "$DOCKLITE_USER" >/dev/null 2>&1; then
-    ok "User already exists: ${DOCKLITE_USER}"
-  else
-    $SUDO useradd --system --create-home --home-dir "$INSTALL_DIR" \
-      --shell /usr/sbin/nologin "$DOCKLITE_USER"
-    ok "Created user: ${DOCKLITE_USER}"
-  fi
-  $SUDO usermod -aG docker "$DOCKLITE_USER" 2>/dev/null || true
-  if [[ "$REPO_DIR" != "$INSTALL_DIR" ]]; then
-    echo "  Copying files to ${INSTALL_DIR}..."
-    $SUDO mkdir -p "$INSTALL_DIR"
-    $SUDO rsync -a --delete \
-      --exclude node_modules --exclude .next --exclude data \
-      --exclude "*.log" --exclude ".git" --exclude ".bun" \
-      "${REPO_DIR}/" "${INSTALL_DIR}/"
-    ok "Files copied to ${INSTALL_DIR}"
-  else
-    ok "Using in-place directory: ${INSTALL_DIR}"
-  fi
-  $SUDO mkdir -p "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs" /etc/docklite "$SITE_BASE"
-  $SUDO chown -R "${DOCKLITE_USER}:${DOCKLITE_USER}" "${INSTALL_DIR}" /etc/docklite 2>/dev/null || true
-  ok "Directories ready"
+install_pm2() {
+    step_header "Installing PM2"
+    if command -v pm2 >/dev/null 2>&1; then
+        ok "Already installed"; return 0
+    fi
+    (npm install -g pm2 >/dev/null 2>&1) &
+    spin $! "Installing PM2..." && ok "PM2 installed" || { fail "PM2 install failed"; return 1; }
 }
 
-# ── config ─────────────────────────────────────────────────────────────────────
-write_config() {
-  local agent_port="$1" install_mode="$2" admin_user="$3" admin_pass="$4"
-  step "Configuration"
-  local nextjs_url="http://127.0.0.1:3001"
-  [[ "$install_mode" == "headless" ]] && nextjs_url="disabled"
-  local token; token=$(openssl rand -hex 32)
-  $SUDO tee "$AGENT_ENV_FILE" >/dev/null <<EOF
-LISTEN_ADDR=:${agent_port}
-NEXTJS_URL=${nextjs_url}
-DOCKER_SOCKET_PATH=unix:///var/run/docker.sock
-DATABASE_PATH=${INSTALL_DIR}/data/docklite.db
-DOCKLITE_TOKEN=${token}
-EOF
-  ok "Agent env written"
-  if [[ "$install_mode" != "headless" ]]; then
-    local session_secret; session_secret=$(openssl rand -hex 48)
-    $SUDO tee "$WEB_ENV_FILE" >/dev/null <<EOF
-NODE_ENV=production
-PORT=3001
-AGENT_URL=http://127.0.0.1:${agent_port}
-AGENT_TOKEN=${token}
-DATABASE_PATH=${INSTALL_DIR}/data/docklite.db
-SESSION_SECRET=${session_secret}
-SEED_ADMIN_USERNAME=${admin_user}
-SEED_ADMIN_PASSWORD=${admin_pass}
-EOF
-    ok "Web env written"
-  fi
+install_nginx() {
+    step_header "Installing Nginx"
+    if command -v nginx >/dev/null 2>&1; then
+        ok "Already installed"; return 0
+    fi
+    ($SUDO apt-get install -y -q nginx >/dev/null 2>&1) &
+    spin $! "Installing Nginx..." && ok "Nginx installed" || { fail "Nginx install failed"; return 1; }
 }
 
-# ── build ──────────────────────────────────────────────────────────────────────
-build_gui() {
-  local dir="$1" port="$2"
-  echo "  Installing Node dependencies..."
-  sudo -u "$DOCKLITE_USER" bash -lc "cd '${dir}/webapp' && ${BUN_CMD} install" 2>&1 | tail -2
-  ok "Node dependencies installed"
-  echo "  Building Next.js..."
-  sudo -u "$DOCKLITE_USER" bash -lc \
-    "cd '${dir}/webapp' && AGENT_URL=http://127.0.0.1:${port} ${BUN_CMD} run build" 2>&1 | tail -3
-  ok "Next.js built"
+install_system_packages() {
+    step_header "System packages"
+    ($SUDO apt-get update -qq >/dev/null 2>&1 && \
+        $SUDO apt-get install -y -q ca-certificates curl git openssl build-essential pkg-config >/dev/null 2>&1) &
+    spin $! "Updating packages..." && ok "System packages ready" || warn "Some packages may have failed"
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Build steps
+# ══════════════════════════════════════════════════════════════════════════════
+
+find_go() {
+    command -v go 2>/dev/null || echo "${HOME}/.local/go/bin/go" || echo "/usr/local/go/bin/go"
 }
 
 build_agent() {
-  sudo -u "$DOCKLITE_USER" bash -lc \
-    "cd '${1}/go-app' && PATH=/usr/local/go/bin:/usr/bin:/bin go build -buildvcs=false -o ../bin/docklite-agent ./cmd/docklite-agent/." \
-    && ok "Agent binary built" || warn "Agent build failed"
+    step_header "Building agent"
+    if [[ -x "${REPO_DIR}/bin/docklite-agent" ]]; then
+        ok "Agent binary already exists"; return 0
+    fi
+    local go_bin; go_bin=$(find_go)
+    mkdir -p "${REPO_DIR}/bin"
+    (cd "${REPO_DIR}/go-app" && "$go_bin" build -o ../bin/docklite-agent ./cmd/docklite-agent 2>&1) &
+    spin $! "Compiling Go agent..." && ok "Agent built ($(du -h "${REPO_DIR}/bin/docklite-agent" | cut -f1))" || { fail "Agent build failed"; return 1; }
 }
 
-build_tui() {
-  sudo -u "$DOCKLITE_USER" bash -lc \
-    "cd '${1}/cli-repo' && PATH=/usr/local/go/bin:/usr/bin:/bin go build -buildvcs=false -o ../bin/docklite-tui ." \
-    && ok "TUI binary built" || warn "TUI build failed (optional)"
+build_webapp() {
+    step_header "Building web app"
+
+    if [[ ! -d "${REPO_DIR}/webapp/node_modules" ]]; then
+        (cd "${REPO_DIR}/webapp" && npm install --silent 2>&1) &
+        spin $! "Installing dependencies..." && ok "Dependencies installed" || { fail "npm install failed"; return 1; }
+    else
+        ok "Dependencies already installed"
+    fi
+
+    if [[ ! -d "${REPO_DIR}/webapp/.next" ]]; then
+        (cd "${REPO_DIR}/webapp" && npm run build 2>&1) &
+        spin $! "Building Next.js app..." && ok "Webapp built" || { fail "Build failed"; return 1; }
+    else
+        ok "Webapp already built"
+    fi
 }
 
-# ── systemd ────────────────────────────────────────────────────────────────────
-install_services() {
-  local install_mode="$1"
-  step "Systemd services"
-  $SUDO sed "s|__INSTALL_DIR__|${INSTALL_DIR}|g" \
-    "${INSTALL_DIR}/webapp/scripts/systemd/docklite-agent.service" | \
-    $SUDO tee /etc/systemd/system/docklite-agent.service >/dev/null
-  if [[ "$install_mode" != "headless" ]]; then
-    $SUDO sed "s|__INSTALL_DIR__|${INSTALL_DIR}|g" \
-      "${INSTALL_DIR}/webapp/scripts/systemd/docklite-web.service" | \
-      $SUDO tee /etc/systemd/system/docklite-web.service >/dev/null
-    $SUDO sed -i "s|WorkingDirectory=${INSTALL_DIR}$|WorkingDirectory=${INSTALL_DIR}/webapp|" \
-      /etc/systemd/system/docklite-web.service
-    $SUDO sed -i "s|ExecStart=.*bun run start.*|ExecStart=${BUN_CMD} run start|" \
-      /etc/systemd/system/docklite-web.service
-  fi
-  $SUDO systemctl daemon-reload
-  $SUDO systemctl enable docklite-agent 2>/dev/null || true
-  [[ "$install_mode" != "headless" ]] && $SUDO systemctl enable docklite-web 2>/dev/null || true
-  ok "Services installed"
+install_to_opt() {
+    step_header "Installing to ${INSTALL_DIR}"
+    $SUDO mkdir -p "${INSTALL_DIR}"
+    $SUDO rsync -a --delete \
+        --exclude '.git' \
+        --exclude '.bun' \
+        "${REPO_DIR}/" "${INSTALL_DIR}/"
+    $SUDO chown -R docklite:docklite "${INSTALL_DIR}"
+    ok "App installed to ${INSTALL_DIR}"
 }
 
-install_sudoers() {
-  $SUDO tee /etc/sudoers.d/docklite-nginx >/dev/null <<EOF
-${DOCKLITE_USER} ALL=(ALL) NOPASSWD: /usr/sbin/nginx
+# ══════════════════════════════════════════════════════════════════════════════
+# Sudoers & symlink
+# ══════════════════════════════════════════════════════════════════════════════
+
+setup_user_and_dirs() {
+    step_header "User & directories"
+
+    if id docklite >/dev/null 2>&1; then
+        ok "User 'docklite' already exists"
+    else
+        $SUDO groupadd -f docklite 2>/dev/null || true
+        if ! $SUDO useradd --system --create-home --home-dir /opt/docklite \
+            --shell /usr/sbin/nologin -g docklite docklite 2>&1; then
+            fail "Could not create 'docklite' user — run with: sudo bash install.sh"
+            exit 1
+        fi
+        ok "Created system user 'docklite'"
+    fi
+
+    if ! id docklite >/dev/null 2>&1; then
+        fail "User 'docklite' does not exist — cannot continue"
+        exit 1
+    fi
+
+    $SUDO usermod -aG docker docklite 2>/dev/null || true
+    ok "User 'docklite' in docker group"
+
+    $SUDO mkdir -p /var/www/sites
+    $SUDO chown -R docklite:docklite /var/www/sites
+    $SUDO chmod 775 /var/www/sites
+    ok "Site directory: /var/www/sites (owned by docklite)"
+
+    $SUDO mkdir -p "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs"
+    $SUDO chown -R docklite:docklite "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs" "${INSTALL_DIR}/bin"
+    ok "Data/logs directories ready"
+}
+
+setup_sudoers() {
+    step_header "Permissions"
+
+    local calling_user="${SUDO_USER:-$USER}"
+    local pm2_path
+    pm2_path="$(command -v pm2 2>/dev/null || echo "/usr/bin/pm2")"
+    $SUDO tee /etc/sudoers.d/docklite >/dev/null <<EOF
+docklite ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /usr/bin/tee /etc/nginx/sites-available/*, /usr/bin/ln -sf /etc/nginx/sites-available/* /etc/nginx/sites-enabled/*, /usr/bin/rm -f /etc/nginx/sites-enabled/*, /usr/bin/certbot, /usr/bin/ls /etc/letsencrypt/live, /usr/bin/ls /etc/letsencrypt/live/*, /usr/bin/cat /etc/letsencrypt/live/*, /usr/bin/openssl
+${calling_user} ALL=(ALL) NOPASSWD: ${pm2_path}
+${calling_user} ALL=(docklite) NOPASSWD: ALL
 EOF
-  $SUDO chmod 440 /etc/sudoers.d/docklite-nginx
-  ok "Sudoers rule installed"
+    $SUDO chmod 440 /etc/sudoers.d/docklite
+    ok "Sudoers rules installed for docklite user"
 }
 
-wait_for_agent() {
-  local port="$1" token="$2" i=0
-  echo -n "  Waiting for agent"
-  while [[ $i -lt 20 ]]; do
-    if curl -sf -H "Authorization: Bearer ${token}" \
-        "http://127.0.0.1:${port}/api/health" >/dev/null 2>&1; then
-      echo ""; return 0
+install_symlink() {
+    step_header "System integration"
+    $SUDO ln -sf "${INSTALL_DIR}/docklite" /usr/local/bin/docklite
+    ok "Installed ${BOLD}docklite${NC} command"
+    info "Run 'docklite' from anywhere to manage DockLite"
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Confirmation screen
+# ══════════════════════════════════════════════════════════════════════════════
+
+show_install_plan() {
+    echo ""
+    echo -e "  ${BOLD}Installation Plan${NC}"
+    echo ""
+
+    if [[ ${#need_install[@]} -eq 0 ]]; then
+        echo -e "  ${GREEN}Everything is already installed!${NC}"
+        echo -e "  ${DIM}We'll just configure and start DockLite.${NC}"
+    else
+        echo -e "  ${DIM}The following will be installed:${NC}"
+        echo ""
+        for dep in "${need_install[@]}"; do
+            case "$dep" in
+                docker)        echo -e "    ${GOLD}•${NC} Docker engine" ;;
+                node)          echo -e "    ${GOLD}•${NC} Node.js 22" ;;
+                go)            echo -e "    ${GOLD}•${NC} Go 1.22" ;;
+                pm2)           echo -e "    ${GOLD}•${NC} PM2 process manager" ;;
+                nginx)         echo -e "    ${GOLD}•${NC} Nginx web server" ;;
+                build-agent)   echo -e "    ${GOLD}•${NC} Build agent binary (Go)" ;;
+                build-webapp)  echo -e "    ${GOLD}•${NC} Build web dashboard (Next.js)" ;;
+            esac
+        done
     fi
-    echo -n "."; sleep 1; i=$((i+1))
-  done
-  echo ""; warn "Agent not responding after 20s — journalctl -u docklite-agent"
-  return 1
+
+    echo ""
+    echo -e "  ${DIM}Then we'll:${NC}"
+    echo -e "    ${MINT}•${NC} Create ${BOLD}docklite${NC} system user"
+    echo -e "    ${MINT}•${NC} Install app to ${BOLD}/opt/docklite${NC}"
+    echo -e "    ${MINT}•${NC} Set up /var/www/sites directory"
+    echo -e "    ${MINT}•${NC} Set up PM2 for process management"
+    echo -e "    ${MINT}•${NC} Configure nginx reverse proxy"
+    echo -e "    ${MINT}•${NC} Install ${BOLD}docklite${NC} command"
+    echo -e "    ${MINT}•${NC} Start DockLite services"
+    echo ""
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
-# FRESH INSTALL
+# Main wizard flow
 # ══════════════════════════════════════════════════════════════════════════════
-run_fresh_install() {
-  stop_docklite
 
-  step "Install mode"
-  echo "  1) Full stack  — Web GUI + Agent (recommended)"
-  echo "  2) Headless    — Agent only, TUI/API access"
-  echo ""
-  local mode_choice=""
-  while [[ "$mode_choice" != "1" && "$mode_choice" != "2" ]]; do
-    echo -en "${BLUE}Choose mode${NC} ${YELLOW}[1]${NC}: "; read -r mode_choice; mode_choice="${mode_choice:-1}"
-  done
-  local INSTALL_MODE="full"
-  [[ "$mode_choice" == "2" ]] && INSTALL_MODE="headless"
-  ok "Mode: ${INSTALL_MODE}"
+main() {
+    banner
 
-  step "Network"
-  local AGENT_PORT; ask AGENT_PORT "Agent port" "3000"
-  ok "Agent will listen on :${AGENT_PORT}"
+    echo -e "  ${BOLD}Welcome to the DockLite installer!${NC}"
+    echo ""
+    echo -e "  ${DIM}This wizard will install all dependencies and get${NC}"
+    echo -e "  ${DIM}DockLite running on your server.${NC}"
+    echo ""
 
-  step "Admin account"
-  local ADMIN_USERNAME ADMIN_PASSWORD
-  ask ADMIN_USERNAME "Admin username" "superadmin"
-  if ask_yn "Use default password (supersecretpassword123)? Change after first login." "Y"; then
-    ADMIN_PASSWORD="supersecretpassword123"
-    warn "Using default password — change it after first login!"
-  else
-    local p1 p2
-    while true; do
-      echo -en "${BLUE}Admin password${NC}: "; read -rs p1; echo
-      echo -en "${BLUE}Confirm${NC}: ";        read -rs p2; echo
-      [[ "$p1" == "$p2" ]] && break
-      echo -e "  ${RED}Passwords do not match.${NC}"
+    # ── check sudo ──
+    if [[ "${EUID}" -ne 0 ]]; then
+        echo -e "  ${YELLOW}⚠${NC}  This installer needs sudo for system packages."
+        echo ""
+        if ! sudo -v 2>/dev/null; then
+            echo -e "  ${RED}✗${NC}  Could not get sudo access."
+            echo -e "  ${DIM}Run with: sudo bash install.sh${NC}"
+            exit 1
+        fi
+        ok "sudo access confirmed"
+        echo ""
+    fi
+
+    # ── detect ──
+    detect_deps
+
+    # ── show plan ──
+    show_install_plan
+
+    if ! ask_yn "Ready to install?" "Y"; then
+        echo ""
+        echo -e "  ${DIM}Installation cancelled.${NC}"
+        echo ""
+        exit 0
+    fi
+
+    # ── count steps ──
+    local total=0
+    [[ " ${need_install[*]} " == *" docker "* ]] && total=$((total + 1))
+    [[ " ${need_install[*]} " == *" node "* ]] && total=$((total + 1))
+    [[ " ${need_install[*]} " == *" go "* ]] && total=$((total + 1))
+    [[ " ${need_install[*]} " == *" pm2 "* ]] && total=$((total + 1))
+    [[ " ${need_install[*]} " == *" nginx "* ]] && total=$((total + 1))
+    # Always: system packages, user+dirs, build agent, build webapp, install to opt, sudoers, symlink, handoff
+    total=$((total + 8))
+    set_total_steps $total
+
+    # ── install deps ──
+    install_system_packages
+
+    for dep in "${need_install[@]}"; do
+        case "$dep" in
+            docker)  install_docker ;;
+            node)    install_node ;;
+            go)      install_go ;;
+            pm2)     install_pm2 ;;
+            nginx)   install_nginx ;;
+        esac
     done
-    ADMIN_PASSWORD="$p1"
-  fi
-  ok "Admin account: ${ADMIN_USERNAME}"
 
-  step "Options"
-  local INSTALL_SERVICE="" INSTALL_NGINX="" BUILD_SOURCE=""
-  ask_yn "Install DockLite as a systemd service (auto-start on boot)?" "Y" && INSTALL_SERVICE="1"
-  [[ -n "$INSTALL_SERVICE" ]] && ok "Will install systemd service" || warn "Skipping systemd"
-  ask_yn "Install/use nginx as a reverse proxy?" "Y" && INSTALL_NGINX="1"
-  [[ -n "$INSTALL_NGINX" ]] && ok "Will configure nginx" || warn "Skipping nginx"
-  if command -v go >/dev/null 2>&1 || [[ -x /usr/local/go/bin/go ]]; then
-    ask_yn "Build Go binaries from source?" "Y" && BUILD_SOURCE="1"
-  else
-    warn "Go not found — will use pre-built binaries if available"
-  fi
+    # ── user & directories ──
+    setup_user_and_dirs
 
-  echo ""
-  echo -e "${CYAN}${BOLD}── Summary ────────────────────────────────────────${NC}"
-  echo -e "  Mode:         ${BOLD}${INSTALL_MODE}${NC}"
-  echo -e "  Agent port:   ${BOLD}:${AGENT_PORT}${NC}"
-  echo -e "  Admin user:   ${BOLD}${ADMIN_USERNAME}${NC}"
-  echo -e "  Systemd:      ${BOLD}$([ -n "$INSTALL_SERVICE" ] && echo yes || echo no)${NC}"
-  echo -e "  Nginx:        ${BOLD}$([ -n "$INSTALL_NGINX"   ] && echo yes || echo no)${NC}"
-  echo -e "  Build source: ${BOLD}$([ -n "$BUILD_SOURCE"    ] && echo yes || echo no)${NC}"
-  echo -e "${CYAN}${BOLD}───────────────────────────────────────────────────${NC}"
-  echo ""
-  ask_yn "Proceed?" "Y" || { echo "Aborted."; exit 0; }
+    # ── build ──
+    build_agent
+    build_webapp
 
-  install_system_packages
-  install_docker
-  install_nginx_if_needed "$INSTALL_NGINX"
+    # ── install to /opt/docklite ──
+    install_to_opt
 
-  step "Runtime"
-  install_node; install_bun; install_go
+    # ── system setup ──
+    setup_sudoers
+    install_symlink
 
-  setup_user_and_dirs
-  write_config "$AGENT_PORT" "$INSTALL_MODE" "$ADMIN_USERNAME" "$ADMIN_PASSWORD"
+    # ── handoff ──
+    step_header "Launching DockLite setup"
+    echo ""
+    echo -e "  ${DIM}Dependencies are installed. Now let's configure DockLite.${NC}"
+    echo ""
+    rainbow_line
+    echo ""
 
-  step "Building"
-  [[ "$INSTALL_MODE" != "headless" ]] && build_gui "$INSTALL_DIR" "$AGENT_PORT"
-  if [[ -n "$BUILD_SOURCE" ]]; then
-    build_agent "$INSTALL_DIR"; build_tui "$INSTALL_DIR"
-  elif [[ -f "${REPO_DIR}/bin/docklite-agent" ]]; then
-    $SUDO cp "${REPO_DIR}/bin/docklite-agent" "${INSTALL_DIR}/bin/docklite-agent"
-    ok "Pre-built agent binary copied"
-  fi
-  $SUDO chown -R "${DOCKLITE_USER}:${DOCKLITE_USER}" "${INSTALL_DIR}/bin" 2>/dev/null || true
+    sleep 1
 
-  if [[ -n "$INSTALL_SERVICE" ]]; then
-    install_services "$INSTALL_MODE"
-    install_sudoers
-    step "Starting services"
-    $SUDO systemctl start docklite-agent
-    [[ "$INSTALL_MODE" != "headless" ]] && $SUDO systemctl start docklite-web
-    ok "Services started"
-  fi
-
-
-  local token
-  token=$(grep -E '^DOCKLITE_TOKEN=' "$AGENT_ENV_FILE" | cut -d= -f2)
-  [[ -n "$INSTALL_SERVICE" ]] && wait_for_agent "$AGENT_PORT" "$token" || true
-
-  echo ""
-  echo -e "${CYAN}${BOLD}╔══════════════════════════════════════════════════╗${NC}"
-  echo -e "${CYAN}${BOLD}║        DockLite installed successfully!          ║${NC}"
-  echo -e "${CYAN}${BOLD}╚══════════════════════════════════════════════════╝${NC}"
-  echo ""
-  echo -e "  Access:  ${BOLD}http://<your-server-ip>:${AGENT_PORT}${NC}"
-  echo -e "  Login:   ${BOLD}${ADMIN_USERNAME}${NC} / (your password)"
-  [[ -n "$INSTALL_SERVICE" ]] && echo -e "  Env:     ${BLUE}${AGENT_ENV_FILE}${NC}"
-  echo ""
-  [[ "$ADMIN_PASSWORD" == "supersecretpassword123" ]] && \
-    warn "Change the default password at: Settings → Password"
-  echo ""
-}
-
-# ══════════════════════════════════════════════════════════════════════════════
-# REPAIR
-# ══════════════════════════════════════════════════════════════════════════════
-run_repair() {
-  step "Syncing source files to ${INSTALL_DIR}"
-  if [[ "$REPO_DIR" != "$INSTALL_DIR" ]]; then
-    $SUDO rsync -a --delete       --exclude node_modules --exclude .next --exclude data       --exclude "*.log" --exclude ".git" --exclude ".bun"       "${REPO_DIR}/" "${INSTALL_DIR}/"
-    ok "Files synced from ${REPO_DIR}"
-    $SUDO chown -R "${DOCKLITE_USER}:${DOCKLITE_USER}" "${INSTALL_DIR}" 2>/dev/null || true
-  fi
-
-  step "Detecting installation"
-  local AGENT_PORT="3000" INSTALL_MODE="full"
-  if [[ -f "$AGENT_ENV_FILE" ]]; then
-    local addr; addr=$(grep -E '^LISTEN_ADDR=' "$AGENT_ENV_FILE" | cut -d= -f2 || true)
-    AGENT_PORT="${addr#:}"; [[ -z "$AGENT_PORT" ]] && AGENT_PORT="3000"
-    local nextjs; nextjs=$(grep -E '^NEXTJS_URL=' "$AGENT_ENV_FILE" | cut -d= -f2 || true)
-    [[ "$nextjs" == "disabled" ]] && INSTALL_MODE="headless"
-    ok "Installation at ${INSTALL_DIR}, port :${AGENT_PORT}"
-  fi
-
-  local agent_binary="" gui_built="" agent_running=""
-  [[ -f "${INSTALL_DIR}/bin/docklite-agent" ]]  && agent_binary="1"
-  [[ -d "${INSTALL_DIR}/webapp/.next" ]]          && gui_built="1"
-  $SUDO systemctl is-active docklite-agent >/dev/null 2>&1 && agent_running="1" || true
-
-  echo ""
-  echo -e "  Agent binary:  ${BOLD}$([ -n "$agent_binary"  ] && echo found   || echo missing)${NC}"
-  echo -e "  Next.js build: ${BOLD}$([ -n "$gui_built"     ] && echo found   || echo missing)${NC}"
-  echo -e "  Agent service: ${BOLD}$([ -n "$agent_running" ] && echo running || echo stopped)${NC}"
-  echo ""
-
-  if ask_yn "  Reinstall Node dependencies + rebuild Next.js?" "$([ -z "$gui_built" ] && echo Y || echo N)"; then
-    step "Building GUI"
-    build_gui "$INSTALL_DIR" "$AGENT_PORT"
-  fi
-
-  if command -v go >/dev/null 2>&1 || [[ -x /usr/local/go/bin/go ]]; then
-    if ask_yn "  Rebuild Go agent binary from source?" "$([ -z "$agent_binary" ] && echo Y || echo N)"; then
-      step "Building agent"
-      build_agent "$INSTALL_DIR"; build_tui "$INSTALL_DIR"
+    # Hand off to docklite setup — run as the calling user so they
+    # can interact with PM2, but the ecosystem config tells PM2 to
+    # run the actual processes as the docklite user.
+    local target_user="${SUDO_USER:-$USER}"
+    if [[ "$target_user" != "root" ]]; then
+        exec sudo -u "$target_user" "${INSTALL_DIR}/docklite" setup
+    else
+        exec "${INSTALL_DIR}/docklite" setup
     fi
-  fi
-
-  if ask_yn "  Fix file permissions?" "Y"; then
-    step "Permissions"
-    $SUDO chown -R "${DOCKLITE_USER}:${DOCKLITE_USER}" "$INSTALL_DIR" /etc/docklite 2>/dev/null || true
-    $SUDO chmod 600 "${INSTALL_DIR}/data/docklite.db" 2>/dev/null || true
-    ok "Permissions fixed"
-  fi
-
-  install_sudoers
-
-  if ask_yn "  Restart services?" "$([ -z "$agent_running" ] && echo Y || echo N)"; then
-    step "Services"
-    $SUDO systemctl daemon-reload
-    $SUDO systemctl restart docklite-agent
-    [[ "$INSTALL_MODE" != "headless" ]] && $SUDO systemctl restart docklite-web 2>/dev/null || true
-    ok "Services restarted"
-  fi
-
-
-  echo ""
-  ok "Repair complete — http://<your-server-ip>:${AGENT_PORT}"
-  echo ""
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
-# ENTRY POINT
-# ══════════════════════════════════════════════════════════════════════════════
-echo ""
-echo -e "${CYAN}${BOLD}╔══════════════════════════════════════╗${NC}"
-echo -e "${CYAN}${BOLD}║        DockLite Installer            ║${NC}"
-echo -e "${CYAN}${BOLD}╚══════════════════════════════════════╝${NC}"
-echo ""
-
-if detect_existing; then
-  echo -e "  Existing installation detected at ${BLUE}${INSTALL_DIR}${NC}."
-  echo ""
-  echo "  1) Fresh install  — clean reinstall (keeps all site data + Docker containers)"
-  echo "  2) Repair         — fix a broken or stopped installation"
-  echo ""
-  ENTRY_CHOICE=""
-  while [[ "$ENTRY_CHOICE" != "1" && "$ENTRY_CHOICE" != "2" ]]; do
-    echo -en "${BLUE}Choose${NC} ${YELLOW}[2]${NC}: "; read -r ENTRY_CHOICE; ENTRY_CHOICE="${ENTRY_CHOICE:-2}"
-  done
-  echo ""
-  if [[ "$ENTRY_CHOICE" == "1" ]]; then
-    run_fresh_install
-  else
-    run_repair
-  fi
-else
-  echo -e "  No existing installation found."
-  echo -e "  Press ${YELLOW}Enter${NC} to accept defaults."
-  echo ""
-  run_fresh_install
-fi
+main "$@"

@@ -119,18 +119,14 @@ function seedAdminUser() {
       const seedPassword = process.env.SEED_ADMIN_PASSWORD;
 
       if (!seedUsername || !seedPassword) {
-        if (process.env.NODE_ENV === 'production') {
-          console.warn('Skipping admin seed: SEED_ADMIN_USERNAME/SEED_ADMIN_PASSWORD are not set.');
-          return;
-        }
         const devUsername = 'superadmin';
-        const devPassword = 'changeme';
+        const devPassword = 'password123';
         const passwordHash = bcrypt.hashSync(devPassword, 10);
         db.prepare(`
           INSERT INTO users (username, password_hash, is_admin, role, is_super_admin, managed_by)
           VALUES (?, ?, 1, 'super_admin', 1, NULL)
         `).run(devUsername, passwordHash);
-        console.log(`✓ Superadmin user created (username: ${devUsername}, password: ${devPassword}) — CHANGE THIS PASSWORD`);
+        console.log(`✓ Superadmin user created — CHANGE THE DEFAULT PASSWORD IMMEDIATELY`);
         return;
       }
 

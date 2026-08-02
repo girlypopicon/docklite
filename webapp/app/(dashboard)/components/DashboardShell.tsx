@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import DashboardNav from '../nav';
 import SidebarPanel from './SidebarPanel';
-import XtermDrawer from './XtermDrawer';
 import { UserSession } from '@/types';
+
+const XtermDrawer = dynamic(() => import('./XtermDrawer'), { ssr: false });
 
 type DashboardShellProps = {
   user: UserSession;

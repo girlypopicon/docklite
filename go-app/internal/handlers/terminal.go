@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -17,7 +18,16 @@ type terminalResizeMessage struct {
 
 var terminalUpgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true
+		}
+		host := r.Host
+		if host == "" {
+			host = r.Header.Get("Host")
+		}
+		// Allow same-origin requests: origin must end with the host
+		return strings.HasSuffix(origin, "://"+host)
 	},
 }
 

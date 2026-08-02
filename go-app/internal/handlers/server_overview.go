@@ -865,19 +865,37 @@ func (h *Handlers) detectDockliteService(ctx context.Context) (*serviceStatus, *
 
 func (h *Handlers) detectProxyService(ctx context.Context) *serviceStatus {
 	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
-	if err != nil {
-		return nil
-	}
-	for i := range containers {
-		c := containers[i]
-		if isTraefikContainer(c) {
-			status := h.containerServiceStatus(ctx, c, "Traefik Proxy")
-			status.RestartSupported = true
-			status.ReloadSupported = false
-			status.LogsSupported = true
-			return &status
+	if err == nil {
+		for i := range containers {
+			c := containers[i]
+			if isTraefikContainer(c) {
+				status := h.containerServiceStatus(ctx, c, "Traefik Proxy")
+				status.RestartSupported = true
+				status.ReloadSupported = false
+				status.LogsSupported = true
+				return &status
+			}
 		}
 	}
+
+	out, err := exec.Command("systemctl", "is-active", "nginx").Output()
+	if err == nil {
+		state := strings.TrimSpace(string(out))
+		detail := ""
+		if verOut, verErr := exec.Command("nginx", "-v").CombinedOutput(); verErr == nil {
+			detail = strings.TrimSpace(string(verOut))
+		}
+		return &serviceStatus{
+			Name:             "Nginx",
+			Kind:             "systemd",
+			Status:           state,
+			Detail:           detail,
+			RestartSupported: true,
+			ReloadSupported:  true,
+			LogsSupported:    true,
+		}
+	}
+
 	return nil
 }
 
@@ -1018,19 +1036,30 @@ func (h *Handlers) performDockliteAction(ctx context.Context, action string) err
 
 func (h *Handlers) performProxyAction(ctx context.Context, action string) error {
 	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
-	if err != nil {
-		return err
-	}
-	for i := range containers {
-		if isTraefikContainer(containers[i]) {
-			if action == "restart" {
-				return h.docker.Client.ContainerRestart(ctx, containers[i].ID, container.StopOptions{})
-			}
-			if action == "reload" {
-				return h.docker.Client.ContainerKill(ctx, containers[i].ID, "HUP")
+	if err == nil {
+		for i := range containers {
+			if isTraefikContainer(containers[i]) {
+				if action == "restart" {
+					return h.docker.Client.ContainerRestart(ctx, containers[i].ID, container.StopOptions{})
+				}
+				if action == "reload" {
+					return h.docker.Client.ContainerKill(ctx, containers[i].ID, "HUP")
+				}
 			}
 		}
 	}
+
+	if _, lookErr := exec.LookPath("nginx"); lookErr == nil {
+		if action == "reload" {
+			_, err := runCommandTimeout(6*time.Second, "sudo", "nginx", "-s", "reload")
+			return err
+		}
+		if action == "restart" {
+			_, err := runCommandTimeout(6*time.Second, "sudo", "systemctl", "restart", "nginx")
+			return err
+		}
+	}
+
 	return fmt.Errorf("proxy service not found")
 }
 
@@ -1059,16 +1088,28 @@ func (h *Handlers) readDockliteLogs(ctx context.Context, tail int) (string, erro
 
 func (h *Handlers) readProxyLogs(ctx context.Context, tail int) (string, error) {
 	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
-	if err != nil {
-		return "", err
-	}
-	for i := range containers {
-		if isTraefikContainer(containers[i]) {
-			dockerCtx, cancel := dockerContext(ctx)
-			defer cancel()
-			return h.docker.ContainerLogs(dockerCtx, containers[i].ID, strconv.Itoa(tail))
+	if err == nil {
+		for i := range containers {
+			if isTraefikContainer(containers[i]) {
+				dockerCtx, cancel := dockerContext(ctx)
+				defer cancel()
+				return h.docker.ContainerLogs(dockerCtx, containers[i].ID, strconv.Itoa(tail))
+			}
 		}
 	}
+
+	if commandExists("journalctl") {
+		output, jErr := runCommandTimeout(4*time.Second, "journalctl", "-u", "nginx", "-n", strconv.Itoa(tail), "--no-pager")
+		if jErr == nil || output != "" {
+			return output, nil
+		}
+	}
+
+	errorLog := "/var/log/nginx/error.log"
+	if data, fErr := exec.Command("tail", "-n", strconv.Itoa(tail), errorLog).Output(); fErr == nil {
+		return string(data), nil
+	}
+
 	return "", fmt.Errorf("proxy logs unavailable")
 }
 
@@ -1272,6 +1313,10 @@ type servicePortsResponse struct {
 func (h *Handlers) ServicePorts(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 

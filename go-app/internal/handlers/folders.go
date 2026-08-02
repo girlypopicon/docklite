@@ -215,31 +215,24 @@ func (h *Handlers) AssignContainer(w http.ResponseWriter, r *http.Request, conta
 		return
 	}
 
-	exists, err := h.store.GetSiteByContainerID(containerID)
+	site, err := h.store.GetSiteByContainerIDRecord(containerID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if !exists {
+	if site == nil {
 		writeError(w, http.StatusNotFound, "container is not a managed site")
 		return
 	}
 
-	userExists, err := h.store.GetUserByID(req.UserID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !userExists {
-		writeError(w, http.StatusNotFound, "target user not found")
+	// If the owner is actually changing, do a full transfer
+	// (moves files, recreates container, updates nginx).
+	if site.UserID != req.UserID {
+		h.transferSiteToUser(w, r, containerID, req.UserID)
 		return
 	}
 
-	if err := h.store.UpdateSiteUserIDByContainerID(containerID, req.UserID); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
+	// Same user — just move to their default folder.
 	folder, err := h.store.GetDefaultFolderByUser(req.UserID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -511,13 +504,6 @@ func readUserID(r *http.Request) (*int64, error) {
 	if userID, ok := readUserIDFromContext(r); ok {
 		return &userID, nil
 	}
-	if header := r.Header.Get("X-Docklite-User-Id"); header != "" {
-		value, err := strconv.ParseInt(header, 10, 64)
-		if err != nil {
-			return nil, errors.New("invalid user id")
-		}
-		return &value, nil
-	}
 	if userIDParam := r.URL.Query().Get("userId"); userIDParam != "" {
 		value, err := strconv.ParseInt(userIDParam, 10, 64)
 		if err != nil {
@@ -529,13 +515,11 @@ func readUserID(r *http.Request) (*int64, error) {
 }
 
 func isAdminRole(r *http.Request) bool {
-	if role, ok := readUserRoleFromContext(r); ok {
-		return role == "admin" || role == "super_admin"
+	role, ok := readUserRoleFromContext(r)
+	if !ok {
+		return false
 	}
-	if headerRole := r.Header.Get("X-Docklite-User-Role"); headerRole != "" {
-		return headerRole == "admin" || headerRole == "super_admin"
-	}
-	return false
+	return role == "admin" || role == "super_admin"
 }
 
 func validateFolderMove(folderID int64, newParentID *int64, folders []store.Folder) error {

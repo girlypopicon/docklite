@@ -177,10 +177,12 @@ func (h *Handlers) ImportSite(w http.ResponseWriter, r *http.Request) {
 
 	// Move files into place.
 	sitePath := getSitePath(resolvedUser.Username, manifest.Domain)
-	if err := os.MkdirAll(sitePath, 0o755); err != nil {
+	if err := os.MkdirAll(sitePath, 0o775); err != nil {
 		writeError(w, http.StatusInternalServerError, "could not create site directory")
 		return
 	}
+	chownDocklite(filepath.Join(siteBaseDir, resolvedUser.Username))
+	chownDocklite(sitePath)
 
 	filesDir := filepath.Join(tmpDir, "files")
 	if info, err := os.Stat(filesDir); err == nil && info.IsDir() {
@@ -273,10 +275,10 @@ func extractDKLPkg(r io.Reader, destDir string) (*dklManifest, error) {
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			_ = os.MkdirAll(destPath, 0o755)
+			_ = os.MkdirAll(destPath, 0o775)
 
 		case tar.TypeReg, tar.TypeRegA:
-			if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(destPath), 0o775); err != nil {
 				return nil, err
 			}
 			f, err := os.Create(destPath)
