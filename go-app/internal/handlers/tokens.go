@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"docklite-agent/internal/store"
@@ -19,12 +20,25 @@ import (
 )
 
 const (
-	argonMemory      = 64 * 1024
-	argonIterations  = 3
-	argonParallelism = 2
-	argonKeyLength   = 32
-	argonSaltLength  = 16
+	argonMemory       = 64 * 1024
+	argonIterations   = 3
+	argonParallelism  = 2
+	argonKeyLength    = 32
+	argonSaltLength   = 16
+	defaultTokenTTL   = 90 * 24 * time.Hour // 90 days default token lifetime
+	tokenOpWindow     = 1 * time.Minute
+	tokenOpMaxActions = 20
 )
+
+type tokenRateEntry struct {
+	count       int
+	firstAction time.Time
+}
+
+var tokenRateLimiter = struct {
+	sync.Mutex
+	entries map[string]*tokenRateEntry
+}{entries: map[string]*tokenRateEntry{}}
 
 type tokenCreateRequest struct {
 	Name      string          `json:"name"`
@@ -62,19 +76,28 @@ func (h *Handlers) TokenRevoke(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}
+	rateKey := tokenRateKey(r)
+	if isTokenRateLimited(rateKey) {
+		writeError(w, http.StatusTooManyRequests, "too many token operations, please retry shortly")
+		return
+	}
 	var body tokenRevokeRequest
 	if err := readJSON(w, r, &body); err != nil {
+		recordTokenRateAction(rateKey)
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if body.ID <= 0 {
+		recordTokenRateAction(rateKey)
 		writeError(w, http.StatusBadRequest, "token id is required")
 		return
 	}
 	if err := h.store.RevokeToken(body.ID); err != nil {
+		recordTokenRateAction(rateKey)
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	recordTokenRateAction(rateKey)
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
@@ -104,13 +127,21 @@ func (h *Handlers) listTokens(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) createToken(w http.ResponseWriter, r *http.Request) {
+	rateKey := tokenRateKey(r)
+	if isTokenRateLimited(rateKey) {
+		writeError(w, http.StatusTooManyRequests, "too many token operations, please retry shortly")
+		return
+	}
+
 	var body tokenCreateRequest
 	if err := readJSON(w, r, &body); err != nil {
+		recordTokenRateAction(rateKey)
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	name := strings.TrimSpace(body.Name)
 	if name == "" {
+		recordTokenRateAction(rateKey)
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
@@ -120,10 +151,12 @@ func (h *Handlers) createToken(w http.ResponseWriter, r *http.Request) {
 	if body.UserID != nil {
 		user, err := h.store.GetUserByIDFull(*body.UserID)
 		if err != nil {
+			recordTokenRateAction(rateKey)
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		if user == nil {
+			recordTokenRateAction(rateKey)
 			writeError(w, http.StatusNotFound, "user not found")
 			return
 		}
@@ -143,11 +176,13 @@ func (h *Handlers) createToken(w http.ResponseWriter, r *http.Request) {
 
 	secret, err := generateTokenSecret()
 	if err != nil {
+		recordTokenRateAction(rateKey)
 		writeError(w, http.StatusInternalServerError, "failed to generate token")
 		return
 	}
 	tokenHash, fingerprint, err := hashToken(secret)
 	if err != nil {
+		recordTokenRateAction(rateKey)
 		writeError(w, http.StatusInternalServerError, "failed to hash token")
 		return
 	}
@@ -155,13 +190,21 @@ func (h *Handlers) createToken(w http.ResponseWriter, r *http.Request) {
 	scopes := normalizeTokenField(body.Scopes)
 	issuedFor := normalizeTokenField(body.IssuedFor)
 
+	// Apply default TTL if not specified
+	expiresAt := body.ExpiresAt
+	if expiresAt == nil {
+		// Default to 90 days from now
+		defaultExpiry := time.Now().Add(defaultTokenTTL).Format(time.RFC3339)
+		expiresAt = &defaultExpiry
+	}
+
 	record := store.TokenRecord{
 		Name:             name,
 		TokenHash:        tokenHash,
 		TokenFingerprint: fingerprint,
 		UserID:           userID,
 		Role:             role,
-		ExpiresAt:        body.ExpiresAt,
+		ExpiresAt:        expiresAt,
 		Scopes:           scopes,
 		IssuedFor:        issuedFor,
 		Disabled:         0,
@@ -169,9 +212,11 @@ func (h *Handlers) createToken(w http.ResponseWriter, r *http.Request) {
 
 	created, err := h.store.CreateToken(record)
 	if err != nil {
+		recordTokenRateAction(rateKey)
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	recordTokenRateAction(rateKey)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"token": map[string]any{
@@ -182,6 +227,39 @@ func (h *Handlers) createToken(w http.ResponseWriter, r *http.Request) {
 			"expiresAt": created.ExpiresAt,
 		},
 	})
+}
+
+func tokenRateKey(r *http.Request) string {
+	if userID, ok := readUserIDFromContext(r); ok {
+		return fmt.Sprintf("uid:%d", userID)
+	}
+	return "ip:" + clientIP(r)
+}
+
+func isTokenRateLimited(key string) bool {
+	tokenRateLimiter.Lock()
+	defer tokenRateLimiter.Unlock()
+	entry, ok := tokenRateLimiter.entries[key]
+	if !ok {
+		return false
+	}
+	if time.Since(entry.firstAction) > tokenOpWindow {
+		delete(tokenRateLimiter.entries, key)
+		return false
+	}
+	return entry.count >= tokenOpMaxActions
+}
+
+func recordTokenRateAction(key string) {
+	tokenRateLimiter.Lock()
+	defer tokenRateLimiter.Unlock()
+	now := time.Now()
+	entry, ok := tokenRateLimiter.entries[key]
+	if !ok || now.Sub(entry.firstAction) > tokenOpWindow {
+		tokenRateLimiter.entries[key] = &tokenRateEntry{count: 1, firstAction: now}
+		return
+	}
+	entry.count++
 }
 
 func normalizeTokenField(value json.RawMessage) *string {
