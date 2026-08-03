@@ -173,10 +173,16 @@ module.exports = {
   apps: [
     {
       name: 'docklite-agent',
+      // PM2's own uid/gid drop (setuid/setgid) does not call initgroups(),
+      // so the process loses supplementary groups the docklite user
+      // actually has — e.g. \`docker\`, breaking anything that touches
+      // /var/run/docker.sock. setpriv --init-groups drops privileges
+      // correctly, and unlike routing through sudo it doesn't touch the
+      // environment (no env_reset to fight with the env block below).
+      interpreter: 'setpriv',
+      interpreter_args: '--reuid=docklite --regid=docklite --init-groups',
       script: './bin/docklite-agent',
       cwd: '${SCRIPT_DIR}',
-      uid: 'docklite',
-      gid: 'docklite',
       env: {
         LISTEN_ADDR: ':${AGENT_PORT}',
         DATABASE_PATH: './data/docklite.db',
@@ -193,12 +199,14 @@ module.exports = {
     },
     {
       name: 'docklite-gui',
-      interpreter: '${gui_interpreter}',
+      // Same reasoning as docklite-agent above: setpriv wraps the real
+      // interpreter so the GUI process also gets docklite's full
+      // supplementary groups instead of PM2's own uid/gid drop.
+      interpreter: 'setpriv',
+      interpreter_args: '--reuid=docklite --regid=docklite --init-groups ${gui_interpreter}',
       script: '${gui_script}',
       args: '${gui_args}',
       cwd: '${SCRIPT_DIR}/webapp',
-      uid: 'docklite',
-      gid: 'docklite',
       env: {
         PORT: '${GUI_PORT}',
         HOSTNAME: '0.0.0.0',
