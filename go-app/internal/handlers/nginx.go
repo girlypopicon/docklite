@@ -16,7 +16,10 @@ const (
 var domainSanitizeRegex = regexp.MustCompile(`[^a-zA-Z0-9.\-]`)
 
 func sanitizeNginxFilename(domain string) string {
-	return domainSanitizeRegex.ReplaceAllString(strings.ToLower(domain), "")
+	// nginx.conf's `include sites-enabled/*.conf;` only picks up files
+	// ending in .conf — without it, every site this writes is silently
+	// never loaded, even though the file itself is created successfully.
+	return domainSanitizeRegex.ReplaceAllString(strings.ToLower(domain), "") + ".conf"
 }
 
 func nginxVhostConfig(domain string, includeWww bool, upstreamPort int) string {
