@@ -22,7 +22,15 @@ func ProxyHandler(nextjsURL string) http.Handler {
 		origHost := req.Host
 		originalDirector(req)
 		req.Header.Set("X-Forwarded-Host", origHost)
-		req.Header.Set("X-Forwarded-Proto", "http")
+		proto := req.Header.Get("X-Forwarded-Proto")
+		if proto == "" {
+			if req.TLS != nil {
+				proto = "https"
+			} else {
+				proto = "http"
+			}
+		}
+		req.Header.Set("X-Forwarded-Proto", proto)
 		req.Host = target.Host
 	}
 

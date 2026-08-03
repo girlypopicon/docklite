@@ -215,31 +215,24 @@ func (h *Handlers) AssignContainer(w http.ResponseWriter, r *http.Request, conta
 		return
 	}
 
-	exists, err := h.store.GetSiteByContainerID(containerID)
+	site, err := h.store.GetSiteByContainerIDRecord(containerID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if !exists {
+	if site == nil {
 		writeError(w, http.StatusNotFound, "container is not a managed site")
 		return
 	}
 
-	userExists, err := h.store.GetUserByID(req.UserID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !userExists {
-		writeError(w, http.StatusNotFound, "target user not found")
+	// If the owner is actually changing, do a full transfer
+	// (moves files, recreates container, updates nginx).
+	if site.UserID != req.UserID {
+		h.transferSiteToUser(w, r, containerID, req.UserID)
 		return
 	}
 
-	if err := h.store.UpdateSiteUserIDByContainerID(containerID, req.UserID); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
+	// Same user — just move to their default folder.
 	folder, err := h.store.GetDefaultFolderByUser(req.UserID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -511,13 +504,6 @@ func readUserID(r *http.Request) (*int64, error) {
 	if userID, ok := readUserIDFromContext(r); ok {
 		return &userID, nil
 	}
-	if header := r.Header.Get("X-Docklite-User-Id"); header != "" {
-		value, err := strconv.ParseInt(header, 10, 64)
-		if err != nil {
-			return nil, errors.New("invalid user id")
-		}
-		return &value, nil
-	}
 	if userIDParam := r.URL.Query().Get("userId"); userIDParam != "" {
 		value, err := strconv.ParseInt(userIDParam, 10, 64)
 		if err != nil {
@@ -529,13 +515,11 @@ func readUserID(r *http.Request) (*int64, error) {
 }
 
 func isAdminRole(r *http.Request) bool {
-	if role, ok := readUserRoleFromContext(r); ok {
-		return role == "admin" || role == "super_admin"
+	role, ok := readUserRoleFromContext(r)
+	if !ok {
+		return false
 	}
-	if headerRole := r.Header.Get("X-Docklite-User-Role"); headerRole != "" {
-		return headerRole == "admin" || headerRole == "super_admin"
-	}
-	return false
+	return role == "admin" || role == "super_admin"
 }
 
 func validateFolderMove(folderID int64, newParentID *int64, folders []store.Folder) error {
@@ -599,4 +583,106 @@ func isDescendant(folderID int64, potentialAncestorID int64, folderMap map[int64
 		}
 		currentID = *folder.ParentFolderID
 	}
+}
+
+// WriteContainerManifest writes (or overwrites) the .dkl manifest for a
+// container that already has a site record in the database.
+func (h *Handlers) WriteContainerManifest(w http.ResponseWriter, r *http.Request, containerID string) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	site, err := h.store.GetSiteByContainerIDRecord(containerID)
+	if err != nil || site == nil {
+		writeError(w, http.StatusNotFound, "no site record for this container")
+		return
+	}
+	if site.CodePath == "" {
+		writeError(w, http.StatusBadRequest, "site has no code path — cannot write manifest")
+		return
+	}
+
+	username := ""
+	if u, err := h.store.GetUserByIDFull(site.UserID); err == nil && u != nil {
+		username = u.Username
+	}
+
+	if err := WriteDKLManifest(site.CodePath, site.Domain, site.TemplateType, username, 0, false, nil); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to write manifest: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "path": site.CodePath + "/.dkl"})
+}
+
+// ClaimContainer registers an existing Docker container as a DockLite-managed
+// site, creates a site record, writes a .dkl manifest, and marks it tracked.
+func (h *Handlers) ClaimContainer(w http.ResponseWriter, r *http.Request, containerID string) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	var body struct {
+		Domain       string `json:"domain"`
+		TemplateType string `json:"templateType"`
+		CodePath     string `json:"codePath"`
+	}
+	if err := readJSON(w, r, &body); err != nil {
+		return
+	}
+	if body.Domain == "" {
+		writeError(w, http.StatusBadRequest, "domain is required")
+		return
+	}
+	if body.TemplateType == "" {
+		body.TemplateType = "static"
+	}
+
+	// Resolve the user from request context.
+	var userID int64 = 1
+	if uid, err := readUserID(r); err == nil && uid != nil {
+		userID = *uid
+	}
+	username := ""
+	if u, err := h.store.GetUserByIDFull(userID); err == nil && u != nil {
+		username = u.Username
+	}
+
+	// Default code path to /var/www/sites/{username}/{domain}
+	if body.CodePath == "" {
+		body.CodePath = siteBaseDir + "/" + username + "/" + body.Domain
+	}
+
+	// Create site record pointing at the existing container.
+	site, err := h.store.CreateSite(store.SiteRecord{
+		Domain:       body.Domain,
+		UserID:       userID,
+		TemplateType: body.TemplateType,
+		CodePath:     body.CodePath,
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create site record: "+err.Error())
+		return
+	}
+	_ = h.store.UpdateSiteContainerID(site.ID, &containerID)
+	_ = h.store.UpdateSiteStatus(site.ID, "running")
+	_ = h.store.MarkContainerTracked(containerID)
+
+	// Write .dkl manifest so future reinstalls can rediscover this site.
+	_ = WriteDKLManifest(body.CodePath, body.Domain, body.TemplateType, username, 0, false, nil)
+
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"ok":           true,
+		"siteId":       site.ID,
+		"manifestPath": body.CodePath + "/.dkl",
+	})
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -21,6 +22,23 @@ import (
 )
 
 const siteBaseDir = "/var/www/sites"
+
+var dockliteUID, dockliteGID int
+
+func init() {
+	u, err := user.Lookup("docklite")
+	if err != nil {
+		dockliteUID = os.Getuid()
+		dockliteGID = os.Getgid()
+		return
+	}
+	dockliteUID, _ = strconv.Atoi(u.Uid)
+	dockliteGID, _ = strconv.Atoi(u.Gid)
+}
+
+func chownDocklite(path string) {
+	_ = os.Chown(path, dockliteUID, dockliteGID)
+}
 
 func (h *Handlers) getContainerHostPort(ctx context.Context, containerID string, containerPort int) (int, error) {
 	portKey := nat.Port(fmt.Sprintf("%d/tcp", containerPort))
@@ -216,18 +234,32 @@ func (h *Handlers) ListAllContainers(w http.ResponseWriter, r *http.Request) {
 		untrackedSet[id] = struct{}{}
 	}
 
-	type containerWithTracking struct {
+	type containerResult struct {
 		models.ContainerInfo
-		Tracked bool `json:"tracked"`
+		Tracked     bool   `json:"tracked"`
+		SiteID      *int64 `json:"siteId,omitempty"`
+		Domain      string `json:"domain,omitempty"`
+		CodePath    string `json:"codePath,omitempty"`
+		HasManifest bool   `json:"hasManifest"`
 	}
 
-	results := make([]containerWithTracking, 0, len(containers))
-	for _, container := range containers {
-		_, untracked := untrackedSet[container.ID]
-		results = append(results, containerWithTracking{
-			ContainerInfo: container,
-			Tracked:       !untracked,
-		})
+	results := make([]containerResult, 0, len(containers))
+	for _, c := range containers {
+		_, isUntracked := untrackedSet[c.ID]
+		r := containerResult{
+			ContainerInfo: c,
+			Tracked:       !isUntracked,
+		}
+		if site, err := h.store.GetSiteByContainerIDRecord(c.ID); err == nil && site != nil {
+			r.SiteID = &site.ID
+			r.Domain = site.Domain
+			r.CodePath = site.CodePath
+			if site.CodePath != "" {
+				_, statErr := os.Stat(filepath.Join(site.CodePath, dklFilename))
+				r.HasManifest = statErr == nil
+			}
+		}
+		results = append(results, r)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"containers": results})
@@ -269,6 +301,12 @@ func (h *Handlers) Container(w http.ResponseWriter, r *http.Request) {
 		h.TrackContainer(w, r, id)
 	case "untrack":
 		h.UntrackContainer(w, r, id)
+	case "write-manifest":
+		h.WriteContainerManifest(w, r, id)
+	case "claim":
+		h.ClaimContainer(w, r, id)
+	case "transfer":
+		h.TransferSite(w, r, id)
 	case "terminal":
 		h.ContainerTerminal(w, r, id)
 	case "":
@@ -298,12 +336,35 @@ func (h *Handlers) handleLifecycle(w http.ResponseWriter, r *http.Request, id st
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	isStopping := strings.Contains(r.URL.Path, "/stop")
 	if site != nil {
 		status := "running"
-		if strings.Contains(r.URL.Path, "/stop") {
+		if isStopping {
 			status = "stopped"
 		}
 		_ = h.store.UpdateSiteStatus(site.ID, status)
+	}
+	// After a start or restart, the container may have received a new random
+	// host port (Docker re-draws from the ephemeral range each time).
+	// Re-detect the port and rewrite the nginx upstream so the site stays live.
+	if !isStopping {
+		if info, inspErr := h.docker.InspectContainer(ctx, id); inspErr == nil {
+			labels := info.Config.Labels
+			if labels["docklite.managed"] == "true" {
+				domain := labels["docklite.domain"]
+				includeWww := labels["docklite.include_www"] == "true"
+				internalPortStr := labels["docklite.internal_port"]
+				internalPort := 80
+				if p, err := strconv.Atoi(internalPortStr); err == nil && p > 0 {
+					internalPort = p
+				}
+				if domain != "" {
+					if hostPort, portErr := h.getContainerHostPort(ctx, id, internalPort); portErr == nil && hostPort > 0 {
+						_ = setupNginxForDomain(domain, includeWww, hostPort)
+					}
+				}
+			}
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
@@ -452,6 +513,177 @@ func (h *Handlers) handleDelete(w http.ResponseWriter, r *http.Request, id strin
 	}
 
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+func (h *Handlers) TransferSite(w http.ResponseWriter, r *http.Request, containerID string) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "admin access required")
+		return
+	}
+
+	var req struct {
+		NewUserID int64 `json:"new_user_id"`
+	}
+	if err := readJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.NewUserID <= 0 {
+		writeError(w, http.StatusBadRequest, "new_user_id is required")
+		return
+	}
+
+	h.transferSiteToUser(w, r, containerID, req.NewUserID)
+}
+
+func (h *Handlers) transferSiteToUser(w http.ResponseWriter, r *http.Request, containerID string, newUserID int64) {
+
+	ctx, cancel := dockerContext(r.Context())
+	defer cancel()
+
+	site, err := h.store.GetSiteByContainerIDRecord(containerID)
+	if err != nil || site == nil {
+		writeError(w, http.StatusNotFound, "site not found for this container")
+		return
+	}
+
+	if site.UserID == newUserID {
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "site already owned by this user"})
+		return
+	}
+
+	newUser, err := h.store.GetUserByIDFull(newUserID)
+	if err != nil || newUser == nil {
+		writeError(w, http.StatusNotFound, "target user not found")
+		return
+	}
+
+	oldUser, _ := h.store.GetUserByIDFull(site.UserID)
+	oldUsername := "unknown"
+	if oldUser != nil {
+		oldUsername = oldUser.Username
+	}
+
+	oldPath := site.CodePath
+	if oldPath == "" {
+		oldPath = getSitePath(oldUsername, site.Domain)
+	}
+	newPath := getSitePath(newUser.Username, site.Domain)
+
+	if err := ensureSiteDirectory(newUser.Username, site.Domain); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create target directory: "+err.Error())
+		return
+	}
+
+	if oldPath != newPath {
+		if info, statErr := os.Stat(oldPath); statErr == nil && info.IsDir() {
+			if err := copyFileOrDir(oldPath, newPath); err != nil {
+				writeError(w, http.StatusInternalServerError, "failed to copy files: "+err.Error())
+				return
+			}
+			_ = os.RemoveAll(oldPath)
+		}
+	}
+
+	if err := h.store.TransferSite(site.ID, newUserID, newPath); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update site record: "+err.Error())
+		return
+	}
+
+	container, inspErr := h.docker.InspectContainer(ctx, containerID)
+	if inspErr != nil {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"success": true,
+			"warning": "site transferred but container could not be inspected — restart it manually",
+		})
+		return
+	}
+
+	includeWww := container.Config.Labels["docklite.include_www"] == "true"
+	templateType := site.TemplateType
+	internalPort := 80
+	if portStr := container.Config.Labels["docklite.internal_port"]; portStr != "" {
+		if p, err := strconv.Atoi(portStr); err == nil {
+			internalPort = p
+		}
+	}
+
+	_ = h.docker.RemoveContainer(ctx, containerID)
+
+	createCtx, createCancel := ctxWithLongTimeout()
+	defer createCancel()
+
+	newContainerID, err := h.docker.CreateSiteContainer(
+		createCtx, site.Domain, templateType, includeWww,
+		newPath, internalPort, site.ID, newUserID, site.FolderID,
+	)
+	if err != nil {
+		_ = h.store.UpdateSiteStatus(site.ID, "failed")
+		writeError(w, http.StatusInternalServerError, "failed to create new container: "+err.Error())
+		return
+	}
+
+	_ = h.store.UpdateSiteContainerID(site.ID, &newContainerID)
+	_ = h.store.UpdateSiteStatus(site.ID, "running")
+
+	nginxWarning := ""
+	if hostPort, portErr := h.getContainerHostPort(createCtx, newContainerID, internalPort); portErr == nil && hostPort > 0 {
+		if ngErr := updateNginxProxyPort(site.Domain, hostPort); ngErr != nil {
+			// Fall back to full config generation if no existing config exists.
+			if ngErr2 := setupNginxForDomain(site.Domain, includeWww, hostPort); ngErr2 != nil {
+				nginxWarning = ngErr2.Error()
+			}
+		}
+	}
+
+	_ = WriteDKLManifest(newPath, site.Domain, templateType, newUser.Username, internalPort, includeWww, nil)
+
+	resp := map[string]any{
+		"success":          true,
+		"new_user":         newUser.Username,
+		"new_path":         newPath,
+		"new_container_id": newContainerID,
+	}
+	if nginxWarning != "" {
+		resp["warning"] = nginxWarning
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func copyFileOrDir(src, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		if err := os.MkdirAll(dst, 0o775); err != nil {
+			return err
+		}
+		entries, err := os.ReadDir(src)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := copyFileOrDir(filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name())); err != nil {
+				return err
+			}
+		}
+		chownDocklite(dst)
+		return nil
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(dst, data, 0o664); err != nil {
+		return err
+	}
+	chownDocklite(dst)
+	return nil
 }
 
 func (h *Handlers) createContainer(w http.ResponseWriter, r *http.Request) {
@@ -631,7 +863,11 @@ func ensureFile(path string, content string) error {
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	return os.WriteFile(path, []byte(content), 0o644)
+	if err := os.WriteFile(path, []byte(content), 0o664); err != nil {
+		return err
+	}
+	chownDocklite(path)
+	return nil
 }
 
 var errForbidden = errors.New("forbidden")
@@ -914,13 +1150,11 @@ func getSitePath(username string, domain string) string {
 
 func ensureSiteDirectory(username string, domain string) error {
 	sitePath := getSitePath(username, domain)
-	if err := os.MkdirAll(sitePath, 0o755); err != nil {
+	if err := os.MkdirAll(sitePath, 0o775); err != nil {
 		return fmt.Errorf("failed to create site directory: %w", err)
 	}
-	_ = os.Chmod(sitePath, 0o755)
-	if uid := os.Getuid(); uid >= 0 {
-		_ = os.Chown(sitePath, uid, os.Getgid())
-	}
+	chownDocklite(filepath.Join(siteBaseDir, username))
+	chownDocklite(sitePath)
 	return nil
 }
 

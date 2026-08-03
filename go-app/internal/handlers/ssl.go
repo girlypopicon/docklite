@@ -329,10 +329,14 @@ func readFileWithSudo(path string) []byte {
 	return output
 }
 
-var validDomainRegex = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$`)
+// Requires at least two labels (one dot), no consecutive hyphens, no wildcards.
+var validDomainRegex = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)+$`)
 
 func isValidDomain(domain string) bool {
-	if len(domain) > 253 {
+	if len(domain) > 253 || len(domain) == 0 {
+		return false
+	}
+	if strings.Contains(domain, "--") {
 		return false
 	}
 	return validDomainRegex.MatchString(domain)

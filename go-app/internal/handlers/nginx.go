@@ -16,7 +16,10 @@ const (
 var domainSanitizeRegex = regexp.MustCompile(`[^a-zA-Z0-9.\-]`)
 
 func sanitizeNginxFilename(domain string) string {
-	return domainSanitizeRegex.ReplaceAllString(strings.ToLower(domain), "")
+	// nginx.conf's `include sites-enabled/*.conf;` only picks up files
+	// ending in .conf — without it, every site this writes is silently
+	// never loaded, even though the file itself is created successfully.
+	return domainSanitizeRegex.ReplaceAllString(strings.ToLower(domain), "") + ".conf"
 }
 
 func nginxVhostConfig(domain string, includeWww bool, upstreamPort int) string {
@@ -101,6 +104,23 @@ func reloadNginx() error {
 		return fmt.Errorf("nginx reload failed: %s", string(output))
 	}
 	return nil
+}
+
+var proxyPassRegex = regexp.MustCompile(`(proxy_pass\s+http://127\.0\.0\.1:)\d+`)
+
+func updateNginxProxyPort(domain string, newPort int) error {
+	existing, err := readNginxSiteConfig(domain)
+	if err != nil || existing == "" {
+		return fmt.Errorf("no existing nginx config for %s", domain)
+	}
+	updated := proxyPassRegex.ReplaceAllString(existing, fmt.Sprintf("${1}%d", newPort))
+	if updated == existing {
+		return fmt.Errorf("could not find proxy_pass to update in nginx config")
+	}
+	if err := writeNginxSiteConfig(domain, updated); err != nil {
+		return err
+	}
+	return reloadNginx()
 }
 
 func setupNginxForDomain(domain string, includeWww bool, hostPort int) error {

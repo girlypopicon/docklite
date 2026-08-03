@@ -192,7 +192,11 @@ func ensureUserFolder(username string) error {
 		return nil
 	}
 	path := filepath.Join("/var/www/sites", username)
-	return os.MkdirAll(path, 0o755)
+	if err := os.MkdirAll(path, 0o775); err != nil {
+		return err
+	}
+	chownDocklite(path)
+	return nil
 }
 
 func currentUserID(r *http.Request) *int64 {
@@ -236,13 +240,10 @@ func canManageUser(r *http.Request, target *store.UserRecord) bool {
 
 func isSuperAdminRole(r *http.Request) bool {
 	role, ok := readUserRoleFromContext(r)
-	if ok {
-		return role == "super_admin"
+	if !ok {
+		return false
 	}
-	if headerRole := r.Header.Get("X-Docklite-User-Role"); headerRole != "" {
-		return headerRole == "super_admin"
-	}
-	return false
+	return role == "super_admin"
 }
 
 func isUniqueConstraint(err error) bool {

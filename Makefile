@@ -1,4 +1,4 @@
-.PHONY: build-all build-agent build-cli build-tui build-gui run-agent run-tui run-gui install-gui dev-gui clean
+.PHONY: build-all build-agent build-cli build-tui build-gui run-agent run-tui run-gui install-gui dev-gui clean test test-go test-web test-coverage
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 BIN := $(ROOT)/bin
@@ -52,3 +52,24 @@ clean:
 	rm -rf $(BIN)
 	rm -rf webapp/.next
 	rm -rf webapp/node_modules
+
+# Run all tests
+test: test-go test-web
+
+# Run Go tests
+test-go:
+	cd go-app && go test ./...
+
+# Run webapp tests
+test-web:
+	cd webapp && bun run test
+
+# Run tests with coverage
+test-coverage:
+	cd go-app && go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out
+	cd webapp && bun run test --coverage
+
+# Install test dependencies
+install-test-deps:
+	cd webapp && bun install
+	@echo "Test dependencies installed"

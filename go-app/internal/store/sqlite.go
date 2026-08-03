@@ -13,7 +13,7 @@ type SQLiteStore struct {
 }
 
 func NewSQLiteStore(path string) (*SQLiteStore, error) {
-	dsn := fmt.Sprintf("file:%s?mode=rw", path)
+	dsn := fmt.Sprintf("file:%s?mode=rwc", path)
 	if path == ":memory:" {
 		dsn = path
 	}
@@ -21,6 +21,8 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Serialize all writes through a single connection to avoid SQLITE_BUSY.
+	db.SetMaxOpenConns(1)
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		_ = db.Close()
 		return nil, err

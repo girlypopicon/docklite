@@ -13,10 +13,20 @@ type Handlers struct {
 	store         *store.SQLiteStore
 	token         string
 	backupBaseDir string
+	sslManager    *SSLManager
+	listenAddr    string
+	nextjsURL     string
 }
 
-func New(dockerClient *docker.Client, store *store.SQLiteStore, token string, backupBaseDir string) *Handlers {
-	return &Handlers{docker: dockerClient, store: store, token: token, backupBaseDir: backupBaseDir}
+func New(dockerClient *docker.Client, store *store.SQLiteStore, token string, backupBaseDir string, listenAddr string, nextjsURL string) *Handlers {
+	return &Handlers{
+		docker:        dockerClient,
+		store:         store,
+		token:         token,
+		backupBaseDir: backupBaseDir,
+		listenAddr:    listenAddr,
+		nextjsURL:     nextjsURL,
+	}
 }
 
 func (h *Handlers) Auth(next http.HandlerFunc) http.HandlerFunc {

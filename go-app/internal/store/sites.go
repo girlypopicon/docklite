@@ -144,6 +144,11 @@ func (s *SQLiteStore) UpdateSiteStatus(id int64, status string) error {
 	return err
 }
 
+func (s *SQLiteStore) TransferSite(id int64, newUserID int64, newCodePath string) error {
+	_, err := s.DB.Exec(`UPDATE sites SET user_id = ?, code_path = ? WHERE id = ?`, newUserID, newCodePath, id)
+	return err
+}
+
 func (s *SQLiteStore) DeleteSite(id int64) error {
 	_, err := s.DB.Exec(`DELETE FROM sites WHERE id = ?`, id)
 	return err

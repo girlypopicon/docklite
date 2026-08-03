@@ -1,0 +1,922 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 1: Constants
+# ══════════════════════════════════════════════════════════════════════════════
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+CONF_FILE="${SCRIPT_DIR}/.docklite.conf"
+LOG_DIR="${SCRIPT_DIR}/logs"
+DATA_DIR="${SCRIPT_DIR}/data"
+AGENT_BIN="${SCRIPT_DIR}/bin/docklite-agent"
+TUI_BIN="${SCRIPT_DIR}/bin/docklite-tui"
+WEBAPP_DIR="${SCRIPT_DIR}/webapp"
+PM2="$(command -v pm2 2>/dev/null || echo "/usr/bin/pm2")"
+sudo_pm2() { sudo "$PM2" "$@"; }
+ECOSYSTEM="${SCRIPT_DIR}/ecosystem.config.js"
+VERSION=$(cat "${SCRIPT_DIR}/VERSION" 2>/dev/null || echo "dev")
+
+# Basic ANSI
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; MAGENTA='\033[0;35m'
+BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
+
+# Brand rainbow (from BRAND.md — truecolor)
+PINK='\033[38;2;255;106;213m'
+CORAL='\033[38;2;255;154;139m'
+GOLD='\033[38;2;255;209;102m'
+MINT='\033[38;2;184;242;162m'
+SKY='\033[38;2;154;208;255m'
+LAVENDER='\033[38;2;199;164;255m'
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 2: Utility functions
+# ══════════════════════════════════════════════════════════════════════════════
+
+step()  { echo -e "\n${BOLD}── $* ──${NC}"; }
+ok()    { echo -e "  ${GREEN}✓${NC} $*"; }
+warn()  { echo -e "  ${YELLOW}⚠${NC}  $*"; }
+die()   { echo -e "  ${RED}✗${NC}  $*" >&2; exit 1; }
+
+find_available_port() {
+    local port="${1:-3000}"
+    local max=100 i=0
+    while [[ $i -lt $max ]]; do
+        if ! ss -tlnp 2>/dev/null | grep -q ":${port} " 2>/dev/null; then
+            echo "$port"; return 0
+        fi
+        port=$((port + 1)); i=$((i + 1))
+    done
+    die "No available port found (tried $1-$((port - 1)))"
+}
+
+check_port_owner() {
+    ss -tlnp 2>/dev/null | grep ":${1} " 2>/dev/null | \
+        sed -n 's/.*users:(("\([^"]*\)",pid=\([0-9]*\).*/\1 (PID \2)/p' | head -1 || true
+}
+
+is_agent_healthy() {
+    curl -sf -m 3 -H "Authorization: Bearer ${2}" \
+        "http://127.0.0.1:${1}/api/health" >/dev/null 2>&1
+}
+
+pm2_status() {
+    local name="$1"
+    case "$name" in
+        docklite-agent)
+            if pgrep -f 'docklite-agent' >/dev/null 2>&1; then
+                if curl -sf -m 2 "http://127.0.0.1:${AGENT_PORT}/api/health" -H "Authorization: Bearer ${DOCKLITE_TOKEN}" >/dev/null 2>&1; then
+                    echo "online"
+                else
+                    echo "errored"
+                fi
+            else
+                echo "not_found"
+            fi
+            ;;
+        docklite-gui)
+            if pgrep -f 'next-server\|next.*start' >/dev/null 2>&1; then
+                if curl -sf -m 2 "http://127.0.0.1:${GUI_PORT}/" >/dev/null 2>&1; then
+                    echo "online"
+                else
+                    echo "errored"
+                fi
+            else
+                echo "not_found"
+            fi
+            ;;
+        *) echo "not_found" ;;
+    esac
+}
+
+nginx_status() {
+    if ! command -v nginx >/dev/null 2>&1; then echo "not_installed"; return; fi
+    if systemctl is-active nginx >/dev/null 2>&1; then echo "active"
+    elif pgrep -x nginx >/dev/null 2>&1; then echo "active"
+    else echo "inactive"; fi
+}
+
+has_sudo() { sudo -n true 2>/dev/null; }
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 3: Branding
+# ══════════════════════════════════════════════════════════════════════════════
+
+show_banner() {
+    echo ""
+    echo -e "${PINK}     ____             __   __    _ __       ${NC}"
+    echo -e "${CORAL}    / __ \\____  _____/ /__/ /   (_) /_____ ${NC}"
+    echo -e "${GOLD}   / / / / __ \\/ ___/ //_/ /   / / __/ _ \\${NC}"
+    echo -e "${MINT}  / /_/ / /_/ / /__/ ,< / /___/ / /_/  __/${NC}"
+    echo -e "${SKY}  \\____/\\____/\\___/_/|_/_____/_/\\__/\\___/ ${NC}"
+    echo -e "${LAVENDER}                                   v${VERSION}${NC}"
+    echo ""
+}
+
+show_rainbow_line() {
+    echo -e "${PINK}━${CORAL}━${GOLD}━${MINT}━${SKY}━${LAVENDER}━${PINK}━${CORAL}━${GOLD}━${MINT}━${SKY}━${LAVENDER}━${PINK}━${CORAL}━${GOLD}━${MINT}━${SKY}━${LAVENDER}━${PINK}━${CORAL}━${GOLD}━${MINT}━${SKY}━${LAVENDER}━${PINK}━${CORAL}━${GOLD}━${MINT}━${SKY}━${LAVENDER}━${PINK}━${CORAL}━${GOLD}━${MINT}━${SKY}━${LAVENDER}━${PINK}━${CORAL}━${GOLD}━${MINT}━${NC}"
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 4: Config management
+# ══════════════════════════════════════════════════════════════════════════════
+
+AGENT_PORT="" GUI_PORT="" DOCKLITE_TOKEN="" SESSION_SECRET="" MODE="" NGINX_CONFIGURED=""
+
+load_config() {
+    AGENT_PORT="3000"; GUI_PORT="3002"; MODE="fullstack"; NGINX_CONFIGURED="0"
+    if [[ -f "$CONF_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$CONF_FILE"
+    fi
+}
+
+save_config() {
+    cat > "$CONF_FILE" <<EOF
+# DockLite Configuration (auto-generated — do not commit)
+AGENT_PORT=${AGENT_PORT}
+GUI_PORT=${GUI_PORT}
+DOCKLITE_TOKEN=${DOCKLITE_TOKEN}
+SESSION_SECRET=${SESSION_SECRET}
+MODE=${MODE}
+NGINX_CONFIGURED=${NGINX_CONFIGURED}
+EOF
+    chmod 640 "$CONF_FILE"
+}
+
+has_config() { [[ -f "$CONF_FILE" ]]; }
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 5: PM2 ecosystem generation
+# ══════════════════════════════════════════════════════════════════════════════
+
+generate_ecosystem() {
+    local nextjs_url="http://127.0.0.1:${GUI_PORT}"
+    [[ "$MODE" == "headless" ]] && nextjs_url=""
+
+    # The webapp depends on better-sqlite3 (a native Node addon), which Bun
+    # does not support (https://github.com/oven-sh/bun/issues/4290) — it
+    # fails ERR_DLOPEN_FAILED on startup. Always run the GUI under node.
+    #
+    # Use an absolute path, not the bare word "node": on boxes where a
+    # per-user tool manager (nvm, etc.) has shadowed /usr/local/bin/node
+    # with a symlink into someone's home directory, PATH resolution would
+    # hand PM2 a binary the `docklite` user can't execute.
+    local gui_script gui_args gui_interpreter
+    gui_script="${SCRIPT_DIR}/webapp/node_modules/.bin/next"
+    gui_args="start -H 0.0.0.0"
+    gui_interpreter="/usr/bin/node"
+
+    cat > "$ECOSYSTEM" <<JSEOF
+module.exports = {
+  apps: [
+    {
+      name: 'docklite-agent',
+      // PM2's own uid/gid drop (setuid/setgid) does not call initgroups(),
+      // so the process loses supplementary groups the docklite user
+      // actually has — e.g. \`docker\`, breaking anything that touches
+      // /var/run/docker.sock. setpriv --init-groups drops privileges
+      // correctly, and unlike routing through sudo it doesn't touch the
+      // environment (no env_reset to fight with the env block below).
+      interpreter: 'setpriv',
+      interpreter_args: '--reuid=docklite --regid=docklite --init-groups',
+      script: './bin/docklite-agent',
+      cwd: '${SCRIPT_DIR}',
+      env: {
+        LISTEN_ADDR: ':${AGENT_PORT}',
+        DATABASE_PATH: './data/docklite.db',
+        DOCKER_SOCKET_PATH: 'unix:///var/run/docker.sock',
+        NEXTJS_URL: '${nextjs_url}',
+        DOCKLITE_TOKEN: '${DOCKLITE_TOKEN}',
+      },
+      out_file: './logs/agent.log',
+      error_file: './logs/agent.log',
+      merge_logs: true,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 3000,
+    },
+    {
+      name: 'docklite-gui',
+      // Same reasoning as docklite-agent above: setpriv wraps the real
+      // interpreter so the GUI process also gets docklite's full
+      // supplementary groups instead of PM2's own uid/gid drop.
+      interpreter: 'setpriv',
+      interpreter_args: '--reuid=docklite --regid=docklite --init-groups ${gui_interpreter}',
+      script: '${gui_script}',
+      args: '${gui_args}',
+      cwd: '${SCRIPT_DIR}/webapp',
+      env: {
+        PORT: '${GUI_PORT}',
+        HOSTNAME: '0.0.0.0',
+        NODE_ENV: 'production',
+        DATABASE_PATH: '../data/docklite.db',
+        AGENT_URL: 'http://127.0.0.1:${AGENT_PORT}',
+        AGENT_TOKEN: '${DOCKLITE_TOKEN}',
+        SESSION_SECRET: '${SESSION_SECRET}',
+      },
+      out_file: '../logs/nextjs.log',
+      error_file: '../logs/nextjs.log',
+      merge_logs: true,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 3000,
+    },
+  ],
+};
+JSEOF
+}
+
+pm2_start_agent() {
+    cd "$SCRIPT_DIR" && sudo_pm2 start "$ECOSYSTEM" --only docklite-agent 2>/dev/null
+}
+
+pm2_start_gui() {
+    cd "$SCRIPT_DIR" && sudo_pm2 start "$ECOSYSTEM" --only docklite-gui 2>/dev/null
+}
+
+pm2_start_all() {
+    cd "$SCRIPT_DIR" && sudo_pm2 start "$ECOSYSTEM" 2>/dev/null
+    if [[ "$MODE" == "headless" ]]; then
+        sudo_pm2 stop docklite-gui 2>/dev/null || true
+    fi
+}
+
+pm2_stop() {
+    sudo_pm2 stop "$1" --silent 2>/dev/null || true
+}
+
+pm2_stop_all() {
+    sudo_pm2 stop docklite-agent --silent 2>/dev/null || true
+    sudo_pm2 stop docklite-gui --silent 2>/dev/null || true
+}
+
+pm2_delete_all() {
+    sudo_pm2 delete docklite-agent --silent 2>/dev/null || true
+    sudo_pm2 delete docklite-gui --silent 2>/dev/null || true
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 6: Nginx management
+# ══════════════════════════════════════════════════════════════════════════════
+
+setup_nginx_default() {
+    if ! command -v nginx >/dev/null 2>&1; then
+        warn "Nginx is not installed — skipping reverse proxy setup"
+        warn "Install with: sudo apt install nginx"
+        NGINX_CONFIGURED="0"
+        return 1
+    fi
+
+    local config
+    config="# Managed by DockLite — do not edit manually
+map \$http_upgrade \$connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    client_max_body_size 100M;
+
+    location / {
+        proxy_pass http://127.0.0.1:${AGENT_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection \$connection_upgrade;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+    }
+}
+"
+
+    if echo "$config" | sudo -n tee /etc/nginx/sites-available/docklite-default >/dev/null 2>&1; then
+        sudo -n rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+        sudo -n rm -f /etc/nginx/sites-enabled/docklite-sites 2>/dev/null || true
+        sudo -n ln -sf /etc/nginx/sites-available/docklite-default /etc/nginx/sites-enabled/ 2>/dev/null
+
+        if sudo -n nginx -t 2>/dev/null; then
+            sudo -n nginx -s reload 2>/dev/null || sudo -n systemctl reload nginx 2>/dev/null || true
+            NGINX_CONFIGURED="1"
+            ok "Nginx configured (:80 → :${AGENT_PORT})"
+            return 0
+        else
+            warn "Nginx config test failed — check manually with: sudo nginx -t"
+            NGINX_CONFIGURED="0"
+            return 0
+        fi
+    else
+        warn "Could not write nginx config. Run these manually:"
+        echo ""
+        echo "  sudo bash -c \"cat > /etc/nginx/sites-available/docklite-default << 'NGINX'"
+        echo "${config}"
+        echo "NGINX"
+        echo "  sudo rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-enabled/docklite-sites"
+        echo "  sudo ln -sf /etc/nginx/sites-available/docklite-default /etc/nginx/sites-enabled/"
+        echo "  sudo nginx -t && sudo nginx -s reload"
+        echo ""
+        NGINX_CONFIGURED="0"
+        return 0
+    fi
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 7: Dashboard
+# ══════════════════════════════════════════════════════════════════════════════
+
+status_dot() {
+    case "$1" in
+        online|active)     echo -e "${GREEN}●${NC}" ;;
+        stopped|inactive)  echo -e "${RED}●${NC}" ;;
+        errored)           echo -e "${YELLOW}●${NC}" ;;
+        *)                 echo -e "${DIM}●${NC}" ;;
+    esac
+}
+
+status_text() {
+    case "$1" in
+        online)          echo -e "${GREEN}Running${NC}" ;;
+        active)          echo -e "${GREEN}Active${NC}" ;;
+        stopped)         echo -e "${RED}Stopped${NC}" ;;
+        inactive)        echo -e "${RED}Inactive${NC}" ;;
+        errored)         echo -e "${YELLOW}Errored${NC}" ;;
+        not_installed)   echo -e "${DIM}Not installed${NC}" ;;
+        not_found)       echo -e "${DIM}Not started${NC}" ;;
+        *)               echo -e "${DIM}Unknown${NC}" ;;
+    esac
+}
+
+show_dashboard() {
+    local a_st g_st n_st
+    a_st=$(pm2_status "docklite-agent")
+    g_st=$(pm2_status "docklite-gui")
+    n_st=$(nginx_status)
+
+    local a_dot a_txt g_dot g_txt n_dot n_txt
+    a_dot=$(status_dot "$a_st"); a_txt=$(status_text "$a_st")
+    g_dot=$(status_dot "$g_st"); g_txt=$(status_text "$g_st")
+    n_dot=$(status_dot "$n_st"); n_txt=$(status_text "$n_st")
+
+    local a_label g_label n_label
+    [[ "$a_st" == "online" ]] && a_label="Start" || a_label="Start"
+    [[ "$a_st" == "online" ]] && a_label="Stop " || a_label="Start"
+    [[ "$g_st" == "online" ]] && g_label="Stop " || g_label="Start"
+
+    echo ""
+    show_rainbow_line
+    echo ""
+    echo -e "  ${PINK}🐋${NC} ${BOLD}${CYAN}DockLite${NC} ${DIM}v${VERSION}${NC}"
+    echo ""
+    echo -e "  ${BOLD}Services${NC}"
+    echo -e "    ${a_dot} Agent   ${a_txt}   ${DIM}port ${AGENT_PORT}${NC}"
+    if [[ "$MODE" != "headless" ]]; then
+        echo -e "    ${g_dot} WebGUI  ${g_txt}   ${DIM}port ${GUI_PORT}${NC}"
+    fi
+    echo -e "    ${n_dot} Nginx   ${n_txt}   ${DIM}:80 → :${AGENT_PORT}${NC}"
+    echo ""
+    show_rainbow_line
+    echo ""
+    echo -e "  ${GOLD}1)${NC} ${a_label} Agent"
+    echo -e "  ${GOLD}2)${NC} ${g_label} Web GUI"
+    echo -e "  ${GOLD}3)${NC} Launch TUI"
+    echo -e "  ${GOLD}4)${NC} View Logs"
+    echo -e "  ${GOLD}5)${NC} Reconfigure"
+    echo -e "  ${GOLD}6)${NC} Status Details"
+    echo -e "  ${RED}0)${NC} Exit"
+    echo ""
+    show_rainbow_line
+    echo ""
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 8: First-run wizard
+# ══════════════════════════════════════════════════════════════════════════════
+
+is_first_run() {
+    [[ ! -f "$CONF_FILE" ]]
+}
+
+run_wizard() {
+    clear
+    show_banner
+    show_rainbow_line
+    echo ""
+    echo -e "  ${BOLD}${CYAN}Welcome to DockLite Setup${NC}"
+    echo -e "  ${DIM}Let's get everything configured.${NC}"
+    echo ""
+
+    # ── prerequisites ──
+    step "Checking prerequisites"
+
+    if [[ ! -x "$AGENT_BIN" ]]; then
+        die "Agent binary not found at ${AGENT_BIN}\n  Build with: make build-agent"
+    fi
+    ok "Agent binary found"
+
+    if ! docker info >/dev/null 2>&1; then
+        die "Docker is not running or not accessible"
+    fi
+    ok "Docker is running"
+
+    if ! command -v "$PM2" >/dev/null 2>&1; then
+        die "PM2 not found. Install with: npm install -g pm2"
+    fi
+    ok "PM2 available ($(${PM2} --version 2>/dev/null))"
+
+    if [[ ! -d "${WEBAPP_DIR}/node_modules" ]]; then
+        echo -e "  ${YELLOW}⚠${NC}  Webapp dependencies missing — installing..."
+        (cd "$WEBAPP_DIR" && npm install --silent 2>&1 | tail -1)
+        ok "Dependencies installed"
+    else
+        ok "Webapp dependencies present"
+    fi
+
+    if [[ ! -d "${WEBAPP_DIR}/.next" ]]; then
+        echo -e "  ${YELLOW}⚠${NC}  Webapp not built — building..."
+        (cd "$WEBAPP_DIR" && npm run build 2>&1 | tail -3)
+        ok "Webapp built"
+    else
+        ok "Webapp build found"
+    fi
+
+    # ── ports ──
+    step "Detecting available ports"
+
+    local owner
+    owner=$(check_port_owner 3000)
+    if [[ -n "$owner" ]]; then
+        warn "Port 3000 in use by: ${owner}"
+    fi
+
+    AGENT_PORT=$(find_available_port 3000)
+    GUI_PORT=$(find_available_port $((AGENT_PORT + 1)))
+
+    ok "Agent → port ${BOLD}${AGENT_PORT}${NC}"
+    ok "GUI   → port ${BOLD}${GUI_PORT}${NC}"
+
+    echo ""
+    echo -en "  ${BLUE}Use these ports?${NC} ${YELLOW}(Y/n)${NC}: "
+    read -r port_ok
+    if [[ "${port_ok,,}" == "n" ]]; then
+        echo -en "  ${BLUE}Agent port${NC} ${YELLOW}[${AGENT_PORT}]${NC}: "
+        read -r custom_agent
+        [[ -n "$custom_agent" ]] && AGENT_PORT="$custom_agent"
+        echo -en "  ${BLUE}GUI port${NC} ${YELLOW}[${GUI_PORT}]${NC}: "
+        read -r custom_gui
+        [[ -n "$custom_gui" ]] && GUI_PORT="$custom_gui"
+    fi
+
+    # ── mode ──
+    step "Installation mode"
+    echo ""
+    echo -e "  ${GOLD}1)${NC} ${BOLD}Full Stack${NC}  — Web GUI + Agent ${DIM}(recommended)${NC}"
+    echo -e "  ${GOLD}2)${NC} ${BOLD}Headless${NC}    — Agent only, TUI/API access"
+    echo ""
+    echo -en "  ${BLUE}Choose${NC} ${YELLOW}[1]${NC}: "
+    read -r mode_choice
+    MODE="fullstack"
+    [[ "$mode_choice" == "2" ]] && MODE="headless"
+    ok "Mode: ${BOLD}${MODE}${NC}"
+
+    # ── tokens ──
+    step "Generating secrets"
+    DOCKLITE_TOKEN=$(openssl rand -hex 32)
+    SESSION_SECRET=$(openssl rand -hex 48)
+    ok "Auth token generated"
+    ok "Session secret generated"
+
+    # ── nginx ──
+    step "Nginx reverse proxy"
+
+    local existing_nginx=""
+    [[ -f /etc/nginx/sites-available/docklite-default ]] && existing_nginx="1"
+
+    if [[ -n "$existing_nginx" ]]; then
+        info "Updating existing nginx config to proxy :80 → :${AGENT_PORT}"
+        setup_nginx_default
+    else
+        echo ""
+        echo -e "  ${DIM}This lets you access DockLite on port 80 (http://)${NC}"
+        echo -e "  ${DIM}instead of directly on port ${AGENT_PORT}${NC}"
+        echo ""
+        echo -en "  ${BLUE}Configure nginx?${NC} ${YELLOW}(Y/n)${NC}: "
+        read -r do_nginx
+        if [[ "${do_nginx,,}" != "n" ]]; then
+            setup_nginx_default
+        else
+            warn "Skipping nginx — access via port ${AGENT_PORT} directly"
+            NGINX_CONFIGURED="0"
+        fi
+    fi
+
+    # ── firewall ──
+    if command -v ufw >/dev/null 2>&1; then
+        step "Firewall (ufw)"
+        local ufw_active=""
+        ufw status 2>/dev/null | grep -qi "^Status: active" && ufw_active="1"
+        if [[ -z "$ufw_active" ]] && has_sudo; then
+            sudo ufw status 2>/dev/null | grep -qi "^Status: active" && ufw_active="1"
+        fi
+
+        if [[ -n "$ufw_active" ]]; then
+            local port_allowed=""
+            if ufw status 2>/dev/null | grep -q "${AGENT_PORT}/tcp" || \
+               (has_sudo && sudo ufw status 2>/dev/null | grep -q "${AGENT_PORT}/tcp"); then
+                port_allowed="1"
+            fi
+
+            if [[ -n "$port_allowed" ]]; then
+                ok "Port ${AGENT_PORT} already allowed"
+            else
+                warn "Port ${AGENT_PORT} is not open in ufw"
+                echo -en "  ${BLUE}Open port ${AGENT_PORT} in firewall?${NC} ${YELLOW}(Y/n)${NC}: "
+                read -r do_ufw
+                if [[ "${do_ufw,,}" != "n" ]]; then
+                    if has_sudo; then
+                        sudo ufw allow "${AGENT_PORT}/tcp" >/dev/null 2>&1 && \
+                            ok "Opened port ${AGENT_PORT}" || \
+                            warn "Failed to open port — run: sudo ufw allow ${AGENT_PORT}/tcp"
+                    else
+                        warn "sudo required. Run: sudo ufw allow ${AGENT_PORT}/tcp"
+                    fi
+                fi
+            fi
+        else
+            ok "ufw is not active — no firewall changes needed"
+        fi
+    fi
+
+    # ── start ──
+    step "Starting services"
+
+    mkdir -p "$LOG_DIR" "$DATA_DIR" 2>/dev/null || sudo mkdir -p "$LOG_DIR" "$DATA_DIR" 2>/dev/null || true
+    if [[ ! -f "${DATA_DIR}/docklite.db" ]]; then
+        touch "${DATA_DIR}/docklite.db" 2>/dev/null || sudo -u docklite touch "${DATA_DIR}/docklite.db" 2>/dev/null || true
+    fi
+
+    save_config
+    generate_ecosystem
+
+    # Clean up any old PM2 processes with our names
+    pm2_delete_all
+
+    pm2_start_all
+    sleep 3
+
+    local a_st
+    a_st=$(pm2_status "docklite-agent")
+    if [[ "$a_st" == "online" ]]; then
+        ok "Agent is running"
+    else
+        warn "Agent may still be starting..."
+    fi
+
+    if [[ "$MODE" == "fullstack" ]]; then
+        local g_st
+        g_st=$(pm2_status "docklite-gui")
+        if [[ "$g_st" == "online" ]]; then
+            ok "Web GUI is running"
+        else
+            warn "GUI may still be starting..."
+        fi
+    fi
+
+    # ── pm2 startup ──
+    step "Boot persistence"
+    if has_sudo; then
+        local startup_cmd
+        startup_cmd=$("$PM2" startup systemd -u "$(whoami)" --hp "$HOME" 2>&1 | grep "sudo" | head -1)
+        if [[ -n "$startup_cmd" ]]; then
+            eval "$startup_cmd" 2>/dev/null && ok "PM2 startup configured" || warn "PM2 startup setup failed"
+        fi
+        "$PM2" save --silent 2>/dev/null
+        ok "PM2 process list saved"
+    else
+        warn "Run this for boot persistence:"
+        echo "    sudo env PATH=\$PATH $(command -v pm2) startup systemd -u $(whoami) --hp $HOME"
+        echo "    pm2 save"
+    fi
+
+    # ── done ──
+    echo ""
+    show_rainbow_line
+    echo ""
+    echo -e "  ${BOLD}${GREEN}DockLite is ready!${NC}"
+    echo ""
+    if [[ "$NGINX_CONFIGURED" == "1" ]]; then
+        local ip
+        ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+        echo -e "  ${CYAN}🌐 Web GUI:${NC}   ${BOLD}http://${ip:-localhost}${NC}"
+    fi
+    echo -e "  ${CYAN}🌐 Direct:${NC}    ${BOLD}http://localhost:${AGENT_PORT}${NC}"
+    echo -e "  ${CYAN}🔑 Login:${NC}     ${BOLD}superadmin${NC} / ${BOLD}password123${NC}"
+    echo ""
+    echo -e "  ${CYAN}🔧 Token:${NC}     ${DIM}${DOCKLITE_TOKEN:0:16}...${NC}"
+    echo -e "  ${CYAN}📋 Config:${NC}    ${DIM}${CONF_FILE}${NC}"
+    echo -e "  ${CYAN}📂 Logs:${NC}      ${DIM}${LOG_DIR}/${NC}"
+    echo ""
+    echo -e "  ${YELLOW}⚠${NC}  Change the default password after first login!"
+    echo ""
+    echo -e "  ${DIM}Run ${BOLD}./docklite${NC}${DIM} again to manage services.${NC}"
+    echo ""
+    show_rainbow_line
+    echo ""
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 9: Menu system
+# ══════════════════════════════════════════════════════════════════════════════
+
+toggle_agent() {
+    local st
+    st=$(pm2_status "docklite-agent")
+    if [[ "$st" == "online" ]]; then
+        echo -e "\n  ${YELLOW}Stopping agent...${NC}"
+        pm2_stop "docklite-agent"
+        ok "Agent stopped"
+    else
+        echo -e "\n  ${GREEN}Starting agent...${NC}"
+        generate_ecosystem
+        "$PM2" start "$ECOSYSTEM" --only docklite-agent --silent 2>/dev/null || \
+            "$PM2" restart docklite-agent --silent 2>/dev/null || true
+        sleep 2
+        if is_agent_healthy "$AGENT_PORT" "$DOCKLITE_TOKEN"; then
+            ok "Agent is healthy"
+        else
+            local new_st
+            new_st=$(pm2_status "docklite-agent")
+            if [[ "$new_st" == "online" ]]; then
+                ok "Agent started (health check pending)"
+            else
+                warn "Agent failed to start — check logs"
+            fi
+        fi
+    fi
+    echo ""
+    read -rp "  Press Enter to continue..."
+}
+
+toggle_gui() {
+    local st
+    st=$(pm2_status "docklite-gui")
+    if [[ "$st" == "online" ]]; then
+        echo -e "\n  ${YELLOW}Stopping GUI...${NC}"
+        pm2_stop "docklite-gui"
+        ok "GUI stopped"
+    else
+        echo -e "\n  ${GREEN}Starting GUI...${NC}"
+        generate_ecosystem
+        "$PM2" start "$ECOSYSTEM" --only docklite-gui --silent 2>/dev/null || \
+            "$PM2" restart docklite-gui --silent 2>/dev/null || true
+        sleep 2
+        local new_st
+        new_st=$(pm2_status "docklite-gui")
+        if [[ "$new_st" == "online" ]]; then
+            ok "GUI is running"
+        else
+            warn "GUI failed to start — check logs"
+        fi
+    fi
+    echo ""
+    read -rp "  Press Enter to continue..."
+}
+
+launch_tui() {
+    if [[ ! -x "$TUI_BIN" ]]; then
+        warn "TUI binary not found at ${TUI_BIN}"
+        echo ""
+        read -rp "  Press Enter to continue..."
+        return
+    fi
+    echo -e "\n  ${CYAN}Launching TUI...${NC}\n"
+    DOCKLITE_URL="http://127.0.0.1:${AGENT_PORT}" \
+    DOCKLITE_TOKEN="$DOCKLITE_TOKEN" \
+    "$TUI_BIN"
+    echo ""
+    read -rp "  Press Enter to continue..."
+}
+
+view_logs() {
+    echo ""
+    echo -e "  ${GOLD}1)${NC} Agent logs"
+    echo -e "  ${GOLD}2)${NC} GUI logs"
+    echo -e "  ${GOLD}3)${NC} All logs (PM2)"
+    echo -e "  ${RED}0)${NC} Back"
+    echo ""
+    echo -en "  ${CYAN}Choose${NC}: "
+    read -r log_choice
+    case "$log_choice" in
+        1) "$PM2" logs docklite-agent --lines 40 --nostream 2>/dev/null ;;
+        2) "$PM2" logs docklite-gui --lines 40 --nostream 2>/dev/null ;;
+        3) "$PM2" logs --lines 40 --nostream 2>/dev/null ;;
+        *) return ;;
+    esac
+    echo ""
+    read -rp "  Press Enter to continue..."
+}
+
+show_status_details() {
+    echo ""
+    echo -e "  ${BOLD}PM2 Process List${NC}"
+    echo ""
+    "$PM2" list 2>/dev/null
+    echo ""
+    echo -e "  ${BOLD}Port Usage${NC}"
+    echo ""
+    echo -e "    Agent: $(check_port_owner "$AGENT_PORT")"
+    echo -e "    GUI:   $(check_port_owner "$GUI_PORT")"
+    echo -e "    HTTP:  $(check_port_owner 80)"
+    echo ""
+    read -rp "  Press Enter to continue..."
+}
+
+run_reconfigure() {
+    echo ""
+    echo -e "  ${BOLD}${CYAN}Reconfigure DockLite${NC}"
+    echo ""
+    echo -e "  ${DIM}Current: Agent :${AGENT_PORT} | GUI :${GUI_PORT} | Mode: ${MODE}${NC}"
+    echo ""
+    echo -e "  ${GOLD}1)${NC} Change ports"
+    echo -e "  ${GOLD}2)${NC} Change mode (full stack / headless)"
+    echo -e "  ${GOLD}3)${NC} Reconfigure nginx"
+    echo -e "  ${GOLD}4)${NC} Regenerate token"
+    echo -e "  ${GOLD}5)${NC} Full re-setup (run wizard again)"
+    echo -e "  ${RED}0)${NC} Back"
+    echo ""
+    echo -en "  ${CYAN}Choose${NC}: "
+    read -r reconf_choice
+    case "$reconf_choice" in
+        1)
+            echo ""
+            echo -en "  ${BLUE}Agent port${NC} ${YELLOW}[${AGENT_PORT}]${NC}: "
+            read -r new_ap
+            [[ -n "$new_ap" ]] && AGENT_PORT="$new_ap"
+            echo -en "  ${BLUE}GUI port${NC} ${YELLOW}[${GUI_PORT}]${NC}: "
+            read -r new_gp
+            [[ -n "$new_gp" ]] && GUI_PORT="$new_gp"
+            pm2_delete_all
+            save_config; generate_ecosystem; pm2_start_all
+            setup_nginx_default
+            ok "Restarted with new ports"
+            ;;
+        2)
+            echo ""
+            if [[ "$MODE" == "fullstack" ]]; then
+                echo -en "  ${BLUE}Switch to headless mode?${NC} ${YELLOW}(y/N)${NC}: "
+                read -r sw
+                [[ "${sw,,}" == "y" ]] && MODE="headless"
+            else
+                echo -en "  ${BLUE}Switch to full stack mode?${NC} ${YELLOW}(Y/n)${NC}: "
+                read -r sw
+                [[ "${sw,,}" != "n" ]] && MODE="fullstack"
+            fi
+            pm2_delete_all
+            save_config; generate_ecosystem; pm2_start_all
+            ok "Mode changed to ${MODE}"
+            ;;
+        3)
+            setup_nginx_default
+            save_config
+            ;;
+        4)
+            DOCKLITE_TOKEN=$(openssl rand -hex 32)
+            SESSION_SECRET=$(openssl rand -hex 48)
+            pm2_delete_all
+            save_config; generate_ecosystem; pm2_start_all
+            ok "New token: ${DOCKLITE_TOKEN:0:16}..."
+            ;;
+        5)
+            pm2_delete_all
+            rm -f "$CONF_FILE" "$ECOSYSTEM"
+            run_wizard
+            return
+            ;;
+        *) return ;;
+    esac
+    echo ""
+    read -rp "  Press Enter to continue..."
+}
+
+run_menu() {
+    while true; do
+        clear
+        show_dashboard
+        echo -en "  ${CYAN}Choose${NC} ${YELLOW}[0-6]${NC}: "
+        read -r choice
+        case "$choice" in
+            1) toggle_agent ;;
+            2) toggle_gui ;;
+            3) launch_tui ;;
+            4) view_logs ;;
+            5) run_reconfigure ;;
+            6) show_status_details ;;
+            0|q|Q) echo -e "\n  ${DIM}Goodbye! 🐋${NC}\n"; exit 0 ;;
+            *) ;;
+        esac
+    done
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 10: Subcommand dispatcher
+# ══════════════════════════════════════════════════════════════════════════════
+
+show_help() {
+    echo ""
+    echo -e "  ${BOLD}Usage:${NC} ./docklite [command]"
+    echo ""
+    echo -e "  ${BOLD}Commands:${NC}"
+    echo -e "    ${GOLD}start-all${NC}     Start agent + GUI via PM2"
+    echo -e "    ${GOLD}start-agent${NC}   Start agent only"
+    echo -e "    ${GOLD}start-gui${NC}     Start GUI only"
+    echo -e "    ${GOLD}stop${NC}          Stop all services"
+    echo -e "    ${GOLD}stop-agent${NC}    Stop agent"
+    echo -e "    ${GOLD}stop-gui${NC}      Stop GUI"
+    echo -e "    ${GOLD}restart${NC}       Restart all services"
+    echo -e "    ${GOLD}status${NC}        Show service status"
+    echo -e "    ${GOLD}logs${NC}          View PM2 logs"
+    echo -e "    ${GOLD}tui${NC}           Launch terminal UI"
+    echo -e "    ${GOLD}setup${NC}         Run setup wizard"
+    echo -e "    ${GOLD}help${NC}          Show this help"
+    echo ""
+    echo -e "  ${DIM}Run without arguments for interactive menu.${NC}"
+    echo ""
+}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 11: Entry point
+# ══════════════════════════════════════════════════════════════════════════════
+
+main() {
+    cd "$SCRIPT_DIR"
+
+    case "${1:-}" in
+        start-all)
+            load_config; generate_ecosystem; pm2_start_all
+            ok "All services started"
+            ;;
+        start-agent)
+            load_config; generate_ecosystem; pm2_start_agent
+            ok "Agent started"
+            ;;
+        start-gui)
+            load_config; generate_ecosystem; pm2_start_gui
+            ok "GUI started"
+            ;;
+        stop|stop-all)
+            load_config; pm2_stop_all
+            ok "All services stopped"
+            ;;
+        stop-agent)
+            load_config; pm2_stop "docklite-agent"
+            ok "Agent stopped"
+            ;;
+        stop-gui)
+            load_config; pm2_stop "docklite-gui"
+            ok "GUI stopped"
+            ;;
+        restart)
+            load_config; generate_ecosystem
+            pm2_delete_all; pm2_start_all
+            ok "All services restarted"
+            ;;
+        status)
+            load_config; show_dashboard
+            ;;
+        logs)
+            load_config
+            "$PM2" logs "${2:---lines}" "${3:-50}" 2>/dev/null
+            ;;
+        tui)
+            load_config; launch_tui
+            ;;
+        setup)
+            run_wizard
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        "")
+            if is_first_run; then
+                run_wizard
+            else
+                load_config
+                run_menu
+            fi
+            ;;
+        *)
+            echo -e "  ${RED}Unknown command:${NC} $1"
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

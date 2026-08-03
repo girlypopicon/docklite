@@ -31,6 +31,10 @@ func (h *Handlers) ServerStats(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
 	ctx, cancel := dockerContext(r.Context())
 	defer cancel()
 

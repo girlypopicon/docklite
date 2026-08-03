@@ -28,6 +28,10 @@ func (h *Handlers) Databases(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) listDatabases(w http.ResponseWriter, r *http.Request) {
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
 	ctx, cancel := dockerContext(r.Context())
 	defer cancel()
 

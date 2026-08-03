@@ -13,9 +13,13 @@ import {
   CheckCircle,
   XCircle,
   SpinnerGap,
+  Stack,
+  Plugs,
 } from '@phosphor-icons/react';
 import SslStatus from '../components/SslStatus';
 import DnsPanel from './DnsPanel';
+import NginxPanel from './NginxPanel';
+import PortsPanel from './PortsPanel';
 
 interface NetworkAddress {
   family: string;
@@ -131,14 +135,16 @@ interface DiagnosticsResponse {
   results: DiagnosticResult[];
 }
 
-type NetworkTab = 'identity' | 'dns' | 'firewall' | 'ingress' | 'certs' | 'diagnostics';
+type NetworkTab = 'identity' | 'dns' | 'ports' | 'firewall' | 'ingress' | 'certs' | 'nginx' | 'diagnostics';
 
 const tabs: Array<{ key: NetworkTab; label: string; icon: JSX.Element }> = [
   { key: 'identity', label: 'Identity', icon: <WifiHigh size={18} weight="duotone" /> },
   { key: 'dns', label: 'DNS', icon: <Globe size={18} weight="duotone" /> },
+  { key: 'ports', label: 'Ports', icon: <Plugs size={18} weight="duotone" /> },
   { key: 'firewall', label: 'Firewall', icon: <ShieldCheck size={18} weight="duotone" /> },
   { key: 'ingress', label: 'Ingress', icon: <Plug size={18} weight="duotone" /> },
   { key: 'certs', label: 'Certificates', icon: <Lock size={18} weight="duotone" /> },
+  { key: 'nginx', label: 'Nginx', icon: <Stack size={18} weight="duotone" /> },
   { key: 'diagnostics', label: 'Diagnostics', icon: <Pulse size={18} weight="duotone" /> },
 ];
 
@@ -472,6 +478,17 @@ export default function NetworkPage() {
         <DnsPanel />
       )}
 
+
+      {activeTab === 'ports' && firewall && (
+        <PortsPanel openPorts={firewall.openPorts} dockerExposed={firewall.dockerExposed} />
+      )}
+      {activeTab === 'ports' && !firewall && loadingFirewall && (
+        <div className="flex items-center gap-2 text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
+          <SpinnerGap size={14} className="animate-spin" />
+          Loading port data…
+        </div>
+      )}
+
       {activeTab === 'firewall' && (
         <div className="space-y-6">
           {loadingFirewall ? (
@@ -749,6 +766,10 @@ export default function NetworkPage() {
 
       {activeTab === 'certs' && (
         <SslStatus />
+      )}
+
+      {activeTab === 'nginx' && (
+        <NginxPanel />
       )}
 
       {activeTab === 'diagnostics' && (
