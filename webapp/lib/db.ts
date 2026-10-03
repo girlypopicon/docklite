@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3';
 import bcrypt from 'bcrypt';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 import {
   User,
   Site,
@@ -139,14 +141,18 @@ function seedAdminUser() {
     const seedPassword = process.env.SEED_ADMIN_PASSWORD;
 
     if (!seedUsername || !seedPassword) {
-      const devUsername = 'superadmin';
-      const devPassword = 'password123';
-      const passwordHash = bcrypt.hashSync(devPassword, 10);
+      // No fixed default: a random password is written next to the database,
+      // readable only by the docklite user, and shown by the installer.
+      const initialUsername = 'superadmin';
+      const initialPassword = crypto.randomBytes(18).toString('base64url');
+      const passwordFile = path.join(path.dirname(dbPath), 'initial-admin-password');
+      const passwordHash = bcrypt.hashSync(initialPassword, 10);
       db.prepare(`
         INSERT INTO users (username, password_hash, is_admin, role, is_super_admin, managed_by)
         VALUES (?, ?, 1, 'super_admin', 1, NULL)
-      `).run(devUsername, passwordHash);
-      console.log(`✓ Superadmin user created — CHANGE THE DEFAULT PASSWORD IMMEDIATELY`);
+      `).run(initialUsername, passwordHash);
+      fs.writeFileSync(passwordFile, `${initialPassword}\n`, { mode: 0o600 });
+      console.log(`✓ Superadmin user created — password saved to ${passwordFile}`);
       return;
     }
 

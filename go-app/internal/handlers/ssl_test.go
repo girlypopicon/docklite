@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"os/exec"
 	"testing"
 	"time"
 
@@ -125,23 +124,9 @@ func TestParseLiveDirectoryListing(t *testing.T) {
 	})
 }
 
-func TestReadFileWithSudo(t *testing.T) {
-	t.Run("reads existing file", func(t *testing.T) {
-		// Skip if sudo requires a password (not available in CI/test environments)
-		if out, err := exec.Command("sudo", "-n", "true").CombinedOutput(); err != nil {
-			t.Skipf("sudo not available without password (%s), skipping", string(out))
-		}
-		content := "test content for sudo read"
-		filePath := testhelpers.TempFile(t, content)
-
-		result := readFileWithSudo(filePath)
-		if string(result) != content {
-			t.Errorf("Expected %q, got %q", content, string(result))
-		}
-	})
-
-	t.Run("returns nil for non-existent file", func(t *testing.T) {
-		result := readFileWithSudo("/nonexistent/path/to/file")
+func TestReadCertWithSudo(t *testing.T) {
+	t.Run("returns nil for unknown certificate", func(t *testing.T) {
+		result := readCertWithSudo("nonexistent.invalid")
 		testhelpers.AssertEqual(t, []byte(nil), result)
 	})
 }

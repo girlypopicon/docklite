@@ -76,7 +76,7 @@ The agent is the central hub: it handles all `/api/*` requests directly and reve
 
 **GUI sessions**: iron-session with encrypted cookies. Three roles: `super_admin`, `admin`, `user`. Login at `webapp/app/api/auth/login/route.ts`.
 
-**Default credentials**: `superadmin` / `password123`. Seeded in `webapp/lib/db.ts` `seedAdminUser()` on first startup when no admin exists.
+**Initial credentials**: `superadmin` with a random password written to `data/initial-admin-password` (mode 600). Seeded in `webapp/lib/db.ts` `seedAdminUser()` on first startup when no super admin exists; `SEED_ADMIN_USERNAME`/`SEED_ADMIN_PASSWORD` override it.
 
 ## Nginx Management
 

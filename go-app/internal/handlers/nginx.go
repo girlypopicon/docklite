@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -50,13 +50,18 @@ func nginxVhostConfig(domain string, includeWww bool, upstreamPort int) string {
 `, serverNames, upstreamPort)
 }
 
+// rootHelper is the only command DockLite runs through sudo; see
+// docklite-helper at the repo root and setup_sudoers in install.sh.
+const rootHelper = "/usr/local/sbin/docklite-helper"
+
+func runRootHelper(stdin io.Reader, args ...string) ([]byte, error) {
+	cmd := exec.Command("sudo", append([]string{"-n", rootHelper}, args...)...)
+	cmd.Stdin = stdin
+	return cmd.CombinedOutput()
+}
+
 func writeNginxSiteConfig(domain string, content string) error {
-	filename := sanitizeNginxFilename(domain)
-	configPath := filepath.Join(nginxSitesAvailable, filename)
-	cmd := exec.Command("sudo", "tee", configPath)
-	cmd.Stdin = strings.NewReader(content)
-	cmd.Stdout = nil // suppress tee's stdout echo
-	output, err := cmd.CombinedOutput()
+	output, err := runRootHelper(strings.NewReader(content), "site-write", sanitizeNginxFilename(domain))
 	if err != nil {
 		return fmt.Errorf("failed to write nginx config: %s: %w", string(output), err)
 	}
@@ -64,11 +69,7 @@ func writeNginxSiteConfig(domain string, content string) error {
 }
 
 func enableNginxSite(domain string) error {
-	filename := sanitizeNginxFilename(domain)
-	src := filepath.Join(nginxSitesAvailable, filename)
-	dst := filepath.Join(nginxSitesEnabled, filename)
-	cmd := exec.Command("sudo", "ln", "-sf", src, dst)
-	output, err := cmd.CombinedOutput()
+	output, err := runRootHelper(nil, "site-enable", sanitizeNginxFilename(domain))
 	if err != nil {
 		return fmt.Errorf("failed to enable nginx site: %s: %w", string(output), err)
 	}
@@ -76,18 +77,12 @@ func enableNginxSite(domain string) error {
 }
 
 func removeNginxSiteConfig(domain string) error {
-	filename := sanitizeNginxFilename(domain)
-	for _, dir := range []string{nginxSitesEnabled, nginxSitesAvailable} {
-		path := filepath.Join(dir, filename)
-		cmd := exec.Command("sudo", "rm", "-f", path)
-		_ = cmd.Run()
-	}
+	_, _ = runRootHelper(nil, "site-remove", sanitizeNginxFilename(domain))
 	return nil
 }
 
 func testNginxConfig() error {
-	cmd := exec.Command("sudo", "nginx", "-t")
-	output, err := cmd.CombinedOutput()
+	output, err := runRootHelper(nil, "nginx-test")
 	if err != nil {
 		return fmt.Errorf("nginx config test failed: %s", string(output))
 	}
@@ -98,8 +93,7 @@ func reloadNginx() error {
 	if err := testNginxConfig(); err != nil {
 		return err
 	}
-	cmd := exec.Command("sudo", "nginx", "-s", "reload")
-	output, err := cmd.CombinedOutput()
+	output, err := runRootHelper(nil, "nginx-reload")
 	if err != nil {
 		return fmt.Errorf("nginx reload failed: %s", string(output))
 	}

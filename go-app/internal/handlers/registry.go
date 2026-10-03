@@ -62,7 +62,16 @@ func (h *Handlers) Auth(next http.HandlerFunc) http.HandlerFunc {
 
 		if h.token != "" {
 			if r2, ok := withDelegationContext(r, h.token); ok {
-				next(w, r2)
+				// The cookie's role is a snapshot from login. Re-read the user
+				// so deleted or demoted accounts lose access immediately.
+				userID, _ := readUserIDFromContext(r2)
+				user, err := h.store.GetUserByIDFull(userID)
+				if err != nil || user == nil {
+					writeError(w, http.StatusUnauthorized, "unauthorized")
+					return
+				}
+				ctx := context.WithValue(r2.Context(), ctxUserRoleKey, normalizeUserRole(user))
+				next(w, r2.WithContext(ctx))
 				return
 			}
 		}

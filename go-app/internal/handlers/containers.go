@@ -243,8 +243,19 @@ func (h *Handlers) ListAllContainers(w http.ResponseWriter, r *http.Request) {
 		HasManifest bool   `json:"hasManifest"`
 	}
 
+	// Non-admins only ever see containers they own.
+	isAdmin := isAdminRole(r)
+	currentUser, _ := readUserIDFromContext(r)
+	userCache := map[int64]string{}
+
 	results := make([]containerResult, 0, len(containers))
 	for _, c := range containers {
+		if !isAdmin {
+			ownerID, _, err := h.resolveContainerOwner(c, userCache)
+			if err != nil || ownerID == 0 || ownerID != currentUser {
+				continue
+			}
+		}
 		_, isUntracked := untrackedSet[c.ID]
 		r := containerResult{
 			ContainerInfo: c,

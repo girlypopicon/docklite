@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -60,4 +62,33 @@ func TestUserPasswordAdminCannotResetSuperAdmin(t *testing.T) {
 	testhelpers.AssertEqual(t, http.StatusForbidden, reset(admin, "admin", superAdmin.ID))
 	testhelpers.AssertEqual(t, http.StatusOK, reset(admin, "admin", plain.ID))
 	testhelpers.AssertEqual(t, http.StatusOK, reset(superAdmin, "super_admin", admin.ID))
+}
+
+func TestClientIPIgnoresSpoofedHeadersFromNonProxy(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	req.RemoteAddr = "203.0.113.9:4444"
+	req.Header.Set("X-Forwarded-For", "1.2.3.4")
+	req.Header.Set("X-Real-IP", "5.6.7.8")
+	testhelpers.AssertEqual(t, "203.0.113.9", clientIP(req))
+}
+
+func TestClientIPTrustsLocalProxy(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	req.RemoteAddr = "127.0.0.1:5555"
+	req.Header.Set("X-Forwarded-For", "1.2.3.4, 198.51.100.7")
+	testhelpers.AssertEqual(t, "198.51.100.7", clientIP(req))
+
+	req.Header.Set("X-Real-IP", "198.51.100.8")
+	testhelpers.AssertEqual(t, "198.51.100.8", clientIP(req))
+}
+
+func TestIsWithinResolvesSymlinks(t *testing.T) {
+	base := t.TempDir()
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(base, "escape")); err != nil {
+		t.Fatal(err)
+	}
+	testhelpers.AssertTrue(t, isWithin(base, filepath.Join(base, "site", "index.html")), "new path inside base")
+	testhelpers.AssertFalse(t, isWithin(base, filepath.Join(base, "escape")), "symlink out of base")
+	testhelpers.AssertFalse(t, isWithin(base, filepath.Join(base, "escape", "new.txt")), "path under symlink out of base")
 }

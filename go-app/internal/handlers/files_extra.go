@@ -56,12 +56,21 @@ func (h *Handlers) UploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filename := filepath.Base(header.Filename)
-	if filename == "." || filename == "/" {
+	if filename == "." || filename == ".." || filename == "/" {
 		writeError(w, http.StatusBadRequest, "invalid filename")
 		return
 	}
 
+	// The file itself may already exist as a symlink pointing elsewhere.
 	targetPath := filepath.Join(targetDir, filename)
+	if err := ensureWithinBase(targetPath); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := h.authorizeFilePath(r, targetPath); err != nil {
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
 	out, err := os.Create(targetPath)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

@@ -36,7 +36,7 @@ http://YOUR_SERVER_IP:3000
 
 **Default credentials:**
 - Username: `superadmin`
-- Password: `admin`
+- Password: generated on first start and saved to `data/initial-admin-password` (`sudo cat /opt/docklite/data/initial-admin-password`)
 
 ## System Requirements
 
