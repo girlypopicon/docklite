@@ -92,3 +92,37 @@ func TestIsWithinResolvesSymlinks(t *testing.T) {
 	testhelpers.AssertFalse(t, isWithin(base, filepath.Join(base, "escape")), "symlink out of base")
 	testhelpers.AssertFalse(t, isWithin(base, filepath.Join(base, "escape", "new.txt")), "path under symlink out of base")
 }
+
+func TestCSRFMiddlewareBrowserSession(t *testing.T) {
+	called := false
+	handler := CSRFMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	send := func(origin string) int {
+		called = false
+		req := httptest.NewRequest(http.MethodPost, "http://74.208.249.126/api/containers/abc/stop", nil)
+		req.Host = "74.208.249.126"
+		req.AddCookie(&http.Cookie{Name: delegationCookieName, Value: "session"})
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		rec := httptest.NewRecorder()
+		handler(rec, req)
+		return rec.Code
+	}
+
+	// Same-origin UI request with no CSRF token: allowed.
+	testhelpers.AssertEqual(t, http.StatusOK, send("http://74.208.249.126"))
+	testhelpers.AssertTrue(t, called, "same-origin request reaches handler")
+
+	// Repeated requests keep working (tokens used to be single-use).
+	testhelpers.AssertEqual(t, http.StatusOK, send("http://74.208.249.126"))
+
+	// Cross-site and origin-less cookie requests: rejected.
+	testhelpers.AssertEqual(t, http.StatusForbidden, send("https://evil.example"))
+	testhelpers.AssertFalse(t, called, "cross-site request blocked")
+	testhelpers.AssertEqual(t, http.StatusForbidden, send(""))
+	testhelpers.AssertFalse(t, called, "origin-less cookie request blocked")
+}

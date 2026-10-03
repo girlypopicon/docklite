@@ -656,8 +656,8 @@ toggle_agent() {
     else
         echo -e "\n  ${GREEN}Starting agent...${NC}"
         generate_ecosystem
-        "$PM2" start "$ECOSYSTEM" --only docklite-agent --silent 2>/dev/null || \
-            "$PM2" restart docklite-agent --silent 2>/dev/null || true
+        sudo_pm2 start "$ECOSYSTEM" --only docklite-agent --silent 2>/dev/null || \
+            sudo_pm2 restart docklite-agent --silent 2>/dev/null || true
         sleep 2
         if is_agent_healthy "$AGENT_PORT" "$DOCKLITE_TOKEN"; then
             ok "Agent is healthy"
@@ -685,8 +685,8 @@ toggle_gui() {
     else
         echo -e "\n  ${GREEN}Starting GUI...${NC}"
         generate_ecosystem
-        "$PM2" start "$ECOSYSTEM" --only docklite-gui --silent 2>/dev/null || \
-            "$PM2" restart docklite-gui --silent 2>/dev/null || true
+        sudo_pm2 start "$ECOSYSTEM" --only docklite-gui --silent 2>/dev/null || \
+            sudo_pm2 restart docklite-gui --silent 2>/dev/null || true
         sleep 2
         local new_st
         new_st=$(pm2_status "docklite-gui")
@@ -725,9 +725,9 @@ view_logs() {
     echo -en "  ${CYAN}Choose${NC}: "
     read -r log_choice
     case "$log_choice" in
-        1) "$PM2" logs docklite-agent --lines 40 --nostream 2>/dev/null ;;
-        2) "$PM2" logs docklite-gui --lines 40 --nostream 2>/dev/null ;;
-        3) "$PM2" logs --lines 40 --nostream 2>/dev/null ;;
+        1) sudo_pm2 logs docklite-agent --lines 40 --nostream 2>/dev/null ;;
+        2) sudo_pm2 logs docklite-gui --lines 40 --nostream 2>/dev/null ;;
+        3) sudo_pm2 logs --lines 40 --nostream 2>/dev/null ;;
         *) return ;;
     esac
     echo ""
@@ -738,7 +738,7 @@ show_status_details() {
     echo ""
     echo -e "  ${BOLD}PM2 Process List${NC}"
     echo ""
-    "$PM2" list 2>/dev/null
+    sudo_pm2 list 2>/dev/null
     echo ""
     echo -e "  ${BOLD}Port Usage${NC}"
     echo ""
@@ -903,7 +903,7 @@ main() {
             ;;
         logs)
             load_config
-            "$PM2" logs "${2:---lines}" "${3:-50}" 2>/dev/null
+            sudo_pm2 logs "${2:---lines}" "${3:-50}" 2>/dev/null
             ;;
         tui)
             load_config; launch_tui
