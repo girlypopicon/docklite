@@ -1064,6 +1064,28 @@ func (h *Handlers) performProxyAction(ctx context.Context, action string) error 
 }
 
 func (h *Handlers) readDockliteLogs(ctx context.Context, tail int) (string, error) {
+	// PM2 installs (./docklite) write both apps' logs to logs/ in the
+	// install directory, which is the agent's working directory. Check those
+	// before the container/systemd fallbacks, which only fit older designs
+	// and would otherwise pick up an unrelated container named docklite*.
+	var sections []string
+	for _, f := range []struct{ title, path string }{
+		{"agent", filepath.Join("logs", "agent.log")},
+		{"web GUI", filepath.Join("logs", "nextjs.log")},
+	} {
+		if !fileExists(f.path) {
+			continue
+		}
+		lines, err := readTailLines(f.path, tail)
+		if err != nil {
+			continue
+		}
+		sections = append(sections, "── "+f.title+" ("+f.path+") ──\n"+strings.Join(lines, "\n"))
+	}
+	if len(sections) > 0 {
+		return strings.Join(sections, "\n\n"), nil
+	}
+
 	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
 	if err == nil {
 		for i := range containers {

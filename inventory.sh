@@ -28,7 +28,7 @@ redact() { sed -E 's/((password|passwd|secret|token|key)[^=:]*[=:])[^ ,}]*/\1***
 [[ $EUID -ne 0 ]] && warn "Not running as root: nginx configs and some processes may be hidden. Use: sudo bash $0"
 
 section "Host"
-echo "  hostname: $(hostname)   public IP: $(curl -s -m 5 https://ifconfig.me 2>/dev/null || echo '?')"
+echo "  hostname: $(hostname)   public IP: $(curl -4 -s -m 5 https://ifconfig.me 2>/dev/null || echo '?')"
 echo "  $(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-unknown OS}")   uptime since $(uptime -s 2>/dev/null)"
 echo "  disk /: $(df -h / | awk 'NR==2{print $3" used of "$2" ("$5")"}')   memory: $(free -h | awk '/Mem:/{print $3" used of "$2}')"
 
@@ -116,7 +116,7 @@ else
             fi
         done
     done
-    defaults=$(grep -lE 'listen[^;]*default_server' "${NGINX_DIRS[@]/%//*}" 2>/dev/null | tr '\n' ' ')
+    defaults=$(grep -lE 'listen[^;]*default_server' /etc/nginx/sites-enabled/* /etc/nginx/conf.d/* 2>/dev/null | tr '\n' ' ')
     note "default_server defined in: ${defaults:-none}"
     if nginx -t >/dev/null 2>&1; then good "nginx -t passes"; else bad "nginx -t FAILS: $(nginx -t 2>&1 | grep -m1 emerg)"; fi
     # Upstream ports with nothing listening behind them.

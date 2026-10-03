@@ -340,6 +340,8 @@ setup_user_and_dirs() {
     fi
 
     $SUDO usermod -aG docker docklite 2>/dev/null || true
+    # Read-only log access for the Server page (system journal, nginx logs).
+    $SUDO usermod -aG systemd-journal,adm docklite 2>/dev/null || true
     # The admin runs ./docklite as themselves and needs to read and rewrite
     # its config in /opt/docklite. (sudo -u in the handoff picks up the new
     # group immediately; other shells need a fresh login.)
@@ -354,6 +356,13 @@ setup_user_and_dirs() {
     $SUDO chown -R docklite:docklite /var/www/sites
     $SUDO chmod 775 /var/www/sites
     ok "Site directory: /var/www/sites (owned by docklite)"
+
+    # Backups and diagnostics bundles are written here by the agent, which
+    # runs as docklite; older installs left it root-owned, breaking both.
+    $SUDO mkdir -p /var/backups/docklite
+    $SUDO chown -R docklite:docklite /var/backups/docklite
+    $SUDO chmod 750 /var/backups/docklite
+    ok "Backup directory: /var/backups/docklite (owned by docklite)"
 
 }
 
