@@ -39,10 +39,10 @@ banner() {
     echo ""
     echo -e "${PINK}     ____             __   __    _ __       ${NC}"
     echo -e "${CORAL}    / __ \\____  _____/ /__/ /   (_) /_____ ${NC}"
-    echo -e "${GOLD}   / / / / __ \\/ ___/ //_/ /   / / __/ _ \\${NC}"
+    echo -e "${GOLD}   / / / / __ \\/ ___/ //_/ /   / / __/ _ \\ ${NC}"
     echo -e "${MINT}  / /_/ / /_/ / /__/ ,< / /___/ / /_/  __/${NC}"
     echo -e "${SKY}  \\____/\\____/\\___/_/|_/_____/_/\\__/\\___/ ${NC}"
-    echo -e "${LAVENDER}                              installer${NC}"
+    echo -e "${LAVENDER}     I N S T A L L A T I O N   ·   R U N N I N G${NC}"
     echo ""
     rainbow_line
     echo ""
