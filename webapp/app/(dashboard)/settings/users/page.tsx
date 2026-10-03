@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { Lightning, WarningCircle } from '@phosphor-icons/react';
 
 interface User {
@@ -20,6 +22,11 @@ export default function ManageUsersPage() {
   const [error, setError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [menuUserId, setMenuUserId] = useState<number | null>(null);
+  // The actions menu is portaled to <body> and positioned from the button's
+  // on-screen rect: inside the table it was clipped by the horizontally
+  // scrolling wrapper, and .cyber-card's backdrop-filter would also turn a
+  // fixed child's coordinates relative to the card.
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const [detailsUser, setDetailsUser] = useState<User | null>(null);
   const [deleteUserTarget, setDeleteUserTarget] = useState<User | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -163,6 +170,40 @@ export default function ManageUsersPage() {
   }
 
   useEffect(() => {
+    if (menuUserId === null) return;
+    const close = () => setMenuUserId(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    const onPointer = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('[data-user-menu]')) close();
+    };
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onPointer);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onPointer);
+    };
+  }, [menuUserId]);
+
+  const toggleMenu = (userId: number, e: ReactMouseEvent<HTMLButtonElement>) => {
+    if (menuUserId === userId) {
+      setMenuUserId(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const right = window.innerWidth - rect.right;
+    // Open upward when there isn't room for the menu below the button.
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setMenuPos(spaceBelow < 180
+      ? { bottom: window.innerHeight - rect.top + 8, right }
+      : { top: rect.bottom + 8, right });
+    setMenuUserId(userId);
+  };
+
+  useEffect(() => {
     fetchUsers();
   }, []);
 
@@ -255,7 +296,8 @@ export default function ManageUsersPage() {
                   <div className="relative inline-flex">
                     <button
                       type="button"
-                      onClick={() => setMenuUserId(menuUserId === user.id ? null : user.id)}
+                      data-user-menu
+                      onClick={(e) => toggleMenu(user.id, e)}
                       className="group inline-flex flex-col items-center justify-center gap-1"
                       aria-label="User actions"
                     >
@@ -263,8 +305,12 @@ export default function ManageUsersPage() {
                       <span className="h-1.5 w-1.5 rounded-full bg-neon-cyan group-hover:bg-neon-pink transition-colors" />
                       <span className="h-1.5 w-1.5 rounded-full bg-neon-cyan group-hover:bg-neon-pink transition-colors" />
                     </button>
-                    {menuUserId === user.id && (
-                      <div className="absolute right-0 top-full mt-2 w-40 rounded-lg border border-neon-purple/30 bg-dark-bg/95 backdrop-blur-md shadow-lg z-20 flex flex-col">
+                    {menuUserId === user.id && menuPos && createPortal(
+                      <div
+                        data-user-menu
+                        style={menuPos}
+                        className="fixed w-40 rounded-lg border border-neon-purple/30 bg-dark-bg/95 backdrop-blur-md shadow-lg z-[9000] flex flex-col"
+                      >
                         <button
                           type="button"
                           onClick={() => {
@@ -301,7 +347,8 @@ export default function ManageUsersPage() {
                             Change Password
                           </button>
                         )}
-                      </div>
+                      </div>,
+                      document.body
                     )}
                   </div>
                 </td>
