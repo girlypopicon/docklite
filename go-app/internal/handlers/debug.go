@@ -13,10 +13,6 @@ func (h *Handlers) DBDebug(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
-	if os.Getenv("ENABLE_DB_DEBUG") != "true" {
-		writeError(w, http.StatusNotFound, "not found")
-		return
-	}
 	if !isAdminRole(r) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -28,9 +24,6 @@ func (h *Handlers) DBDebug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sensitiveColumns := map[string]struct{}{
-		"password_hash": {},
-	}
 
 	schemaAndData := make([]map[string]any, 0, len(tables))
 	for _, tableName := range tables {
@@ -46,7 +39,7 @@ func (h *Handlers) DBDebug(w http.ResponseWriter, r *http.Request) {
 			if name == "" {
 				continue
 			}
-			if _, ok := sensitiveColumns[name]; ok {
+			if isSecretColumn(name) {
 				continue
 			}
 			columnNames = append(columnNames, name)
@@ -294,4 +287,17 @@ func (h *Handlers) queryRows(query string, args ...any) ([]map[string]any, error
 func quoteIdent(value string) string {
 	escaped := strings.ReplaceAll(value, `"`, `""`)
 	return `"` + escaped + `"`
+}
+
+// isSecretColumn reports whether a column holds credentials and must never
+// be shown in the system database viewer (password and token hashes, the
+// Cloudflare API token, and anything named like them in future tables).
+func isSecretColumn(name string) bool {
+	lower := strings.ToLower(name)
+	for _, marker := range []string{"password", "hash", "token", "secret", "key", "fingerprint", "credential"} {
+		if strings.Contains(lower, marker) {
+			return true
+		}
+	}
+	return false
 }

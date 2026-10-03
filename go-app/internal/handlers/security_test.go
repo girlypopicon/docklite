@@ -126,3 +126,12 @@ func TestCSRFMiddlewareBrowserSession(t *testing.T) {
 	testhelpers.AssertEqual(t, http.StatusForbidden, send(""))
 	testhelpers.AssertFalse(t, called, "origin-less cookie request blocked")
 }
+
+func TestIsSecretColumn(t *testing.T) {
+	for _, c := range []string{"password_hash", "token_hash", "token_fingerprint", "api_token", "session_secret", "API_KEY"} {
+		testhelpers.AssertTrue(t, isSecretColumn(c), "expected secret: "+c)
+	}
+	for _, c := range []string{"id", "username", "domain", "created_at", "role"} {
+		testhelpers.AssertFalse(t, isSecretColumn(c), "expected visible: "+c)
+	}
+}
