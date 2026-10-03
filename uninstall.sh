@@ -56,7 +56,7 @@ found_items=()
 
 # PM2 processes
 if command -v pm2 >/dev/null 2>&1; then
-    pm2_agent=$(pm2 jlist 2>/dev/null | python3 -c "
+    pm2_agent=$($SUDO "$(command -v pm2)" jlist 2>/dev/null | python3 -c "
 import sys,json
 try:
     ps=json.load(sys.stdin)
@@ -231,11 +231,13 @@ echo ""
 
 # ── PM2 processes ──
 if [[ "$REMOVE_SERVICES" == "1" ]] && command -v pm2 >/dev/null 2>&1; then
-    pm2 stop docklite-agent 2>/dev/null && ok "PM2: stopped docklite-agent" || skip "not running"
-    pm2 stop docklite-gui 2>/dev/null && ok "PM2: stopped docklite-gui" || skip "not running"
-    pm2 delete docklite-agent 2>/dev/null && ok "PM2: deleted docklite-agent" || skip "not registered"
-    pm2 delete docklite-gui 2>/dev/null && ok "PM2: deleted docklite-gui" || skip "not registered"
-    pm2 save --force 2>/dev/null || true
+    # DockLite runs under root's PM2 daemon (see sudo_pm2 in ./docklite);
+    # the invoking user's own daemon never had these processes.
+    PM2_BIN="$(command -v pm2)"
+    for app in docklite-agent docklite-gui; do
+        $SUDO "$PM2_BIN" delete "$app" >/dev/null 2>&1 && ok "PM2: removed ${app}" || skip "${app} not registered"
+    done
+    $SUDO "$PM2_BIN" save --force >/dev/null 2>&1 || true
 fi
 
 # ── Systemd services ──

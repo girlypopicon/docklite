@@ -598,19 +598,19 @@ run_wizard() {
     fi
 
     # ── pm2 startup ──
+    # The apps run under root's PM2 daemon (sudo_pm2), so that is the daemon
+    # that must start at boot and whose process list must be saved. Setting
+    # up the invoking user's PM2 instead leaves DockLite down after a reboot.
     step "Boot persistence"
-    if has_sudo; then
-        local startup_cmd
-        startup_cmd=$("$PM2" startup systemd -u "$(whoami)" --hp "$HOME" 2>&1 | grep "sudo" | head -1)
-        if [[ -n "$startup_cmd" ]]; then
-            eval "$startup_cmd" 2>/dev/null && ok "PM2 startup configured" || warn "PM2 startup setup failed"
-        fi
-        "$PM2" save --silent 2>/dev/null
+    if sudo_pm2 startup systemd -u root --hp /root >/dev/null 2>&1; then
+        ok "PM2 startup configured (pm2-root.service)"
+    else
+        warn "PM2 startup setup failed — run: sudo ${PM2} startup systemd -u root --hp /root"
+    fi
+    if sudo_pm2 save --force >/dev/null 2>&1; then
         ok "PM2 process list saved"
     else
-        warn "Run this for boot persistence:"
-        echo "    sudo env PATH=\$PATH $(command -v pm2) startup systemd -u $(whoami) --hp $HOME"
-        echo "    pm2 save"
+        warn "Could not save PM2 process list — run: sudo ${PM2} save"
     fi
 
     # ── done ──
