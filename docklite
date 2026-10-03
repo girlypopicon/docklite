@@ -306,10 +306,13 @@ server {
 "
 
     # Root access goes through docklite-helper (installed by install.sh).
-    if echo "$config" | root_helper site-write docklite-default >/dev/null 2>&1; then
+    # The name must end in .conf: nginx.conf includes sites-enabled/*.conf,
+    # so a config without the suffix is written but never loaded.
+    if echo "$config" | root_helper site-write docklite-default.conf >/dev/null 2>&1; then
         root_helper site-disable default 2>/dev/null || true
         root_helper site-disable docklite-sites 2>/dev/null || true
-        root_helper site-enable docklite-default 2>/dev/null
+        root_helper site-remove docklite-default 2>/dev/null || true
+        root_helper site-enable docklite-default.conf 2>/dev/null
 
         if root_helper nginx-test 2>/dev/null; then
             root_helper nginx-reload 2>/dev/null || true
@@ -324,11 +327,11 @@ server {
     else
         warn "Could not write nginx config. Run these manually:"
         echo ""
-        echo "  sudo bash -c \"cat > /etc/nginx/sites-available/docklite-default << 'NGINX'"
+        echo "  sudo bash -c \"cat > /etc/nginx/sites-available/docklite-default.conf << 'NGINX'"
         echo "${config}"
         echo "NGINX"
         echo "  sudo rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-enabled/docklite-sites"
-        echo "  sudo ln -sf /etc/nginx/sites-available/docklite-default /etc/nginx/sites-enabled/"
+        echo "  sudo ln -sf /etc/nginx/sites-available/docklite-default.conf /etc/nginx/sites-enabled/"
         echo "  sudo nginx -t && sudo nginx -s reload"
         echo ""
         NGINX_CONFIGURED="0"
@@ -505,7 +508,7 @@ run_wizard() {
     step "Nginx reverse proxy"
 
     local existing_nginx=""
-    [[ -f /etc/nginx/sites-available/docklite-default ]] && existing_nginx="1"
+    [[ -f /etc/nginx/sites-available/docklite-default.conf || -f /etc/nginx/sites-available/docklite-default ]] && existing_nginx="1"
 
     if [[ -n "$existing_nginx" ]]; then
         info "Updating existing nginx config to proxy :80 → :${AGENT_PORT}"
