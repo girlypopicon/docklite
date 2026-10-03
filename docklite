@@ -123,10 +123,10 @@ show_rainbow_line() {
 # SECTION 4: Config management
 # ══════════════════════════════════════════════════════════════════════════════
 
-AGENT_PORT="" GUI_PORT="" DOCKLITE_TOKEN="" SESSION_SECRET="" MODE="" NGINX_CONFIGURED=""
+AGENT_PORT="" GUI_PORT="" DOCKLITE_TOKEN="" SESSION_SECRET="" MODE="" NGINX_CONFIGURED="" PANEL_DOMAIN=""
 
 load_config() {
-    AGENT_PORT="3000"; GUI_PORT="3002"; MODE="fullstack"; NGINX_CONFIGURED="0"
+    AGENT_PORT="3000"; GUI_PORT="3002"; MODE="fullstack"; NGINX_CONFIGURED="0"; PANEL_DOMAIN=""
     if [[ -f "$CONF_FILE" ]]; then
         # shellcheck disable=SC1090
         source "$CONF_FILE"
@@ -142,6 +142,7 @@ DOCKLITE_TOKEN=${DOCKLITE_TOKEN}
 SESSION_SECRET=${SESSION_SECRET}
 MODE=${MODE}
 NGINX_CONFIGURED=${NGINX_CONFIGURED}
+PANEL_DOMAIN=${PANEL_DOMAIN}
 EOF
     chmod 640 "$CONF_FILE"
 }
@@ -339,6 +340,128 @@ server {
     fi
 }
 
+# The proxy block shared by the panel-domain server blocks.
+panel_proxy_location() {
+    local proto="$1"
+    cat <<NGINX
+    client_max_body_size 100M;
+
+    location / {
+        proxy_pass http://127.0.0.1:${AGENT_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto ${proto};
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection \$connection_upgrade;
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+    }
+NGINX
+}
+
+# Serve the dashboard on PANEL_DOMAIN over HTTPS. Writes an HTTP-only
+# server block first (certbot's nginx authenticator needs one answering
+# for the name), obtains a certificate without letting certbot edit the
+# file, then writes the final HTTPS block with an HTTP->HTTPS redirect.
+# The bare-IP catch-all from setup_nginx_default keeps working alongside.
+setup_panel_domain() {
+    local domain="${PANEL_DOMAIN}"
+    [[ -z "$domain" ]] && return 0
+    if [[ "$NGINX_CONFIGURED" != "1" ]]; then
+        warn "Panel domain needs nginx — configure nginx first"
+        return 1
+    fi
+    if ! [[ ${#domain} -le 253 && "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$ ]]; then
+        warn "Invalid panel domain: ${domain}"
+        return 1
+    fi
+
+    local http_config
+    http_config="# Managed by DockLite — do not edit manually
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${domain};
+
+$(panel_proxy_location '$scheme')
+}
+"
+    if ! echo "$http_config" | root_helper site-write docklite-panel.conf >/dev/null 2>&1 \
+        || ! root_helper site-enable docklite-panel.conf >/dev/null 2>&1 \
+        || ! root_helper nginx-reload >/dev/null 2>&1; then
+        warn "Could not write the nginx config for ${domain}"
+        return 1
+    fi
+    ok "Serving ${domain} over HTTP"
+
+    if ! root_helper cert-exists "$domain" 2>/dev/null; then
+        info "Requesting a Let's Encrypt certificate for ${domain}..."
+        local out
+        if ! out=$(root_helper cert-obtain "$domain" 2>&1); then
+            warn "Certificate request failed — the dashboard stays on http://${domain}"
+            echo "$out" | grep -iE "error|detail|problem|hint" | head -5 | sed 's/^/    /'
+            echo -e "    ${DIM}Check the DNS A record points at this server and port 80 is reachable.${NC}"
+            return 1
+        fi
+    fi
+
+    local https_config
+    https_config="# Managed by DockLite — do not edit manually
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${domain};
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ${domain};
+
+    ssl_certificate     /etc/letsencrypt/live/${domain}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${domain}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:DockLitePanel:10m;
+
+$(panel_proxy_location 'https')
+}
+"
+    if echo "$https_config" | root_helper site-write docklite-panel.conf >/dev/null 2>&1 \
+        && root_helper nginx-reload >/dev/null 2>&1; then
+        ok "Dashboard available at https://${domain}"
+    else
+        warn "HTTPS config was rejected by nginx — falling back to HTTP"
+        echo "$http_config" | root_helper site-write docklite-panel.conf >/dev/null 2>&1
+        root_helper nginx-reload >/dev/null 2>&1 || true
+        return 1
+    fi
+}
+
+# Ask for (or change) the panel domain, then set it up.
+prompt_panel_domain() {
+    echo ""
+    echo -e "  ${DIM}Optional: a domain for the dashboard (e.g. db.example.com) gets free${NC}"
+    echo -e "  ${DIM}HTTPS from Let's Encrypt. Point its DNS A record at this server first.${NC}"
+    echo -e "  ${DIM}Enter '-' to remove the current one.${NC}"
+    echo -en "  ${BLUE}Panel domain${NC} ${YELLOW}[${PANEL_DOMAIN:-none}]${NC}: "
+    local answer
+    read -r answer
+    answer="${answer,,}"
+    answer="${answer// /}"
+    if [[ "$answer" == "-" ]]; then
+        PANEL_DOMAIN=""
+        root_helper site-remove docklite-panel.conf 2>/dev/null || true
+        root_helper nginx-reload >/dev/null 2>&1 || true
+        ok "Panel domain removed"
+        return 0
+    fi
+    [[ -n "$answer" ]] && PANEL_DOMAIN="$answer"
+    setup_panel_domain || true
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 7: Dashboard
 # ══════════════════════════════════════════════════════════════════════════════
@@ -527,6 +650,7 @@ run_wizard() {
             NGINX_CONFIGURED="0"
         fi
     fi
+    [[ "$NGINX_CONFIGURED" == "1" ]] && prompt_panel_domain
 
     # ── firewall ──
     if command -v ufw >/dev/null 2>&1; then
@@ -538,28 +662,26 @@ run_wizard() {
         fi
 
         if [[ -n "$ufw_active" ]]; then
-            local port_allowed=""
-            if ufw status 2>/dev/null | grep -q "${AGENT_PORT}/tcp" || \
-               (has_sudo && sudo ufw status 2>/dev/null | grep -q "${AGENT_PORT}/tcp"); then
-                port_allowed="1"
-            fi
-
-            if [[ -n "$port_allowed" ]]; then
-                ok "Port ${AGENT_PORT} already allowed"
-            else
-                warn "Port ${AGENT_PORT} is not open in ufw"
-                echo -en "  ${BLUE}Open port ${AGENT_PORT} in firewall?${NC} ${YELLOW}(Y/n)${NC}: "
+            # With nginx in front the agent only listens on loopback, so the
+            # public ports are nginx's; without nginx it's the agent's own.
+            local fw_ports=("${AGENT_PORT}")
+            [[ "$NGINX_CONFIGURED" == "1" ]] && fw_ports=(80 443)
+            local fw_port
+            for fw_port in "${fw_ports[@]}"; do
+                if ufw status 2>/dev/null | grep -qE "^${fw_port}(/tcp)?[[:space:]]" || \
+                   (has_sudo && sudo ufw status 2>/dev/null | grep -qE "^${fw_port}(/tcp)?[[:space:]]"); then
+                    ok "Port ${fw_port} already allowed"
+                    continue
+                fi
+                warn "Port ${fw_port} is not open in ufw"
+                echo -en "  ${BLUE}Open port ${fw_port} in firewall?${NC} ${YELLOW}(Y/n)${NC}: "
                 read -r do_ufw
                 if [[ "${do_ufw,,}" != "n" ]]; then
-                    if has_sudo; then
-                        sudo ufw allow "${AGENT_PORT}/tcp" >/dev/null 2>&1 && \
-                            ok "Opened port ${AGENT_PORT}" || \
-                            warn "Failed to open port — run: sudo ufw allow ${AGENT_PORT}/tcp"
-                    else
-                        warn "sudo required. Run: sudo ufw allow ${AGENT_PORT}/tcp"
-                    fi
+                    sudo ufw allow "${fw_port}/tcp" >/dev/null 2>&1 && \
+                        ok "Opened port ${fw_port}" || \
+                        warn "Failed to open port — run: sudo ufw allow ${fw_port}/tcp"
                 fi
-            fi
+            done
         else
             ok "ufw is not active — no firewall changes needed"
         fi
@@ -760,6 +882,7 @@ run_reconfigure() {
     echo -e "  ${GOLD}3)${NC} Reconfigure nginx"
     echo -e "  ${GOLD}4)${NC} Regenerate token"
     echo -e "  ${GOLD}5)${NC} Full re-setup (run wizard again)"
+    echo -e "  ${GOLD}6)${NC} Panel domain + HTTPS ${DIM}(${PANEL_DOMAIN:-not set})${NC}"
     echo -e "  ${RED}0)${NC} Back"
     echo ""
     echo -en "  ${CYAN}Choose${NC}: "
@@ -776,6 +899,7 @@ run_reconfigure() {
             pm2_delete_all
             save_config; generate_ecosystem; pm2_start_all
             setup_nginx_default
+            setup_panel_domain || true
             ok "Restarted with new ports"
             ;;
         2)
@@ -795,6 +919,7 @@ run_reconfigure() {
             ;;
         3)
             setup_nginx_default
+            setup_panel_domain || true
             save_config
             ;;
         4)
@@ -809,6 +934,10 @@ run_reconfigure() {
             rm -f "$CONF_FILE" "$ECOSYSTEM"
             run_wizard
             return
+            ;;
+        6)
+            prompt_panel_domain
+            save_config
             ;;
         *) return ;;
     esac
