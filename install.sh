@@ -306,6 +306,12 @@ install_to_opt() {
         "${REPO_DIR}/" "${INSTALL_DIR}/"
     $SUDO mkdir -p "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs"
     $SUDO chown -R docklite:docklite "${INSTALL_DIR}"
+    # The launcher runs as the admin (a docklite group member) and rewrites
+    # these, so they must stay group-writable after the chown above.
+    local f
+    for f in .docklite.conf ecosystem.config.js; do
+        [[ -f "${INSTALL_DIR}/${f}" ]] && $SUDO chmod 660 "${INSTALL_DIR}/${f}"
+    done
     ok "App installed to ${INSTALL_DIR}"
 }
 
@@ -334,6 +340,14 @@ setup_user_and_dirs() {
     fi
 
     $SUDO usermod -aG docker docklite 2>/dev/null || true
+    # The admin runs ./docklite as themselves and needs to read and rewrite
+    # its config in /opt/docklite. (sudo -u in the handoff picks up the new
+    # group immediately; other shells need a fresh login.)
+    local admin_user="${SUDO_USER:-$USER}"
+    if [[ "$admin_user" != "root" ]]; then
+        $SUDO usermod -aG docklite "$admin_user" 2>/dev/null || true
+        ok "User '${admin_user}' in docklite group"
+    fi
     ok "User 'docklite' in docker group"
 
     $SUDO mkdir -p /var/www/sites
@@ -514,11 +528,16 @@ main() {
     # Hand off to docklite setup — run as the calling user so they
     # can interact with PM2, but the ecosystem config tells PM2 to
     # run the actual processes as the docklite user.
+    # An existing config means this is an update: apply it without the
+    # wizard, which would pick new ports and regenerate the token, session
+    # secret and panel domain.
     local target_user="${SUDO_USER:-$USER}"
+    local action="setup"
+    [[ -f "${INSTALL_DIR}/.docklite.conf" ]] && action="upgrade"
     if [[ "$target_user" != "root" ]]; then
-        exec sudo -u "$target_user" "${INSTALL_DIR}/docklite" setup
+        exec sudo -u "$target_user" "${INSTALL_DIR}/docklite" "$action"
     else
-        exec "${INSTALL_DIR}/docklite" setup
+        exec "${INSTALL_DIR}/docklite" "$action"
     fi
 }
 

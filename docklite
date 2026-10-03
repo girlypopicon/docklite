@@ -144,7 +144,9 @@ MODE=${MODE}
 NGINX_CONFIGURED=${NGINX_CONFIGURED}
 PANEL_DOMAIN=${PANEL_DOMAIN}
 EOF
-    chmod 640 "$CONF_FILE"
+    # Group-writable for the docklite group: install.sh makes docklite the
+    # owner, and the admin runs this launcher as themselves.
+    chmod 660 "$CONF_FILE" 2>/dev/null || true
 }
 
 has_config() { [[ -f "$CONF_FILE" ]]; }
@@ -536,6 +538,39 @@ show_dashboard() {
 
 is_first_run() {
     [[ ! -f "$CONF_FILE" ]]
+}
+
+# Re-apply an updated install without the wizard: keeps ports, token,
+# session secret and panel domain from .docklite.conf, regenerates the PM2
+# ecosystem (it may have changed), restarts both apps and re-renders the
+# nginx configs. install.sh runs this when a config already exists.
+run_upgrade() {
+    if is_first_run; then
+        die "No existing config at ${CONF_FILE} — run: docklite setup"
+    fi
+    load_config
+    echo ""
+    echo -e "  ${BOLD}${CYAN}Upgrading DockLite to ${VERSION}${NC} ${DIM}(keeping existing config)${NC}"
+    echo ""
+    generate_ecosystem
+    pm2_delete_all
+    pm2_start_all
+    if [[ "$NGINX_CONFIGURED" == "1" ]]; then
+        setup_nginx_default || true
+        setup_panel_domain || true
+    fi
+    save_config
+    sudo_pm2 save --force >/dev/null 2>&1 || warn "Could not save PM2 process list — run: sudo ${PM2} save"
+    sleep 3
+    [[ "$(pm2_status docklite-agent)" == "online" ]] && ok "Agent is running" || warn "Agent may still be starting..."
+    if [[ "$MODE" == "fullstack" ]]; then
+        [[ "$(pm2_status docklite-gui)" == "online" ]] && ok "Web GUI is running" || warn "GUI may still be starting..."
+    fi
+    echo ""
+    if [[ -n "$PANEL_DOMAIN" ]]; then
+        echo -e "  ${CYAN}🌐 Dashboard:${NC} ${BOLD}https://${PANEL_DOMAIN}${NC}"
+    fi
+    echo ""
 }
 
 run_wizard() {
@@ -984,6 +1019,7 @@ show_help() {
     echo -e "    ${GOLD}logs${NC}          View PM2 logs"
     echo -e "    ${GOLD}tui${NC}           Launch terminal UI"
     echo -e "    ${GOLD}setup${NC}         Run setup wizard"
+    echo -e "    ${GOLD}upgrade${NC}       Apply a new install, keeping config (used by install.sh)"
     echo -e "    ${GOLD}help${NC}          Show this help"
     echo ""
     echo -e "  ${DIM}Run without arguments for interactive menu.${NC}"
@@ -1039,6 +1075,9 @@ main() {
             ;;
         setup)
             run_wizard
+            ;;
+        upgrade)
+            run_upgrade
             ;;
         help|--help|-h)
             show_help
