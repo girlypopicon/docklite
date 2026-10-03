@@ -258,14 +258,17 @@ install_system_packages() {
 # ══════════════════════════════════════════════════════════════════════════════
 
 find_go() {
-    command -v go 2>/dev/null || echo "${HOME}/.local/go/bin/go" || echo "/usr/local/go/bin/go"
+    local candidate
+    for candidate in "$(command -v go 2>/dev/null)" "${HOME}/.local/go/bin/go" /usr/local/go/bin/go; do
+        [[ -n "$candidate" && -x "$candidate" ]] && { echo "$candidate"; return 0; }
+    done
+    echo go
 }
 
 build_agent() {
     step_header "Building agent"
-    if [[ -x "${REPO_DIR}/bin/docklite-agent" ]]; then
-        ok "Agent binary already exists"; return 0
-    fi
+    # Always rebuild: an existing binary may predate the current source,
+    # and installing it would silently ship old code.
     local go_bin; go_bin=$(find_go)
     mkdir -p "${REPO_DIR}/bin"
     (cd "${REPO_DIR}/go-app" && "$go_bin" build -o ../bin/docklite-agent ./cmd/docklite-agent 2>&1) &
@@ -282,21 +285,26 @@ build_webapp() {
         ok "Dependencies already installed"
     fi
 
-    if [[ ! -d "${REPO_DIR}/webapp/.next" ]]; then
-        (cd "${REPO_DIR}/webapp" && npm run build 2>&1) &
-        spin $! "Building Next.js app..." && ok "Webapp built" || { fail "Build failed"; return 1; }
-    else
-        ok "Webapp already built"
-    fi
+    # Always rebuild, for the same reason as the agent.
+    (cd "${REPO_DIR}/webapp" && npm run build 2>&1) &
+    spin $! "Building Next.js app..." && ok "Webapp built" || { fail "Build failed"; return 1; }
 }
 
 install_to_opt() {
     step_header "Installing to ${INSTALL_DIR}"
     $SUDO mkdir -p "${INSTALL_DIR}"
+    # Runtime state lives only in INSTALL_DIR, never in the repo. Excluding
+    # it also keeps --delete from wiping the database, logs and config when
+    # install.sh is re-run to update an existing install.
     $SUDO rsync -a --delete \
         --exclude '.git' \
         --exclude '.bun' \
+        --exclude '/data/' \
+        --exclude '/logs/' \
+        --exclude '/.docklite.conf' \
+        --exclude '/ecosystem.config.js' \
         "${REPO_DIR}/" "${INSTALL_DIR}/"
+    $SUDO mkdir -p "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs"
     $SUDO chown -R docklite:docklite "${INSTALL_DIR}"
     ok "App installed to ${INSTALL_DIR}"
 }
@@ -333,9 +341,6 @@ setup_user_and_dirs() {
     $SUDO chmod 775 /var/www/sites
     ok "Site directory: /var/www/sites (owned by docklite)"
 
-    $SUDO mkdir -p "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs"
-    $SUDO chown -R docklite:docklite "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs" "${INSTALL_DIR}/bin"
-    ok "Data/logs directories ready"
 }
 
 setup_sudoers() {
