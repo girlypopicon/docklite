@@ -705,9 +705,17 @@ func (h *Handlers) createContainer(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "domain is required")
 		return
 	}
-	if strings.Contains(domain, "/") || strings.Contains(domain, "\\") {
+	// The domain is written into nginx's server_name and used as a path
+	// segment, so anything beyond a plain hostname is rejected.
+	if !isValidDomain(domain) {
 		writeError(w, http.StatusBadRequest, "domain contains invalid characters")
 		return
+	}
+
+	// Only admins may point a site at an arbitrary host path; it is
+	// bind-mounted read-write into the container.
+	if !isAdmin {
+		req.CodePath = ""
 	}
 
 	templateType := strings.ToLower(strings.TrimSpace(req.TemplateType))
@@ -758,6 +766,12 @@ func (h *Handlers) createContainer(w http.ResponseWriter, r *http.Request) {
 	existingSite, err := h.store.GetSiteByDomain(domain)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// Re-creating a site replaces its container, so a non-admin may only
+	// do that to a domain they already own.
+	if existingSite != nil && !isAdmin && existingSite.UserID != targetUserID {
+		writeError(w, http.StatusConflict, "domain is already in use")
 		return
 	}
 	var existingContainerID string
