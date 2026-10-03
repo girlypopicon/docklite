@@ -124,6 +124,9 @@ func updateNginxProxyPort(domain string, newPort int) error {
 }
 
 func setupNginxForDomain(domain string, includeWww bool, hostPort int) error {
+	if !isValidDomain(domain) {
+		return fmt.Errorf("invalid domain %q", domain)
+	}
 	config := nginxVhostConfig(domain, includeWww, hostPort)
 	if err := writeNginxSiteConfig(domain, config); err != nil {
 		return err

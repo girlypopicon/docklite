@@ -163,9 +163,15 @@ generate_ecosystem() {
     # per-user tool manager (nvm, etc.) has shadowed /usr/local/bin/node
     # with a symlink into someone's home directory, PATH resolution would
     # hand PM2 a binary the `docklite` user can't execute.
+    # The agent reverse-proxies the GUI, so the GUI only ever needs loopback.
+    # The agent itself stays on loopback once nginx fronts it on :80; without
+    # nginx it has to listen publicly or nothing can reach it.
+    local agent_listen="127.0.0.1:${AGENT_PORT}"
+    [[ "$NGINX_CONFIGURED" != "1" ]] && agent_listen="0.0.0.0:${AGENT_PORT}"
+
     local gui_script gui_args gui_interpreter
     gui_script="${SCRIPT_DIR}/webapp/node_modules/.bin/next"
-    gui_args="start -H 0.0.0.0"
+    gui_args="start -H 127.0.0.1"
     gui_interpreter="/usr/bin/node"
 
     cat > "$ECOSYSTEM" <<JSEOF
@@ -184,7 +190,7 @@ module.exports = {
       script: './bin/docklite-agent',
       cwd: '${SCRIPT_DIR}',
       env: {
-        LISTEN_ADDR: ':${AGENT_PORT}',
+        LISTEN_ADDR: '${agent_listen}',
         DATABASE_PATH: './data/docklite.db',
         DOCKER_SOCKET_PATH: 'unix:///var/run/docker.sock',
         NEXTJS_URL: '${nextjs_url}',
@@ -209,7 +215,7 @@ module.exports = {
       cwd: '${SCRIPT_DIR}/webapp',
       env: {
         PORT: '${GUI_PORT}',
-        HOSTNAME: '0.0.0.0',
+        HOSTNAME: '127.0.0.1',
         NODE_ENV: 'production',
         DATABASE_PATH: '../data/docklite.db',
         AGENT_URL: 'http://127.0.0.1:${AGENT_PORT}',

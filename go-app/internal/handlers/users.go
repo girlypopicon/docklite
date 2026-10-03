@@ -149,7 +149,12 @@ func (h *Handlers) UserPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if body.UserID != nil {
-		if !isAdminRole(r) {
+		targetUser, err := h.store.GetUserByIDFull(*body.UserID)
+		if err != nil || targetUser == nil {
+			writeError(w, http.StatusNotFound, "User not found")
+			return
+		}
+		if !canManageUser(r, targetUser) {
 			writeError(w, http.StatusForbidden, "Unauthorized")
 			return
 		}

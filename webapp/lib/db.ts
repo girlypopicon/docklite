@@ -111,44 +111,51 @@ async function ensureUserFoldersOnStartup() {
 // Seed initial admin user
 function seedAdminUser() {
   try {
-    const existingSuperAdmin = db.prepare('SELECT id FROM users WHERE username = ?').get('superadmin') as { id: number } | undefined;
-    const existingAdmin = db.prepare('SELECT id FROM users WHERE username = ?').get('admin') as { id: number } | undefined;
+    // Seeding only ever runs while there is no super admin. Accounts are
+    // never promoted by username: an admin could otherwise create a user
+    // named "superadmin" and have it become super_admin on the next restart.
+    const anySuperAdmin = db.prepare("SELECT id FROM users WHERE role = 'super_admin' OR is_super_admin = 1 LIMIT 1").get();
+    if (anySuperAdmin) {
+      return;
+    }
 
-    if (!existingSuperAdmin && !existingAdmin) {
-      const seedUsername = process.env.SEED_ADMIN_USERNAME;
-      const seedPassword = process.env.SEED_ADMIN_PASSWORD;
+    // Legacy databases predate roles: their original admin account, if it
+    // was already an admin, becomes the super admin.
+    const legacyAdmin = db.prepare(`
+      SELECT id FROM users
+      WHERE username IN ('superadmin', 'admin') AND is_admin = 1
+      ORDER BY id LIMIT 1
+    `).get() as { id: number } | undefined;
+    if (legacyAdmin) {
+      db.prepare(`
+        UPDATE users
+        SET role = 'super_admin', is_super_admin = 1, is_admin = 1, managed_by = NULL
+        WHERE id = ?
+      `).run(legacyAdmin.id);
+      return;
+    }
 
-      if (!seedUsername || !seedPassword) {
-        const devUsername = 'superadmin';
-        const devPassword = 'password123';
-        const passwordHash = bcrypt.hashSync(devPassword, 10);
-        db.prepare(`
-          INSERT INTO users (username, password_hash, is_admin, role, is_super_admin, managed_by)
-          VALUES (?, ?, 1, 'super_admin', 1, NULL)
-        `).run(devUsername, passwordHash);
-        console.log(`✓ Superadmin user created — CHANGE THE DEFAULT PASSWORD IMMEDIATELY`);
-        return;
-      }
+    const seedUsername = process.env.SEED_ADMIN_USERNAME;
+    const seedPassword = process.env.SEED_ADMIN_PASSWORD;
 
-      const passwordHash = bcrypt.hashSync(seedPassword, 10);
+    if (!seedUsername || !seedPassword) {
+      const devUsername = 'superadmin';
+      const devPassword = 'password123';
+      const passwordHash = bcrypt.hashSync(devPassword, 10);
       db.prepare(`
         INSERT INTO users (username, password_hash, is_admin, role, is_super_admin, managed_by)
         VALUES (?, ?, 1, 'super_admin', 1, NULL)
-      `).run(seedUsername, passwordHash);
-      console.log(`✓ Superadmin user created (username: ${seedUsername})`);
-    } else if (existingSuperAdmin) {
-      db.prepare(`
-        UPDATE users
-        SET role = 'super_admin', is_super_admin = 1, is_admin = 1, managed_by = NULL
-        WHERE id = ?
-      `).run(existingSuperAdmin.id);
-    } else if (existingAdmin) {
-      db.prepare(`
-        UPDATE users
-        SET role = 'super_admin', is_super_admin = 1, is_admin = 1, managed_by = NULL
-        WHERE id = ?
-      `).run(existingAdmin.id);
+      `).run(devUsername, passwordHash);
+      console.log(`✓ Superadmin user created — CHANGE THE DEFAULT PASSWORD IMMEDIATELY`);
+      return;
     }
+
+    const passwordHash = bcrypt.hashSync(seedPassword, 10);
+    db.prepare(`
+      INSERT INTO users (username, password_hash, is_admin, role, is_super_admin, managed_by)
+      VALUES (?, ?, 1, 'super_admin', 1, NULL)
+    `).run(seedUsername, passwordHash);
+    console.log(`✓ Superadmin user created (username: ${seedUsername})`);
   } catch (error: any) {
     // Ignore UNIQUE constraint errors (admin already exists)
     if (error.code !== 'SQLITE_CONSTRAINT_UNIQUE') {

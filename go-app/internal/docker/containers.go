@@ -210,7 +210,8 @@ func (c *Client) CreateSiteContainer(ctx context.Context, domain string, templat
 			fmt.Sprintf("%s:%s:%s", sitePath, bindTarget, bindMode),
 		},
 		PortBindings: nat.PortMap{
-			portKey: []nat.PortBinding{{HostPort: "0"}},
+			// Loopback only: sites are reached through nginx, never directly.
+			portKey: []nat.PortBinding{{HostIP: "127.0.0.1", HostPort: "0"}},
 		},
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
 		NetworkMode:   container.NetworkMode(dockliteNetworkName),
