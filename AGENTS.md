@@ -207,7 +207,6 @@ make clean              # Remove binaries and build artifacts
 | `AGENT_TOKEN` | (empty) | Agent authentication token |
 | `SESSION_SECRET` | (empty) | Session encryption key (32+ chars) |
 | — | — | SSL is now managed by certbot + nginx (ACME_PATH removed) |
-| `ENABLE_DB_DEBUG` | `false` | Enable database debug UI |
 
 ### TUI Client
 | Variable | Default | Description |

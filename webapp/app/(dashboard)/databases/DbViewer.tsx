@@ -32,9 +32,6 @@ export default function DbViewer() {
       const res = await fetch('/api/db');
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        if (res.status === 404) {
-          throw new Error('Database debugging is disabled. Set ENABLE_DB_DEBUG=true in .env to enable.');
-        }
         throw new Error(data.error || 'Failed to fetch database info');
       }
       const data = await res.json();

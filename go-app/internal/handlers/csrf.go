@@ -114,14 +114,10 @@ func validateOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	referer := r.Header.Get("Referer")
 
-	// If neither is provided but this is a state-changing request, it might be a valid same-site request
-	// We'll be permissive for now but log it
 	if origin == "" && referer == "" {
 		// Browsers send Origin on every POST/PUT/PATCH/DELETE, so a
 		// cookie-authenticated write without one isn't a normal page request.
-		// This check, not the CSRF token, is what actually stops cross-site
-		// forgery: the token also falls back to a cookie browsers send
-		// automatically.
+		// Non-browser clients without the session cookie are let through.
 		return !hasDelegationCookie(r)
 	}
 
@@ -278,6 +274,18 @@ func CSRFMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			// Validate origin first
 			if !validateOrigin(r) {
 				writeError(w, http.StatusForbidden, csrfOriginErrorMsg)
+				return
+			}
+
+			// For browser sessions the verified Origin/Referer is the CSRF
+			// defense (validateOrigin requires one when the session cookie is
+			// present). The token below can't add anything for them: the web
+			// UI doesn't send the header, and the cookie fallback is sent by
+			// the browser automatically. It was also single-use and only
+			// issued by some GET routes, so most UI actions failed with
+			// "invalid or missing CSRF token".
+			if hasDelegationCookie(r) {
+				next(w, r)
 				return
 			}
 

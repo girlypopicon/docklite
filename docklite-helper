@@ -81,6 +81,32 @@ case "$cmd" in
         fi
         certbot "${args[@]}"
         ;;
+    cert-obtain)      # cert-obtain DOMAIN [--email ADDRESS]
+        # Get a certificate without letting certbot edit nginx configs, so
+        # DockLite can keep writing its own (certbot's edits would be lost
+        # the next time DockLite rewrites the file). Renewals reload nginx.
+        domain="${1:-}"; shift || true
+        check_domain "$domain"
+        args=(certonly --nginx -d "$domain" --non-interactive --agree-tos
+              --keep-until-expiring --deploy-hook "systemctl reload nginx")
+        email=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --email) check_email "${2:-}"; email="$2"; shift 2 ;;
+                *)       die "unknown option: $1" ;;
+            esac
+        done
+        if [[ -n "$email" ]]; then
+            args+=(--email "$email")
+        else
+            args+=(--register-unsafely-without-email)
+        fi
+        certbot "${args[@]}"
+        ;;
+    cert-exists)      # cert-exists DOMAIN   (exit 0 if a certificate is installed)
+        check_domain "${1:-}"
+        [[ -f "${LE_LIVE}/$1/fullchain.pem" ]]
+        ;;
     cert-renew)       # cert-renew DOMAIN
         check_domain "${1:-}"
         certbot renew --cert-name "$1" --force-renewal
@@ -97,6 +123,6 @@ case "$cmd" in
         cat "${LE_LIVE}/$1/cert.pem"
         ;;
     *)
-        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|nginx-test|nginx-reload|nginx-restart|cert-issue|cert-renew|cert-delete|cert-list|cert-read} ..."
+        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|nginx-test|nginx-reload|nginx-restart|cert-issue|cert-obtain|cert-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
         ;;
 esac
