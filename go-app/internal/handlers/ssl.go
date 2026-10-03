@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -103,23 +102,15 @@ func (h *Handlers) SSLIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	args := []string{
-		"certbot", "--nginx",
-		"-d", body.Domain,
-		"--non-interactive",
-		"--agree-tos",
-	}
+	args := []string{"cert-issue", body.Domain}
 	if body.IncludeWww && !strings.HasPrefix(body.Domain, "www.") {
-		args = append(args, "-d", "www."+body.Domain)
+		args = append(args, "--www")
 	}
 	if body.Email != "" {
 		args = append(args, "--email", body.Email)
-	} else {
-		args = append(args, "--register-unsafely-without-email")
 	}
 
-	cmd := exec.Command("sudo", args...)
-	output, err := cmd.CombinedOutput()
+	output, err := runRootHelper(nil, args...)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"error":  "certbot failed",
@@ -156,8 +147,7 @@ func (h *Handlers) SSLRenew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmd := exec.Command("sudo", "certbot", "renew", "--cert-name", body.Domain, "--force-renewal")
-	output, err := cmd.CombinedOutput()
+	output, err := runRootHelper(nil, "cert-renew", body.Domain)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"error":  "renewal failed",
@@ -194,8 +184,7 @@ func (h *Handlers) SSLDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmd := exec.Command("sudo", "certbot", "delete", "--cert-name", body.Domain, "--non-interactive")
-	output, err := cmd.CombinedOutput()
+	output, err := runRootHelper(nil, "cert-delete", body.Domain)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"error":  "delete failed",
@@ -236,8 +225,7 @@ func (h *Handlers) SSLRepair(w http.ResponseWriter, r *http.Request) {
 func readCertbotCertificates() []sslCertInfo {
 	entries, err := os.ReadDir(letsencryptLiveDir)
 	if err != nil {
-		cmd := exec.Command("sudo", "ls", letsencryptLiveDir)
-		output, cmdErr := cmd.Output()
+		output, cmdErr := runRootHelper(nil, "cert-list")
 		if cmdErr != nil {
 			return nil
 		}
@@ -273,7 +261,7 @@ func parseLiveDirectoryListing(output string) []sslCertInfo {
 func parseCertFile(name string, certPath string) sslCertInfo {
 	raw, err := os.ReadFile(certPath)
 	if err != nil {
-		raw = readFileWithSudo(certPath)
+		raw = readCertWithSudo(name)
 	}
 	if len(raw) == 0 {
 		return sslCertInfo{
@@ -320,9 +308,10 @@ func parseCertFile(name string, certPath string) sslCertInfo {
 	}
 }
 
-func readFileWithSudo(path string) []byte {
-	cmd := exec.Command("sudo", "cat", path)
-	output, err := cmd.Output()
+// readCertWithSudo reads a live certificate's cert.pem, whose leaf is the
+// same certificate fullchain.pem starts with.
+func readCertWithSudo(name string) []byte {
+	output, err := runRootHelper(nil, "cert-read", name)
 	if err != nil {
 		return nil
 	}

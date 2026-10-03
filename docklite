@@ -98,6 +98,7 @@ nginx_status() {
 }
 
 has_sudo() { sudo -n true 2>/dev/null; }
+root_helper() { sudo -n /usr/local/sbin/docklite-helper "$@"; }
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 3: Branding
@@ -304,13 +305,14 @@ server {
 }
 "
 
-    if echo "$config" | sudo -n tee /etc/nginx/sites-available/docklite-default >/dev/null 2>&1; then
-        sudo -n rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
-        sudo -n rm -f /etc/nginx/sites-enabled/docklite-sites 2>/dev/null || true
-        sudo -n ln -sf /etc/nginx/sites-available/docklite-default /etc/nginx/sites-enabled/ 2>/dev/null
+    # Root access goes through docklite-helper (installed by install.sh).
+    if echo "$config" | root_helper site-write docklite-default >/dev/null 2>&1; then
+        root_helper site-disable default 2>/dev/null || true
+        root_helper site-disable docklite-sites 2>/dev/null || true
+        root_helper site-enable docklite-default 2>/dev/null
 
-        if sudo -n nginx -t 2>/dev/null; then
-            sudo -n nginx -s reload 2>/dev/null || sudo -n systemctl reload nginx 2>/dev/null || true
+        if root_helper nginx-test 2>/dev/null; then
+            root_helper nginx-reload 2>/dev/null || true
             NGINX_CONFIGURED="1"
             ok "Nginx configured (:80 → :${AGENT_PORT})"
             return 0
@@ -623,13 +625,13 @@ run_wizard() {
         echo -e "  ${CYAN}🌐 Web GUI:${NC}   ${BOLD}http://${ip:-localhost}${NC}"
     fi
     echo -e "  ${CYAN}🌐 Direct:${NC}    ${BOLD}http://localhost:${AGENT_PORT}${NC}"
-    echo -e "  ${CYAN}🔑 Login:${NC}     ${BOLD}superadmin${NC} / ${BOLD}password123${NC}"
+    echo -e "  ${CYAN}🔑 Login:${NC}     ${BOLD}superadmin${NC} (password: ${BOLD}sudo cat ${DATA_DIR}/initial-admin-password${NC})"
     echo ""
     echo -e "  ${CYAN}🔧 Token:${NC}     ${DIM}${DOCKLITE_TOKEN:0:16}...${NC}"
     echo -e "  ${CYAN}📋 Config:${NC}    ${DIM}${CONF_FILE}${NC}"
     echo -e "  ${CYAN}📂 Logs:${NC}      ${DIM}${LOG_DIR}/${NC}"
     echo ""
-    echo -e "  ${YELLOW}⚠${NC}  Change the default password after first login!"
+    echo -e "  ${YELLOW}⚠${NC}  Change it after first login, then delete that file."
     echo ""
     echo -e "  ${DIM}Run ${BOLD}./docklite${NC}${DIM} again to manage services.${NC}"
     echo ""

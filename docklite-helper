@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# docklite-helper — the only command DockLite runs as root.
+#
+# Installed root-owned at /usr/local/sbin/docklite-helper and granted via
+# /etc/sudoers.d/docklite. Every privileged action the agent or the launcher
+# needs is a subcommand here with its arguments validated, instead of
+# granting broad commands (tee, cat, nginx, openssl) whose arguments sudoers
+# can't meaningfully restrict.
+set -euo pipefail
+
+SITES_AVAILABLE=/etc/nginx/sites-available
+SITES_ENABLED=/etc/nginx/sites-enabled
+LE_LIVE=/etc/letsencrypt/live
+
+die() { echo "docklite-helper: $*" >&2; exit 1; }
+
+# nginx config file names: no slashes, no leading dot.
+check_name() {
+    [[ "${1:-}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,252}$ ]] || die "invalid config name: ${1:-}"
+}
+
+# Plain DNS hostname (same shape the agent accepts).
+check_domain() {
+    [[ ${#1} -le 253 && "$1" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$ ]] \
+        || die "invalid domain: $1"
+}
+
+check_email() {
+    [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "invalid email: $1"
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+    site-write)       # site-write NAME  (config on stdin)
+        check_name "${1:-}"
+        tmp=$(mktemp "${SITES_AVAILABLE}/.docklite.XXXXXX")
+        cat > "$tmp"
+        chmod 644 "$tmp"
+        mv -f "$tmp" "${SITES_AVAILABLE}/$1"
+        ;;
+    site-enable)      # site-enable NAME
+        check_name "${1:-}"
+        [[ -f "${SITES_AVAILABLE}/$1" ]] || die "no such site config: $1"
+        ln -sfn "${SITES_AVAILABLE}/$1" "${SITES_ENABLED}/$1"
+        ;;
+    site-disable)     # site-disable NAME  (removes only the sites-enabled link)
+        check_name "${1:-}"
+        rm -f "${SITES_ENABLED}/$1"
+        ;;
+    site-remove)      # site-remove NAME   (removes enabled link and config)
+        check_name "${1:-}"
+        rm -f "${SITES_ENABLED}/$1" "${SITES_AVAILABLE}/$1"
+        ;;
+    nginx-test)
+        nginx -t
+        ;;
+    nginx-reload)
+        nginx -t && nginx -s reload
+        ;;
+    nginx-restart)
+        systemctl restart nginx
+        ;;
+    cert-issue)       # cert-issue DOMAIN [--www] [--email ADDRESS]
+        domain="${1:-}"; shift || true
+        check_domain "$domain"
+        args=(--nginx -d "$domain" --non-interactive --agree-tos)
+        email=""
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --www)   args+=(-d "www.${domain}"); shift ;;
+                --email) check_email "${2:-}"; email="$2"; shift 2 ;;
+                *)       die "unknown option: $1" ;;
+            esac
+        done
+        if [[ -n "$email" ]]; then
+            args+=(--email "$email")
+        else
+            args+=(--register-unsafely-without-email)
+        fi
+        certbot "${args[@]}"
+        ;;
+    cert-renew)       # cert-renew DOMAIN
+        check_domain "${1:-}"
+        certbot renew --cert-name "$1" --force-renewal
+        ;;
+    cert-delete)      # cert-delete DOMAIN
+        check_domain "${1:-}"
+        certbot delete --cert-name "$1" --non-interactive
+        ;;
+    cert-list)
+        ls "$LE_LIVE"
+        ;;
+    cert-read)        # cert-read NAME   (public certificate only, never the key)
+        check_name "${1:-}"
+        cat "${LE_LIVE}/$1/cert.pem"
+        ;;
+    *)
+        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|nginx-test|nginx-reload|nginx-restart|cert-issue|cert-renew|cert-delete|cert-list|cert-read} ..."
+        ;;
+esac

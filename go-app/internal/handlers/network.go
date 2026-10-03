@@ -132,6 +132,10 @@ type diagnosticsResponse struct {
 }
 
 func (h *Handlers) NetworkOverview(w http.ResponseWriter, r *http.Request) {
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "admin access required")
+		return
+	}
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
@@ -186,6 +190,10 @@ func (h *Handlers) NetworkOverview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) NetworkFirewall(w http.ResponseWriter, r *http.Request) {
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "admin access required")
+		return
+	}
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
@@ -209,6 +217,10 @@ func (h *Handlers) NetworkFirewall(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) NetworkIngress(w http.ResponseWriter, r *http.Request) {
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "admin access required")
+		return
+	}
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
@@ -279,6 +291,10 @@ func (h *Handlers) NetworkIngress(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) NetworkPublicIP(w http.ResponseWriter, r *http.Request) {
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "admin access required")
+		return
+	}
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
@@ -306,6 +322,10 @@ func (h *Handlers) NetworkPublicIP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) NetworkDiagnostics(w http.ResponseWriter, r *http.Request) {
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "admin access required")
+		return
+	}
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return

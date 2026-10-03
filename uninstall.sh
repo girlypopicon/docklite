@@ -284,6 +284,10 @@ if [[ "$REMOVE_ALL" == "1" ]]; then
             ok "Removed sudoers rule: $(basename "$f")"
         fi
     done
+    if [[ -f /usr/local/sbin/docklite-helper ]]; then
+        $SUDO rm -f /usr/local/sbin/docklite-helper
+        ok "Removed root helper: docklite-helper"
+    fi
 fi
 
 # ── Symlink ──

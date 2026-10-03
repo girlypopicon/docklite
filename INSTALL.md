@@ -32,7 +32,7 @@ That's it! Open http://localhost:3000 in your browser.
 
 **Default credentials:**
 - Username: `superadmin`
-- Password: `admin`
+- Password: generated on first start and saved to `data/initial-admin-password` (`sudo cat /opt/docklite/data/initial-admin-password`)
 
 ## What Gets Installed
 

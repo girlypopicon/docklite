@@ -117,7 +117,12 @@ func validateOrigin(r *http.Request) bool {
 	// If neither is provided but this is a state-changing request, it might be a valid same-site request
 	// We'll be permissive for now but log it
 	if origin == "" && referer == "" {
-		return true // Could be a legitimate same-site request or token-based API call
+		// Browsers send Origin on every POST/PUT/PATCH/DELETE, so a
+		// cookie-authenticated write without one isn't a normal page request.
+		// This check, not the CSRF token, is what actually stops cross-site
+		// forgery: the token also falls back to a cookie browsers send
+		// automatically.
+		return !hasDelegationCookie(r)
 	}
 
 	// Validate that Origin/Referer matches request host (or forwarded host behind proxy)

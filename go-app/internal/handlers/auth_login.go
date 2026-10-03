@@ -286,21 +286,29 @@ func clientIP(r *http.Request) string {
 	if r == nil {
 		return "unknown"
 	}
-	forwarded := r.Header.Get("X-Forwarded-For")
-	if forwarded != "" {
-		parts := strings.Split(forwarded, ",")
-		if len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
-		}
-	}
-	if r.Header.Get("X-Real-IP") != "" {
-		return strings.TrimSpace(r.Header.Get("X-Real-IP"))
-	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err == nil && host != "" {
+	if err != nil || host == "" {
+		host = strings.TrimSpace(r.RemoteAddr)
+	}
+
+	// Proxy headers are only trustworthy when the request came from the
+	// local reverse proxy; from anyone else they are attacker-controlled
+	// and would let a client pick a fresh rate-limit key per request.
+	if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
 		return host
 	}
-	return strings.TrimSpace(r.RemoteAddr)
+	// nginx sets X-Real-IP to $remote_addr. In X-Forwarded-For only the
+	// last entry is appended by nginx; earlier ones come from the client.
+	if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+		return realIP
+	}
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		parts := strings.Split(forwarded, ",")
+		if last := strings.TrimSpace(parts[len(parts)-1]); last != "" {
+			return last
+		}
+	}
+	return host
 }
 
 func parseFormBool(value string) bool {

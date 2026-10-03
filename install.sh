@@ -344,16 +344,31 @@ setup_sudoers() {
     local calling_user="${SUDO_USER:-$USER}"
     local pm2_path
     pm2_path="$(command -v pm2 2>/dev/null || echo "/usr/bin/pm2")"
+    # Every root action goes through docklite-helper, which validates its
+    # arguments. Granting tee/cat/nginx/openssl directly let either account
+    # read or overwrite any file as root (sudoers wildcards match "/" and
+    # extra arguments).
+    $SUDO install -o root -g root -m 755 "${REPO_DIR}/docklite-helper" /usr/local/sbin/docklite-helper
+
     # setup_nginx_default (run by `docklite setup`, which executes as
-    # calling_user, not docklite — see install.sh's handoff) needs the same
-    # NOPASSWD grants as docklite itself, or it silently no-ops.
-    $SUDO tee /etc/sudoers.d/docklite >/dev/null <<EOF
-docklite ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /usr/bin/tee /etc/nginx/sites-available/*, /usr/bin/ln -sf /etc/nginx/sites-available/* /etc/nginx/sites-enabled/*, /usr/bin/rm -f /etc/nginx/sites-enabled/*, /usr/bin/certbot, /usr/bin/ls /etc/letsencrypt/live, /usr/bin/ls /etc/letsencrypt/live/*, /usr/bin/cat /etc/letsencrypt/live/*, /usr/bin/openssl
-${calling_user} ALL=(ALL) NOPASSWD: /usr/sbin/nginx, /usr/bin/tee /etc/nginx/sites-available/*, /usr/bin/ln -sf /etc/nginx/sites-available/* /etc/nginx/sites-enabled/*, /usr/bin/rm -f /etc/nginx/sites-enabled/*, /usr/bin/certbot, /usr/bin/ls /etc/letsencrypt/live, /usr/bin/ls /etc/letsencrypt/live/*, /usr/bin/cat /etc/letsencrypt/live/*, /usr/bin/openssl
+    # calling_user, not docklite — see install.sh's handoff) needs the
+    # helper too, or it silently no-ops.
+    local rules
+    rules=$(mktemp)
+    cat > "$rules" <<EOF
+docklite ALL=(root) NOPASSWD: /usr/local/sbin/docklite-helper
+${calling_user} ALL=(root) NOPASSWD: /usr/local/sbin/docklite-helper
 ${calling_user} ALL=(ALL) NOPASSWD: ${pm2_path}
 ${calling_user} ALL=(docklite) NOPASSWD: ALL
 EOF
-    $SUDO chmod 440 /etc/sudoers.d/docklite
+    # A broken file in sudoers.d disables sudo entirely, so validate first.
+    if ! $SUDO visudo -cf "$rules" >/dev/null; then
+        rm -f "$rules"
+        fail "Generated sudoers rules are invalid — leaving existing rules untouched"
+        exit 1
+    fi
+    $SUDO install -o root -g root -m 440 "$rules" /etc/sudoers.d/docklite
+    rm -f "$rules"
     ok "Sudoers rules installed for docklite user"
 }
 

@@ -334,12 +334,38 @@ func (h *Handlers) authorizeFilePath(r *http.Request, resolvedPath string) error
 	if err != nil || user == nil {
 		return errForbidden
 	}
-	allowedBase := filepath.Clean(filepath.Join(filesBaseDir, user.Username)) + string(filepath.Separator)
-	cleaned := filepath.Clean(resolvedPath) + string(filepath.Separator)
-	if !strings.HasPrefix(cleaned, allowedBase) {
+	if !isWithin(filepath.Join(filesBaseDir, user.Username), resolvedPath) {
 		return errForbidden
 	}
 	return nil
+}
+
+// isWithin reports whether path stays inside base once symlinks are
+// resolved. Site containers can write into their own folder, so a symlink
+// planted there must not lead the file manager anywhere else on the host.
+func isWithin(base, path string) bool {
+	realBase := realPath(base) + string(filepath.Separator)
+	realTarget := realPath(path) + string(filepath.Separator)
+	return strings.HasPrefix(realTarget, realBase)
+}
+
+// realPath resolves symlinks in the longest existing prefix of p and
+// appends the not-yet-existing remainder, so paths about to be created can
+// be checked too.
+func realPath(p string) string {
+	p = filepath.Clean(p)
+	suffix := ""
+	for {
+		if resolved, err := filepath.EvalSymlinks(p); err == nil {
+			return filepath.Join(resolved, suffix)
+		}
+		parent := filepath.Dir(p)
+		if parent == p {
+			return filepath.Join(p, suffix)
+		}
+		suffix = filepath.Join(filepath.Base(p), suffix)
+		p = parent
+	}
 }
 
 func resolveFilesPath(pathParam string) (string, error) {
@@ -364,9 +390,7 @@ func resolveFilesPath(pathParam string) (string, error) {
 }
 
 func ensureWithinBase(path string) error {
-	base := filepath.Clean(filesBaseDir) + string(filepath.Separator)
-	cleaned := filepath.Clean(path) + string(filepath.Separator)
-	if !strings.HasPrefix(cleaned, base) {
+	if !isWithin(filesBaseDir, path) {
 		return errors.New("path outside base directory")
 	}
 	return nil

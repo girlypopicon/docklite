@@ -1051,11 +1051,11 @@ func (h *Handlers) performProxyAction(ctx context.Context, action string) error 
 
 	if _, lookErr := exec.LookPath("nginx"); lookErr == nil {
 		if action == "reload" {
-			_, err := runCommandTimeout(6*time.Second, "sudo", "nginx", "-s", "reload")
+			_, err := runCommandTimeout(6*time.Second, "sudo", "-n", rootHelper, "nginx-reload")
 			return err
 		}
 		if action == "restart" {
-			_, err := runCommandTimeout(6*time.Second, "sudo", "systemctl", "restart", "nginx")
+			_, err := runCommandTimeout(6*time.Second, "sudo", "-n", rootHelper, "nginx-restart")
 			return err
 		}
 	}
