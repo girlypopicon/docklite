@@ -29,6 +29,29 @@ check_email() {
     [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "invalid email: $1"
 }
 
+# certbot allows one instance at a time (a lock file). A slow renewal, the
+# twice-daily certbot.timer, or a double click would otherwise make every
+# other certificate action fail instantly with "Another instance of Certbot
+# is already running". Wait for the lock instead — up to ~2 minutes — and
+# only then give up with a plain message.
+run_certbot() {
+    local tries=0 out rc
+    while :; do
+        out=$(certbot "$@" 2>&1) && rc=0 || rc=$?
+        if [[ $rc -ne 0 && "$out" == *"Another instance of Certbot is already running"* ]]; then
+            tries=$((tries + 1))
+            if [[ $tries -le ${CERTBOT_LOCK_RETRIES:-12} ]]; then
+                sleep "${CERTBOT_LOCK_WAIT:-10}"
+                continue
+            fi
+            echo "Another certificate task (renewal or issue) is still running on this server. Wait a minute or two and try again." >&2
+            return 75
+        fi
+        printf '%s\n' "$out"
+        return $rc
+    done
+}
+
 cmd="${1:-}"
 shift || true
 
@@ -52,6 +75,17 @@ case "$cmd" in
     site-remove)      # site-remove NAME   (removes enabled link and config)
         check_name "${1:-}"
         rm -f "${SITES_ENABLED}/$1" "${SITES_AVAILABLE}/$1"
+        ;;
+    site-read)        # site-read NAME   (prints the config from sites-available)
+        check_name "${1:-}"
+        cat "${SITES_AVAILABLE}/$1"
+        ;;
+    site-status)      # site-status NAME   (prints "available=0|1 enabled=0|1")
+        check_name "${1:-}"
+        a=0; e=0
+        [[ -f "${SITES_AVAILABLE}/$1" ]] && a=1
+        [[ -e "${SITES_ENABLED}/$1" ]] && e=1
+        echo "available=${a} enabled=${e}"
         ;;
     nginx-test)
         nginx -t
@@ -79,7 +113,7 @@ case "$cmd" in
         else
             args+=(--register-unsafely-without-email)
         fi
-        certbot "${args[@]}"
+        run_certbot "${args[@]}"
         ;;
     cert-obtain)      # cert-obtain DOMAIN [--email ADDRESS]
         # Get a certificate without letting certbot edit nginx configs, so
@@ -101,7 +135,7 @@ case "$cmd" in
         else
             args+=(--register-unsafely-without-email)
         fi
-        certbot "${args[@]}"
+        run_certbot "${args[@]}"
         ;;
     cert-exists)      # cert-exists DOMAIN   (exit 0 if a certificate is installed)
         check_domain "${1:-}"
@@ -109,11 +143,11 @@ case "$cmd" in
         ;;
     cert-renew)       # cert-renew DOMAIN
         check_domain "${1:-}"
-        certbot renew --cert-name "$1" --force-renewal
+        run_certbot renew --cert-name "$1" --force-renewal
         ;;
     cert-delete)      # cert-delete DOMAIN
         check_domain "${1:-}"
-        certbot delete --cert-name "$1" --non-interactive
+        run_certbot delete --cert-name "$1" --non-interactive
         ;;
     cert-list)
         ls "$LE_LIVE"
@@ -123,6 +157,6 @@ case "$cmd" in
         cat "${LE_LIVE}/$1/cert.pem"
         ;;
     *)
-        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|nginx-test|nginx-reload|nginx-restart|cert-issue|cert-obtain|cert-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
+        die "usage: docklite-helper {site-write|site-read|site-status|site-enable|site-disable|site-remove|nginx-test|nginx-reload|nginx-restart|cert-issue|cert-obtain|cert-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
         ;;
 esac

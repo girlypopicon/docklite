@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"docklite-agent/internal/store"
@@ -162,26 +160,32 @@ func (h *Handlers) nginxPutConfig(w http.ResponseWriter, r *http.Request, domain
 }
 
 // nginxEntryStatus returns a site entry with status flags but no config text.
+// /etc/nginx can be readable by root only (hardened servers), so state is
+// asked of the root helper rather than read from the filesystem directly.
 func nginxEntryStatus(domain, templateType string) nginxSiteEntry {
-	filename := sanitizeNginxFilename(domain)
-	_, errA := os.Stat(filepath.Join(nginxSitesAvailable, filename))
-	_, errE := os.Stat(filepath.Join(nginxSitesEnabled, filename))
-	return nginxSiteEntry{
-		Domain:       domain,
-		TemplateType: templateType,
-		HasConfig:    errA == nil,
-		Enabled:      errE == nil,
+	entry := nginxSiteEntry{Domain: domain, TemplateType: templateType}
+	output, err := runRootHelper(nil, "site-status", sanitizeNginxFilename(domain))
+	if err != nil {
+		return entry
 	}
+	for _, field := range strings.Fields(string(output)) {
+		switch field {
+		case "available=1":
+			entry.HasConfig = true
+		case "enabled=1":
+			entry.Enabled = true
+		}
+	}
+	return entry
 }
 
 // readNginxSiteConfig reads the raw text of a site's nginx config file.
 func readNginxSiteConfig(domain string) (string, error) {
-	path := filepath.Join(nginxSitesAvailable, sanitizeNginxFilename(domain))
-	data, err := os.ReadFile(path)
+	output, err := runRootHelper(nil, "site-read", sanitizeNginxFilename(domain))
 	if err != nil {
-		return "", fmt.Errorf("could not read nginx config: %w", err)
+		return "", fmt.Errorf("could not read nginx config: %s", strings.TrimSpace(string(output)))
 	}
-	return string(data), nil
+	return string(output), nil
 }
 
 // defaultVhostForSite generates the standard DockLite vhost config for a site,
