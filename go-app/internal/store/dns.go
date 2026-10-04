@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"strings"
 )
 
@@ -181,6 +182,18 @@ func (s *SQLiteStore) GetDNSRecords(zoneID *int64) ([]DNSRecord, error) {
 		results = append(results, record)
 	}
 	return results, rows.Err()
+}
+
+func (s *SQLiteStore) GetDNSRecordByID(id int64) (*DNSRecord, error) {
+	row := s.DB.QueryRow(`SELECT id, zone_id, cloudflare_record_id, type, name, content, ttl, priority, proxied, created_at, updated_at FROM dns_records WHERE id = ?`, id)
+	var record DNSRecord
+	if err := row.Scan(&record.ID, &record.ZoneID, &record.CloudflareRecordID, &record.Type, &record.Name, &record.Content, &record.TTL, &record.Priority, &record.Proxied, &record.CreatedAt, &record.UpdatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &record, nil
 }
 
 func (s *SQLiteStore) CreateDNSRecord(record DNSRecord) (int64, error) {
