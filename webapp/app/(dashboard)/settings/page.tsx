@@ -10,7 +10,7 @@ export default function SettingsPage() {
           General
         </h2>
         <p className="text-sm font-mono opacity-70" style={{ color: 'var(--text-secondary)' }}>
-          Manage system preferences, security, and appearance from the tabs above.
+          Choose a section — appearance, sidebars, the top bar, security and system — from the Settings menu.
         </p>
       </div>
 

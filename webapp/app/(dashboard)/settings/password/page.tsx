@@ -2,9 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useInSettingsModal, useSettingsModal } from '@/lib/settings-modal';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
+  const inModal = useInSettingsModal();
+  const { closeSettings } = useSettingsModal();
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -46,7 +49,7 @@ export default function ChangePasswordPage() {
 
       setSuccess(true);
       setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => router.push('/'), 2000);
+      setTimeout(() => (inModal ? closeSettings() : router.push('/')), 2000);
     } catch (err) {
       setError('An error occurred. Please try again.');
       setLoading(false);

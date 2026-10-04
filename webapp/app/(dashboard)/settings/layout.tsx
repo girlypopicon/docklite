@@ -10,6 +10,8 @@ const tabs = [
   { id: 'users', label: 'Users', href: '/settings/users' },
   { id: 'system', label: 'System', href: '/settings/system' },
   { id: 'appearance', label: 'Appearance', href: '/settings/appearance' },
+  { id: 'sidebars', label: 'Sidebars', href: '/settings/sidebars' },
+  { id: 'topbar', label: 'Top bar', href: '/settings/topbar' },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

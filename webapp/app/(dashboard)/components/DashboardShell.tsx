@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import DashboardNav from '../nav';
 import SidebarPanel from './SidebarPanel';
+import { SettingsModalProvider } from './SettingsModal';
 import { UserSession } from '@/types';
 
 const XtermDrawer = dynamic(() => import('./XtermDrawer'), { ssr: false });
@@ -34,7 +35,7 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
   }, []);
 
   return (
-    <>
+    <SettingsModalProvider isAdmin={user.isAdmin}>
       <DashboardNav
         user={user}
         terminalOpen={terminalOpen}
@@ -43,7 +44,7 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
 
       {/* Customizable Sidebars - Overlay style, don't push content */}
       <SidebarPanel side="left" mode="file-browser" defaultOpen={false} userSession={user} />
-      <SidebarPanel side="right" mode="modular" defaultContent="none" defaultOpen={false} />
+      <SidebarPanel side="right" mode="modular" defaultOpen={false} />
 
       {/* Main content area - keeps existing width */}
       <main className="p-8 relative z-10">
@@ -64,6 +65,6 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
         containerId={terminalTarget?.id}
         containerName={terminalTarget?.name}
       />
-    </>
+    </SettingsModalProvider>
   );
 }
