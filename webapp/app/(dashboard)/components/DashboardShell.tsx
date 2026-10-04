@@ -51,7 +51,7 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
       {/* Main content area - keeps existing width */}
       {/* The edit-database page pushes content aside via --sidebar-push-* so sidebars never cover its data. */}
       <main
-        className="p-8 relative z-10"
+        className="p-8 relative"
         style={{
           paddingLeft: 'calc(2rem + var(--sidebar-push-left, 0px))',
           paddingRight: 'calc(2rem + var(--sidebar-push-right, 0px))',
