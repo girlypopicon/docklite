@@ -12,6 +12,7 @@ import { useToast } from '@/lib/hooks/useToast';
 import { Database, Lightning, Package, ArrowsClockwise, FolderPlus, PlusCircle, WarningCircle, SpinnerGap } from '@phosphor-icons/react';
 import AddContainerModal from './components/AddContainerModal';
 import ContainerFilterTabs, { type StatusFilter } from './components/ContainerFilterTabs';
+import { containerKind, sortFolderTree } from '@/lib/container-sort';
 import {
   DndContext,
   closestCenter,
@@ -55,7 +56,8 @@ export default function DashboardPage() {
         throw new Error('Failed to fetch data');
       }
       const data = await res.json();
-      setFoldersData(data.folders || []);
+      // Running before stopped, then site → database → other.
+      setFoldersData(sortFolderTree<FolderNode>(data.folders || []));
     } catch (err) {
       setError('Failed to load containers');
     } finally {
@@ -195,17 +197,7 @@ export default function DashboardPage() {
     }
   };
 
-  const getContainerType = (container: ContainerInfo): 'site' | 'database' | 'other' => {
-    const labels = container.labels || {};
-    if (labels['docklite.type'] === 'static' || labels['docklite.type'] === 'php' || labels['docklite.type'] === 'node') {
-      return 'site';
-    }
-    if (labels['docklite.type'] === 'postgres' || labels['docklite.database']) {
-      return 'database';
-    }
-    return 'other';
-  };
-
+  const getContainerType = containerKind;
 
   const matchesStatus = (container: ContainerInfo) =>
     statusFilter === 'any' || (statusFilter === 'running' ? container.state === 'running' : container.state !== 'running');
