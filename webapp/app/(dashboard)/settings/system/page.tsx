@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { DesktopTower, Cube, Gear, Wrench, ArrowClockwise, ArrowFatUp, CheckCircle, WarningCircle } from '@phosphor-icons/react';
+import ShellAccessCard from '../../components/ShellAccessCard';
 
 type UpdateStatus = {
   version: string;
@@ -322,6 +323,8 @@ export default function SystemSettingsPage() {
           </div>
         </div>
       </div>
+
+      <ShellAccessCard />
     </div>
   );
 }
