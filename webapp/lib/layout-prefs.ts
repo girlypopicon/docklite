@@ -52,6 +52,15 @@ const KNOWN_ITEMS = new Set(TOP_BAR_ITEMS.map((i) => i.id));
 const REPEATABLE = new Set(TOP_BAR_ITEMS.filter((i) => i.repeatable).map((i) => i.id));
 const REQUIRED = TOP_BAR_ITEMS.filter((i) => i.required).map((i) => i.id);
 
+/** Stable unique keys for drag-and-drop lists: spacers repeat, so number them. */
+export function withKeys(ids: string[]) {
+  const seen: Record<string, number> = {};
+  return ids.map((id) => {
+    seen[id] = (seen[id] || 0) + 1;
+    return { id, key: seen[id] === 1 ? id : `${id}#${seen[id]}` };
+  });
+}
+
 /** Repairs anything odd in stored data (older versions, hand edits). */
 export function normalizeLayout(raw: unknown): LayoutPrefs {
   const r = (raw && typeof raw === 'object' ? raw : {}) as any;

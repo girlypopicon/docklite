@@ -8,6 +8,8 @@ interface SettingsControl {
   /** Open the Settings modal over the current page, optionally on a tab. */
   openSettings: (tab?: SettingsTab) => void;
   closeSettings: () => void;
+  /** True while Settings → Top bar is showing: the real top bar becomes editable in place. */
+  editingTopBar: boolean;
 }
 
 export const SettingsControlContext = createContext<SettingsControl | null>(null);
@@ -25,6 +27,7 @@ export function useSettingsModal(): SettingsControl {
         window.location.href = '/settings';
       },
       closeSettings: () => {},
+      editingTopBar: false,
     };
   }
   return ctx;

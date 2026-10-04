@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Gear, Lock, Palette, Rows, SidebarSimple, UsersThree, Wrench, X } from '@phosphor-icons/react';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import {
@@ -57,7 +56,8 @@ export function SettingsModalProvider({ isAdmin, children }: { isAdmin: boolean;
     returnFocusTo.current?.focus?.();
   }, []);
 
-  const control = useMemo(() => ({ openSettings, closeSettings }), [openSettings, closeSettings]);
+  const editingTopBar = open && tab === 'topbar';
+  const control = useMemo(() => ({ openSettings, closeSettings, editingTopBar }), [openSettings, closeSettings, editingTopBar]);
 
   return (
     <SettingsControlContext.Provider value={control}>
@@ -92,13 +92,20 @@ function SettingsModal({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  return createPortal(
-    // z-[9995]: above the page, below the top bar (z-[9999]) and the modals
-    // that pages like Users open from inside it (z-[10000]).
-    // Same backdrop classes as every other modal in the app, so each theme's
-    // own modal-backdrop styling (e.g. Unicorn's soft blur) applies here too.
+  const editingBar = active.id === 'topbar';
+
+  // Rendered inside the dashboard (not portaled to <body>), so it shares a
+  // stacking order with the top bar: the page wrapper traps the bar at
+  // z-index 1, which put a body-level modal above it no matter what.
+  //   - Most tabs: z-[9999], the bar's level, later in the DOM → covers it
+  //     like any modal (nested modals from pages sit at z-[10000], above).
+  //   - Top bar tab: z-[9990], below the bar → the real bar stays visible
+  //     and undimmed above the backdrop so it can be edited in place.
+  return (
     <div
-      className="fixed inset-0 z-[9995] bg-black/80 backdrop-blur-lg flex items-center justify-center p-3 sm:p-6"
+      className={`fixed inset-0 ${editingBar ? 'z-[9990]' : 'z-[9999]'} bg-black/80 backdrop-blur-lg flex justify-center p-3 sm:p-6 ${
+        editingBar ? 'items-start pt-28' : 'items-center'
+      }`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -112,7 +119,9 @@ function SettingsModal({
         // Panel styled like the other modals (card-vapor neon-border + the same
         // inline gradient) so themes that restyle card-vapor, like Unicorn,
         // keep their readable colors instead of getting dark text on dark.
-        className="card-vapor neon-border w-full max-w-6xl h-[min(92vh,860px)] mt-16 flex flex-col rounded-2xl outline-none overflow-hidden"
+        className={`card-vapor neon-border w-full max-w-6xl flex flex-col rounded-2xl outline-none overflow-hidden ${
+          editingBar ? 'h-[calc(100vh-8rem)] max-h-[820px]' : 'h-[min(92vh,860px)] mt-16'
+        }`}
         style={{
           background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)',
           border: '2px solid rgba(var(--neon-cyan-rgb), 0.5)',
@@ -158,7 +167,6 @@ function SettingsModal({
           </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }

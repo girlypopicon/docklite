@@ -1,7 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Palette, TextT, Sparkle, Eye, Package } from '@phosphor-icons/react';
+import { Palette, TextT, Sparkle, Eye } from '@phosphor-icons/react';
+import ContainerCard from '../../components/ContainerCard';
+import { useToast } from '@/lib/hooks/useToast';
+import type { ContainerInfo } from '@/types';
 import {
   DEFAULT_APPEARANCE,
   FONT_SCALES,
@@ -11,7 +14,35 @@ import {
   type Appearance,
 } from '@/lib/appearance';
 
+// Made-up containers for the preview: one running website, one stopped
+// database, so both status colors and both card styles are visible.
+const SAMPLE_CONTAINERS: ContainerInfo[] = [
+  {
+    id: 'preview-site',
+    name: 'docklite-site-example-com',
+    status: 'Up 3 days',
+    state: 'running',
+    uptime: '3d 4h',
+    image: 'nginx:alpine',
+    ports: '0.0.0.0:32768->80/tcp',
+    labels: { 'docklite.type': 'static', 'docklite.domain': 'example.com' },
+    owner_username: 'you',
+  },
+  {
+    id: 'preview-db',
+    name: 'docklite-db-example',
+    status: 'Exited (0) 2 hours ago',
+    state: 'exited',
+    uptime: '',
+    image: 'postgres:16-alpine',
+    ports: '127.0.0.1:5433->5432/tcp',
+    labels: { 'docklite.type': 'postgres' },
+    owner_username: 'you',
+  },
+];
+
 export default function AppearanceSettingsPage() {
+  const toast = useToast();
   const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
   const { theme, fontSize, animations, glow: neonIntensity } = appearance;
 
@@ -183,37 +214,26 @@ export default function AppearanceSettingsPage() {
         </div>
       </div>
 
-      {/* Preview */}
+      {/* Preview: the real container card with made-up data */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
           <Eye size={20} weight="duotone" />
           Preview
         </h2>
-        <div className="p-6 rounded-lg border-2" style={{
-          borderColor: 'rgba(var(--neon-purple-rgb), 0.3)',
-        }}>
-          <div className="text-center mb-4">
-            <div className="flex justify-center mb-2 animate-float">
-              <Package size={32} weight="duotone" color="var(--neon-cyan)" />
-            </div>
-            <h3 className="text-xl font-bold neon-text mb-2" style={{ color: 'var(--neon-cyan)' }}>
-              Sample Container
-            </h3>
-            <div className="text-sm opacity-70" style={{ color: 'var(--text-secondary)' }}>
-              Updates live as you change the settings above
-            </div>
-          </div>
-          <div className="flex gap-2 justify-center">
-            <button className="px-3 py-1 rounded text-sm font-bold" style={{ background: 'var(--neon-green)', color: 'var(--button-text)' }}>
-              START
-            </button>
-            <button className="px-3 py-1 rounded text-sm font-bold" style={{ background: 'var(--neon-purple)', color: 'var(--button-text)' }}>
-              VIEW
-            </button>
-            <button className="px-3 py-1 rounded text-sm font-bold" style={{ background: 'var(--status-error)', color: 'var(--button-text)' }}>
-              STOP
-            </button>
-          </div>
+        <p className="text-sm opacity-70 mb-6" style={{ color: 'var(--text-secondary)' }}>
+          These are the same cards you see on the Containers page, filled with made-up data. They update live as you
+          change the settings above, and their buttons don’t do anything.
+        </p>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {SAMPLE_CONTAINERS.map((container) => (
+            <ContainerCard
+              key={container.id}
+              container={container}
+              onAction={() => toast.info('Preview only — this container isn’t real')}
+              onViewDetails={() => toast.info('Preview only — this container isn’t real')}
+              isTracked
+            />
+          ))}
         </div>
       </div>
 

@@ -5,9 +5,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { UserSession } from '@/types';
-import { Sparkle, TerminalWindow, UserCircle, CrownSimple, SignOut, UsersThree, Gear } from '@phosphor-icons/react';
+import { Sparkle, TerminalWindow, UserCircle, CrownSimple, SignOut, UsersThree, Gear, ArrowsHorizontal, X } from '@phosphor-icons/react';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
-import { useLayoutPrefs, TOP_BAR_ITEMS } from '@/lib/layout-prefs';
+import { useLayoutPrefs, withKeys, TOP_BAR_ITEMS } from '@/lib/layout-prefs';
 import { useSettingsModal } from '@/lib/settings-modal';
 import { TOP_BAR_ICONS, TOP_BAR_LINKS } from './components/topBarItems';
 
@@ -18,11 +29,72 @@ type DashboardNavProps = {
 };
 
 const LABELS = Object.fromEntries(TOP_BAR_ITEMS.map((item) => [item.id, item.label]));
+const REQUIRED = new Set(TOP_BAR_ITEMS.filter((item) => item.required).map((item) => item.id));
+
+/** One draggable item while the top bar is being edited (Settings → Top bar). */
+function EditableBarItem({
+  sortKey,
+  id,
+  onRemove,
+  children,
+}: {
+  sortKey: string;
+  id: string;
+  onRemove: () => void;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortKey });
+  const isSpacer = id === 'spacer';
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.7 : 1,
+        zIndex: isDragging ? 5 : undefined,
+        touchAction: 'none',
+        outline: '1px dashed rgba(var(--neon-cyan-rgb), 0.55)',
+        outlineOffset: '3px',
+      }}
+      className={`relative rounded-xl cursor-grab active:cursor-grabbing ${isSpacer ? 'flex-1 min-w-16' : 'flex-shrink-0'}`}
+      title={`Drag ${LABELS[id]} to move it`}
+      {...attributes}
+      {...listeners}
+    >
+      {/* The real item underneath is shown but inert, so dragging never clicks it. */}
+      <div className="pointer-events-none">{children}</div>
+      {!REQUIRED.has(id) && (
+        <button
+          type="button"
+          aria-label={`Remove ${LABELS[id]} from the top bar`}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={onRemove}
+          className="absolute -top-3 -right-3 z-10 w-5 h-5 rounded-full flex items-center justify-center"
+          style={{ background: 'var(--status-error)', color: 'var(--button-text)' }}
+        >
+          <X size={11} weight="bold" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: DashboardNavProps) {
   const pathname = usePathname();
-  const { prefs } = useLayoutPrefs();
-  const { openSettings } = useSettingsModal();
+  const { prefs, update } = useLayoutPrefs();
+  const { openSettings, editingTopBar } = useSettingsModal();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const keyedItems = withKeys(prefs.topBar);
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = keyedItems.findIndex((item) => item.key === active.id);
+    const to = keyedItems.findIndex((item) => item.key === over.id);
+    if (from >= 0 && to >= 0) update({ topBar: arrayMove(prefs.topBar, from, to) });
+  };
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -243,7 +315,13 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
   };
 
   return (
-    <nav className="card-vapor border-b-2 relative overflow-visible z-[9999]" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.3)' }}>
+    <nav
+      className="card-vapor border-b-2 relative overflow-visible z-[9999]"
+      style={{
+        borderColor: editingTopBar ? 'rgba(var(--neon-cyan-rgb), 0.8)' : 'rgba(var(--neon-purple-rgb), 0.3)',
+        boxShadow: editingTopBar ? '0 0 calc(24px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.45)' : undefined,
+      }}
+    >
       {/* Animated background effect */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-pink-500/10 animate-pulse"></div>
@@ -273,9 +351,49 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
             />
           </div>
 
-          <div className="flex-1 min-w-0 flex items-center gap-2 sm:gap-1">{prefs.topBar.map(renderItem)}</div>
+          {editingTopBar ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={keyedItems.map((item) => item.key)} strategy={horizontalListSortingStrategy}>
+                <div className="flex-1 min-w-0 flex items-center gap-4 px-2">
+                  {keyedItems.map((item, index) => (
+                    <EditableBarItem
+                      key={item.key}
+                      sortKey={item.key}
+                      id={item.id}
+                      onRemove={() => update({ topBar: prefs.topBar.filter((_, i) => i !== index) })}
+                    >
+                      {item.id === 'spacer' ? (
+                        <div
+                          className="h-10 rounded-xl flex items-center justify-center gap-1 text-xs font-bold"
+                          style={{ color: 'var(--neon-cyan)', background: 'rgba(var(--neon-cyan-rgb), 0.08)' }}
+                        >
+                          <ArrowsHorizontal size={16} weight="bold" /> space
+                        </div>
+                      ) : (
+                        renderItem(item.id, index)
+                      )}
+                    </EditableBarItem>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <div className="flex-1 min-w-0 flex items-center gap-2 sm:gap-1">{prefs.topBar.map(renderItem)}</div>
+          )}
         </div>
       </div>
+      {editingTopBar && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 -bottom-4 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+          style={{
+            background: 'var(--neon-cyan)',
+            color: 'var(--button-text)',
+            boxShadow: '0 0 calc(12px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.6)',
+          }}
+        >
+          Editing the top bar — drag items to rearrange, ✕ to remove
+        </div>
+      )}
     </nav>
   );
 }

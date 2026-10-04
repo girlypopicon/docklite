@@ -12,19 +12,10 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowDown, ArrowUp, DotsSixVertical, Plus, X } from '@phosphor-icons/react';
-import { DEFAULT_LAYOUT, TOP_BAR_ITEMS, useLayoutPrefs } from '@/lib/layout-prefs';
+import { DEFAULT_LAYOUT, TOP_BAR_ITEMS, useLayoutPrefs, withKeys } from '@/lib/layout-prefs';
 import { TOP_BAR_ICONS } from './topBarItems';
 
 const DEFS = Object.fromEntries(TOP_BAR_ITEMS.map((item) => [item.id, item]));
-
-/** Stable unique keys for the sortable list: spacers repeat, so number them. */
-function withKeys(ids: string[]) {
-  const seen: Record<string, number> = {};
-  return ids.map((id) => {
-    seen[id] = (seen[id] || 0) + 1;
-    return { id, key: seen[id] === 1 ? id : `${id}#${seen[id]}` };
-  });
-}
 
 function Row({
   entry,
@@ -139,9 +130,9 @@ export default function TopBarSettings() {
           Top bar
         </h2>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Build your own bar. Drag items (or use the arrows) to reorder them, remove what you don’t use, and add things
-          back from the shelf below. A <b>flexible space</b> pushes everything after it to the right. Watch the real bar
-          at the top of the page change as you go.
+          Build your own bar. <b>Drag items right on the bar above</b> (✕ removes one), or use the list below with its
+          arrow buttons. Add things back from the shelf. A <b>flexible space</b> pushes everything after it to the right.
+          Changes apply instantly.
         </p>
       </div>
 

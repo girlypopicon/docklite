@@ -11,6 +11,7 @@ import SkeletonLoader from './components/SkeletonLoader';
 import { useToast } from '@/lib/hooks/useToast';
 import { Database, Lightning, Package, ArrowsClockwise, FolderPlus, PlusCircle, WarningCircle, SpinnerGap } from '@phosphor-icons/react';
 import AddContainerModal from './components/AddContainerModal';
+import ContainerFilterTabs, { type StatusFilter } from './components/ContainerFilterTabs';
 import {
   DndContext,
   closestCenter,
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   const [subfolderParent, setSubfolderParent] = useState<{ id: number; name: string } | null>(null);
   const [showAddContainerModal, setShowAddContainerModal] = useState(false);
   const [filterType, setFilterType] = useState<ContainerType>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('any');
   const [assignTarget, setAssignTarget] = useState<{ id: string; name: string } | null>(null);
   const [assignUsers, setAssignUsers] = useState<Array<{ id: number; username: string }>>([]);
   const [assignUserId, setAssignUserId] = useState<string>('');
@@ -205,10 +207,12 @@ export default function DashboardPage() {
   };
 
 
-  const filterContainers = (containers: ContainerInfo[]): ContainerInfo[] => {
-    if (filterType === 'all') return containers;
+  const matchesStatus = (container: ContainerInfo) =>
+    statusFilter === 'any' || (statusFilter === 'running' ? container.state === 'running' : container.state !== 'running');
 
-    return containers.filter(container => {
+  const filterContainers = (containers: ContainerInfo[]): ContainerInfo[] => {
+    return containers.filter((container) => {
+      if (!matchesStatus(container)) return false;
       const type = getContainerType(container);
       if (filterType === 'sites') return type === 'site';
       if (filterType === 'databases') return type === 'database';
@@ -232,7 +236,7 @@ export default function DashboardPage() {
       children: filterFolderTree(node.children)
     })).filter(node => {
       // Only hide folders if we're actively filtering AND they have no matches
-      if (filterType === 'all') {
+      if (filterType === 'all' && statusFilter === 'any') {
         return true; // Show all folders when not filtering
       }
       return node.containers.length > 0 || node.children.length > 0;
@@ -240,6 +244,27 @@ export default function DashboardPage() {
   };
 
   const totalContainers = countContainers(foldersData);
+
+  // Tab counts follow the state switch, so each number matches what that tab will show.
+  const typeCounts = useMemo(() => {
+    const counts = { all: 0, sites: 0, databases: 0, other: 0 };
+    const walk = (nodes: FolderNode[]) => {
+      for (const node of nodes) {
+        for (const container of node.containers) {
+          if (!matchesStatus(container)) continue;
+          counts.all += 1;
+          const type = getContainerType(container);
+          if (type === 'site') counts.sites += 1;
+          else if (type === 'database') counts.databases += 1;
+          else counts.other += 1;
+        }
+        walk(node.children);
+      }
+    };
+    walk(foldersData);
+    return counts;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [foldersData, statusFilter]);
   const filteredFolders = filterFolderTree(foldersData);
 
   const flattenedFolders = useMemo(() => {
@@ -545,23 +570,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Filter Dropdown */}
-      <div className="mb-6">
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value as ContainerType)}
-          className="input-vapor px-4 py-2 text-sm font-bold"
-          style={{
-            minWidth: '200px',
-            background: 'var(--surface-muted)',
-            border: '2px solid var(--neon-cyan)',
-          }}
-        >
-          <option value="all">All Containers</option>
-          <option value="databases">Databases Only</option>
-          <option value="other">Other Containers</option>
-        </select>
-      </div>
+      {/* Filter: type tabs with counts, and a Running/Stopped switch */}
+      <ContainerFilterTabs
+        type={filterType}
+        onType={setFilterType}
+        status={statusFilter}
+        onStatus={setStatusFilter}
+        counts={typeCounts}
+      />
 
       {totalContainers === 0 ? (
         <div className="mt-12 text-center py-20 card-vapor max-w-3xl mx-auto animate-fade-in">
@@ -611,7 +627,10 @@ export default function DashboardPage() {
             Try selecting a different filter to see your containers
           </p>
           <button
-            onClick={() => setFilterType('all')}
+            onClick={() => {
+              setFilterType('all');
+              setStatusFilter('any');
+            }}
             className="btn-neon inline-flex items-center gap-2"
           >
             <ArrowsClockwise size={20} weight="duotone" />
