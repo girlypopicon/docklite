@@ -1103,6 +1103,36 @@
       0 0 calc(26px * var(--glow)) rgba(var(--neon-pink-rgb), 0.35);
   }
 
+  /* Slim, rounded scrollbars in the theme's colors (sidebars, schema browser). */
+  .docklite-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--neon-pink-rgb), 0.7) transparent;
+  }
+  .docklite-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .docklite-scroll::-webkit-scrollbar-track {
+    margin: 6px 0;
+    border-radius: 999px;
+    background: rgba(var(--neon-purple-rgb), 0.1);
+  }
+  .docklite-scroll::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--neon-pink), var(--neon-purple) 55%, var(--neon-cyan)) padding-box;
+  }
+  .docklite-scroll::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple) 55%, var(--neon-pink)) padding-box;
+  }
+  [data-theme='unicorn'] .docklite-scroll::-webkit-scrollbar-thumb {
+    background: var(--spectrum-gradient) padding-box;
+  }
+  [data-theme='corpo'] .docklite-scroll,
+  [data-theme='corpo-blue'] .docklite-scroll {
+    scrollbar-color: rgba(var(--neon-pink-rgb), 0.55) transparent;
+  }
+
   @keyframes docklite-tab-pulse {
     0%,
     100% {
@@ -1776,10 +1806,11 @@
     transform-origin: center;
   }
 
-  /* Ensure main content is below nav */
+  /* Page content sits below the nav. No z-index here on purpose: a z-index on
+     <main> makes it a stacking context, which traps every modal rendered inside
+     a page beneath the top bar no matter how high its own z-index is. */
   main {
     position: relative;
-    z-index: 10 !important;
   }
 
   /* High DPI display enhancements */

@@ -167,6 +167,9 @@ export default function DatabaseEditPage() {
         }
         const data = await res.json();
         setTableData(data);
+        window.dispatchEvent(
+          new CustomEvent('docklite-db-table-loaded', { detail: { table: tableName, rows: (data.rows || []).length } })
+        );
         setIsEditMode(false);
         setEditedRows([]);
       } catch (err: any) {

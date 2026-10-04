@@ -475,7 +475,7 @@ export default function FileManager({ userSession, embedded = false }: FileManag
         document.body
       )}
       {transferMode && transferFile && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0, 0, 0, 0.8)' }}>
+        <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4" style={{ background: 'rgba(0, 0, 0, 0.8)' }}>
           <div className="cyber-card max-w-xl w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold neon-text-pink">
@@ -587,7 +587,7 @@ export default function FileManager({ userSession, embedded = false }: FileManag
         </div>
       )}
       {deleteTarget && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0, 0, 0, 0.8)' }}>
+        <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4" style={{ background: 'rgba(0, 0, 0, 0.8)' }}>
           <div className="cyber-card max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold neon-text-pink">Delete item</h2>

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import DashboardNav from '../nav';
 import SidebarPanel from './SidebarPanel';
 import { SettingsModalProvider } from './SettingsModal';
+import { useNavOffset } from '@/lib/hooks/useNavOffset';
 import { UserSession } from '@/types';
 
 const XtermDrawer = dynamic(() => import('./XtermDrawer'), { ssr: false });
@@ -15,6 +16,7 @@ type DashboardShellProps = {
 };
 
 export default function DashboardShell({ user, children }: DashboardShellProps) {
+  useNavOffset();
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [terminalTarget, setTerminalTarget] = useState<{ id: string; name: string } | null>(null);
 
@@ -47,7 +49,15 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
       <SidebarPanel side="right" mode="modular" defaultOpen={false} />
 
       {/* Main content area - keeps existing width */}
-      <main className="p-8 relative z-10">
+      {/* The edit-database page pushes content aside via --sidebar-push-* so sidebars never cover its data. */}
+      <main
+        className="p-8 relative z-10"
+        style={{
+          paddingLeft: 'calc(2rem + var(--sidebar-push-left, 0px))',
+          paddingRight: 'calc(2rem + var(--sidebar-push-right, 0px))',
+          transition: 'padding 0.2s ease',
+        }}
+      >
         {children}
       </main>
 
