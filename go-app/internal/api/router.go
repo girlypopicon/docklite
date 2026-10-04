@@ -59,6 +59,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/backups/local/download", handlers.Auth(handlers.LocalBackupDownload))
 	mux.HandleFunc("/api/backups/trigger", handlers.Auth(hnd.CSRFMiddleware(handlers.BackupTrigger)))
 	mux.HandleFunc("/api/backups/export", handlers.Auth(hnd.CSRFMiddleware(handlers.BackupExport)))
+	mux.HandleFunc("/api/backups/progress", handlers.Auth(handlers.BackupProgress))
 	mux.HandleFunc("/api/dns/config", handlers.Auth(hnd.CSRFMiddleware(handlers.DNSConfig)))
 	mux.HandleFunc("/api/dns/zones", handlers.Auth(handlers.DNSZones))
 	mux.HandleFunc("/api/dns/records", handlers.Auth(hnd.CSRFMiddleware(handlers.DNSRecords)))

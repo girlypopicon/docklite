@@ -376,3 +376,14 @@ func (s *SQLiteStore) getBackupsByQuery(query string, args ...any) ([]BackupReco
 	}
 	return results, rows.Err()
 }
+
+// FailStaleBackups marks every backup still "in_progress" as failed. Progress
+// is held in memory, so at agent start nothing can genuinely be running: any
+// such row belongs to a backup the previous process never finished.
+func (s *SQLiteStore) FailStaleBackups(message string) (int64, error) {
+	result, err := s.DB.Exec(`UPDATE backups SET status = 'failed', error_message = ? WHERE status = 'in_progress'`, message)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}

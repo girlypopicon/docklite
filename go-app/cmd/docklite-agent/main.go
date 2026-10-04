@@ -41,6 +41,12 @@ func main() {
 		log.Fatalf("failed to ensure bootstrap token: %v", err)
 	}
 
+	if n, err := sqliteStore.FailStaleBackups("DockLite was restarted while this backup was running, so it did not finish. Run it again."); err != nil {
+		log.Printf("could not clean up interrupted backups: %v", err)
+	} else if n > 0 {
+		log.Printf("marked %d interrupted backup(s) as failed", n)
+	}
+
 	handlers := handlers.New(dockerClient, sqliteStore, cfg.Token, cfg.BackupBaseDir, cfg.ListenAddr, cfg.NextjsURL)
 	router := api.NewRouter(handlers, cfg.NextjsURL)
 

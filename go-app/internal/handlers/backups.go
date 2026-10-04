@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -97,6 +98,16 @@ func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// One backup of the same thing at a time: a second click (or a second
+	// person) gets pointed at the one already running instead of racing it.
+	if runningID, running := backup.DefaultTracker.RunningFor(body.TargetType, body.TargetID); running {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"error":     "A backup of this is already running.",
+			"backup_id": runningID,
+		})
+		return
+	}
+
 	record := store.BackupRecord{
 		JobID:       nil,
 		Destination: dest.ID,
@@ -111,10 +122,38 @@ func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	reporter := backup.DefaultTracker.Start(backupID, body.TargetType, body.TargetID)
+	if reporter == nil {
+		// Lost a race with another request between the check and the start.
+		message := "A backup of this is already running."
+		_ = h.store.UpdateBackupStatus(backupID, "failed", &message, nil, nil)
+		writeError(w, http.StatusConflict, message)
+		return
+	}
+
+	go h.runExport(reporter, backupID, dest, body.TargetType, body.TargetID, delivery, body.RetentionDays, body.Notes)
+
+	// 202: accepted, still working. The page polls /api/backups/progress.
+	writeJSON(w, http.StatusAccepted, map[string]any{"backup_id": backupID, "delivery": delivery})
+}
+
+// runExport does the backup in the background and reports into the tracker;
+// whatever happens, the backup record and the tracker end up agreeing.
+func (h *Handlers) runExport(rep *backup.Reporter, backupID int64, dest *store.BackupDestination, targetType string, targetID int64, delivery string, retentionDays *int, notes string) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			message := fmt.Sprintf("The backup stopped unexpectedly: %v", recovered)
+			_ = h.store.UpdateBackupStatus(backupID, "failed", &message, nil, nil)
+			rep.Fail(message)
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(backup.WithReporter(context.Background(), rep), 6*time.Hour)
+	defer cancel()
 
 	subDir := "downloads"
 	if delivery == "local" {
-		if body.TargetType == "site" {
+		if targetType == "site" {
 			subDir = "sites"
 		} else {
 			subDir = "databases"
@@ -122,49 +161,120 @@ func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var artifact *backup.ArtifactResult
-	switch body.TargetType {
+	var err error
+	switch targetType {
 	case "site":
-		artifact, err = backup.CreateSiteBackup(r.Context(), h.store, h.backupBaseDir, subDir, body.TargetID, body.Notes)
+		artifact, err = backup.CreateSiteBackup(ctx, h.store, h.backupBaseDir, subDir, targetID, notes)
 	case "database":
-		artifact, err = backup.CreateDatabaseBackup(r.Context(), h.store, h.docker, h.backupBaseDir, subDir, body.TargetID, body.Notes)
+		artifact, err = backup.CreateDatabaseBackup(ctx, h.store, h.docker, h.backupBaseDir, subDir, targetID, notes)
 	}
-
 	if err != nil {
-		message := err.Error()
+		message := backup.FriendlyError(err)
 		_ = h.store.UpdateBackupStatus(backupID, "failed", &message, nil, nil)
-		writeError(w, http.StatusInternalServerError, err.Error())
+		rep.Fail(message)
 		return
 	}
 
-	if artifact != nil {
-		_ = h.store.UpdateBackupStatus(backupID, "success", nil, &artifact.Size, &artifact.Path)
-	}
+	_ = h.store.UpdateBackupStatus(backupID, "success", nil, &artifact.Size, &artifact.Path)
 
-	if delivery == "download" && artifact != nil {
-		downloadURL := "/api/backups/local/download?file=" + url.QueryEscape(artifact.RelativePath)
+	if delivery == "download" {
+		rep.SetDownloadURL("/api/backups/local/download?file=" + url.QueryEscape(artifact.RelativePath))
+		// A download copy is temporary: it and its record go after an hour.
 		time.AfterFunc(time.Hour, func() {
 			_ = backup.RemoveBackupArtifacts(artifact.Path)
 			_ = h.store.DeleteBackup(backupID)
 		})
-		writeJSON(w, http.StatusOK, map[string]any{
-			"backup_id":    backupID,
-			"download_url": downloadURL,
-		})
-		return
-	}
-
-	if delivery == "local" && body.RetentionDays != nil && *body.RetentionDays > 0 {
-		cutoff := time.Now().UTC().AddDate(0, 0, -*body.RetentionDays).Format("2006-01-02 15:04:05")
-		records, err := h.store.ListOldBackups(dest.ID, cutoff)
-		if err == nil {
+	} else if retentionDays != nil && *retentionDays > 0 {
+		cutoff := time.Now().UTC().AddDate(0, 0, -*retentionDays).Format("2006-01-02 15:04:05")
+		if records, err := h.store.ListOldBackups(dest.ID, cutoff); err == nil {
 			for _, record := range records {
+				if record.ID == backupID {
+					continue
+				}
 				_ = backup.RemoveBackupArtifacts(record.BackupPath)
 				_ = h.store.DeleteBackup(record.ID)
 			}
 		}
 	}
+	rep.Succeed(artifact, artifact.Verified)
+}
 
-	writeJSON(w, http.StatusOK, map[string]any{"backup_id": backupID})
+// BackupProgress reports how a backup is going. While it runs, the live
+// numbers come from the tracker; afterwards (or after a restart) from the
+// saved record.
+//
+//	GET /api/backups/progress?id=<backup id>
+func (h *Handlers) BackupProgress(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	id, err := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, "missing required parameter: id")
+		return
+	}
+	record, err := h.store.GetBackupByID(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if record == nil {
+		writeError(w, http.StatusNotFound, "backup not found")
+		return
+	}
+	if !h.canAccessBackupRecord(r, record) {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	if snapshot, ok := backup.DefaultTracker.Snapshot(id); ok {
+		writeJSON(w, http.StatusOK, snapshot)
+		return
+	}
+
+	// Not tracked (finished long ago, or the agent restarted): describe the record.
+	status := backup.StatusSuccess
+	phase := "Done"
+	percent := float64(100)
+	errorMessage := ""
+	switch record.Status {
+	case "failed":
+		status, phase, percent = backup.StatusFailed, "Failed", 0
+	case "in_progress":
+		status, phase, percent = backup.StatusFailed, "Interrupted", 0
+		errorMessage = "This backup didn't finish."
+	}
+	if record.ErrorMessage != nil {
+		errorMessage = *record.ErrorMessage
+	}
+	writeJSON(w, http.StatusOK, backup.Progress{
+		BackupID:   record.ID,
+		TargetType: record.TargetType,
+		TargetID:   record.TargetID,
+		Status:     status,
+		Phase:      phase,
+		Percent:    percent,
+		Size:       record.SizeBytes,
+		Error:      errorMessage,
+		Warnings:   []string{},
+		FileName:   filepath.Base(record.BackupPath),
+		StartedAt:  record.CreatedAt,
+	})
+}
+
+// canAccessBackupRecord applies the same rule as exporting: admins can see
+// everything; others only backups of databases they have access to.
+func (h *Handlers) canAccessBackupRecord(r *http.Request, record *store.BackupRecord) bool {
+	if isAdminRole(r) {
+		return true
+	}
+	userID, ok := readUserIDFromContext(r)
+	if !ok || userID <= 0 || record.TargetType != "database" {
+		return false
+	}
+	allowed, err := h.store.HasDatabaseAccess(userID, record.TargetID)
+	return err == nil && allowed
 }
 
 func (h *Handlers) BackupDestinations(w http.ResponseWriter, r *http.Request) {

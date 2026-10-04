@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 )
@@ -244,4 +245,31 @@ func baseName(path string) string {
 		}
 	}
 	return path
+}
+
+// FriendlyError turns a low-level failure into a sentence that says what
+// happened and what to do about it. Unknown errors pass through unchanged.
+func FriendlyError(err error) string {
+	if err == nil {
+		return ""
+	}
+	message := err.Error()
+	lower := strings.ToLower(message)
+	switch {
+	case strings.Contains(lower, "no space left"):
+		return "The server's disk is full, so the backup couldn't be saved. Free up space (Server → Storage) and try again."
+	case strings.Contains(lower, "permission denied"):
+		return "DockLite isn't allowed to write to its backup folder. Re-running the installer fixes the folder's permissions. (" + message + ")"
+	case strings.Contains(lower, "site folder not found"), strings.Contains(lower, "site path not set"):
+		return "This site's files weren't found on the server, so there is nothing to back up. " + message
+	case strings.Contains(lower, "is not running"), strings.Contains(lower, "no such container"):
+		return "The database's container isn't running. Start it from the Containers page, then try again."
+	case strings.Contains(lower, "password authentication failed"):
+		return "DockLite couldn't log in to the database with the password it has on record. The database's password may have been changed outside DockLite."
+	case strings.Contains(lower, "context deadline exceeded"), strings.Contains(lower, "context canceled"):
+		return "The backup took too long and was stopped. Try again, or back up a smaller site first."
+	case strings.Contains(lower, "the dump is empty"):
+		return "The database exported nothing, so DockLite discarded the result instead of keeping a backup that wouldn't work. " + message
+	}
+	return message
 }
