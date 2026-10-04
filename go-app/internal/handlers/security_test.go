@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -165,4 +166,27 @@ func TestDNSConfigSaveKeepsTokenAndAcceptsNumericEnabled(t *testing.T) {
 	config, _ = s.GetCloudflareConfig()
 	testhelpers.AssertEqual(t, "existing-token", config.APIToken.String)
 	testhelpers.AssertEqual(t, 0, config.Enabled)
+}
+
+func TestServerServiceActionRejectsBadRequests(t *testing.T) {
+	h := &Handlers{}
+	call := func(role, body string) int {
+		req := httptest.NewRequest(http.MethodPost, "/api/server/services/action", strings.NewReader(body))
+		ctx := context.WithValue(req.Context(), ctxUserIDKey, int64(1))
+		ctx = context.WithValue(ctx, ctxUserRoleKey, role)
+		rec := httptest.NewRecorder()
+		h.ServerServiceAction(rec, req.WithContext(ctx))
+		return rec.Code
+	}
+
+	testhelpers.AssertEqual(t, http.StatusForbidden, call("user", `{"service":"traefik","action":"stop"}`))
+	testhelpers.AssertEqual(t, http.StatusBadRequest, call("admin", `{"service":"traefik","action":"explode"}`))
+	testhelpers.AssertEqual(t, http.StatusBadRequest, call("admin", `{"service":"","action":"stop"}`))
+	testhelpers.AssertEqual(t, http.StatusBadRequest, call("admin", `{"service":"mysql","action":"stop"}`))
+}
+
+func TestActionNotAllowedIsDistinguishable(t *testing.T) {
+	err := notAllowed("nope")
+	testhelpers.AssertTrue(t, errors.Is(err, errActionNotAllowed), "refusals wrap errActionNotAllowed")
+	testhelpers.AssertFalse(t, errors.Is(errors.New("docker exploded"), errActionNotAllowed), "real failures don't")
 }
