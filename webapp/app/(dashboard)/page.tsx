@@ -7,10 +7,10 @@ import ContainerDetailsModal from './components/ContainerDetailsModal';
 import AllContainersModal from './components/AllContainersModal';
 import AddFolderModal from './components/AddFolderModal';
 import FolderSection from './components/FolderSection';
-import SkeletonLoader from './components/SkeletonLoader';
 import { useToast } from '@/lib/hooks/useToast';
 import { Database, Lightning, Package, ArrowsClockwise, FolderPlus, PlusCircle, WarningCircle, SpinnerGap } from '@phosphor-icons/react';
 import AddContainerModal from './components/AddContainerModal';
+import { ContainersPageSkeleton } from './components/PageSkeletons';
 import ContainerFilterTabs, { type StatusFilter } from './components/ContainerFilterTabs';
 import { containerKind, sortFolderTree } from '@/lib/container-sort';
 import {
@@ -475,21 +475,7 @@ export default function DashboardPage() {
   };
 
   if (loading) {
-    return (
-      <div className="max-w-[1400px] mx-auto">
-        <div className="mb-6">
-          <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
-            <Package size={26} weight="duotone" />
-            Containers
-          </h1>
-          <p className="text-xs font-mono flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-            <SpinnerGap size={14} weight="duotone" className="animate-spin" />
-            Loading...
-          </p>
-        </div>
-        <SkeletonLoader type="card" count={6} />
-      </div>
-    );
+    return <ContainersPageSkeleton />;
   }
 
   if (error) {

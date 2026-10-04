@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Database as DatabaseType } from '@/types';
 import DbViewer from './DbViewer';
-import SkeletonLoader from '../components/SkeletonLoader';
+import { DatabasesPageSkeleton } from '../components/PageSkeletons';
 import {
   Database,
   DotsThree,
@@ -337,21 +337,7 @@ export default function DatabasesPage() {
   };
 
   if (loading) {
-    return (
-      <div className="max-w-[1400px] mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
-            <Database size={24} weight="duotone" />
-            Databases
-          </h1>
-          <p className="text-xs font-mono flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-            <SpinnerGap size={14} weight="duotone" className="animate-spin" />
-            Loading...
-          </p>
-        </div>
-        <SkeletonLoader type="database" count={4} />
-      </div>
-    );
+    return <DatabasesPageSkeleton />;
   }
 
   return (

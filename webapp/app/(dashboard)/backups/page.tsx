@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   HardDrives,
   ClockCounterClockwise,
@@ -85,12 +85,26 @@ export default function BackupsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const toast = useToast();
 
+  // The loaders below must not depend on state they themselves change (the
+  // admin flag, the auto-selected target): that made them a new function every
+  // time, which re-ran the load effect and re-showed the loading screen two or
+  // three times on first visit. They read the current values from refs instead.
+  const exportTypeRef = useRef(exportTargetType);
+  exportTypeRef.current = exportTargetType;
+  const exportIdRef = useRef(exportTargetId);
+  exportIdRef.current = exportTargetId;
+  // Tabs whose data has been shown once. Only the first load shows the
+  // loading screen; later refreshes update in place.
+  const loadedTabs = useRef<Record<string, boolean>>({});
+
   const loadExportData = useCallback(async () => {
     try {
+      let admin = false;
       const authRes = await fetch('/api/auth/me');
       if (authRes.ok) {
         const authData = await authRes.json();
-        setIsAdmin(Boolean(authData?.user?.isAdmin));
+        admin = Boolean(authData?.user?.isAdmin);
+        setIsAdmin(admin);
       }
       const [containersRes, databasesRes] = await Promise.all([
         fetch('/api/containers/all'),
@@ -116,25 +130,23 @@ export default function BackupsPage() {
       setExportSites(sites);
       setExportDatabases(databases);
 
-      if (!isAdmin && exportTargetType === 'site') {
+      if (!admin && exportTypeRef.current === 'site') {
         setExportTargetType('database');
         setExportTargetId(databases.length > 0 ? databases[0].id : null);
         return;
       }
 
-      if (exportTargetType === 'site' && sites.length > 0 && !exportTargetId) {
-        setExportTargetId(sites[0].id);
-      }
-      if (exportTargetType === 'database' && databases.length > 0 && !exportTargetId) {
-        setExportTargetId(databases[0].id);
+      if (!exportIdRef.current) {
+        const first = (exportTypeRef.current === 'site' ? sites : databases)[0];
+        if (first) setExportTargetId(first.id);
       }
     } catch (error) {
       console.error('Error loading export options:', error);
     }
-  }, [exportTargetId, exportTargetType, isAdmin]);
+  }, []);
 
   const loadBackups = useCallback(async () => {
-    setLoading(true);
+    if (!loadedTabs.current.backups) setLoading(true);
     try {
       const [backupsRes, localRes] = await Promise.all([
         fetch('/api/backups'),
@@ -156,12 +168,13 @@ export default function BackupsPage() {
     } catch (error) {
       console.error('Error loading backups:', error);
     } finally {
+      loadedTabs.current.backups = true;
       setLoading(false);
     }
   }, [loadExportData]);
 
   const loadSchedules = useCallback(async () => {
-    setLoading(true);
+    if (!loadedTabs.current.schedules) setLoading(true);
     try {
       const [jobsRes, destinationsRes] = await Promise.all([
         fetch('/api/backups/jobs'),
@@ -182,6 +195,7 @@ export default function BackupsPage() {
     } catch (error) {
       console.error('Error loading schedules:', error);
     } finally {
+      loadedTabs.current.schedules = true;
       setLoading(false);
     }
   }, []);
