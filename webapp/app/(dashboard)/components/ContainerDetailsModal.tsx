@@ -16,6 +16,7 @@ import {
   ArrowClockwise,
   Plug,
 } from '@phosphor-icons/react';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 
 interface ContainerStats {
   cpu: number;
@@ -65,6 +66,7 @@ interface Props {
 }
 
 export default function ContainerDetailsModal({ containerId, containerName, onClose }: Props) {
+  useBodyScrollLock();
   const [details, setDetails] = useState<ContainerDetails | null>(null);
   const [stats, setStats] = useState<ContainerStats | null>(null);
   const [logs, setLogs] = useState<string>('');

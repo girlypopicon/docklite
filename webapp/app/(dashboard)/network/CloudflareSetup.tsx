@@ -200,6 +200,11 @@ export default function CloudflareSetup({ config, onSaved }: { config: Cloudflar
             {busy === 'save' ? 'Saving…' : 'Save'}
           </button>
         </div>
+        {!apiToken.trim() && (
+          <p className="text-xs text-gray-500">
+            Paste a token above to enable these buttons — don’t have one yet? Follow steps 1–5.
+          </p>
+        )}
       </form>
 
       {check && (
