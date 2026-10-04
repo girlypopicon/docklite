@@ -54,7 +54,20 @@ export default function XtermDrawer({ open, onClose, containerId, containerName,
     return () => window.clearTimeout(timer);
   }, [open, visible]);
 
+  // Create the terminal once its element exists. The drawer renders nothing
+  // until it is first opened, so this must run when `visible` becomes true; run
+  // only at mount, the element wasn't there yet, no terminal was ever created,
+  // and every connection attempt silently stopped at "Not connected".
   useEffect(() => {
+    if (!visible) {
+      // The drawer's element is gone, so the terminal drawn into it is too:
+      // drop it, or the next open would think one already exists and leave
+      // the new element blank.
+      terminalRef.current?.dispose();
+      terminalRef.current = null;
+      fitAddonRef.current = null;
+      return;
+    }
     if (!containerRef.current || terminalRef.current) return;
 
     const rootStyles = getComputedStyle(document.documentElement);
@@ -83,7 +96,7 @@ export default function XtermDrawer({ open, onClose, containerId, containerName,
     fitAddonRef.current = fitAddon;
 
     return () => {};
-  }, []);
+  }, [visible]);
 
   useEffect(() => {
     if (open && fitAddonRef.current) {
@@ -210,7 +223,7 @@ export default function XtermDrawer({ open, onClose, containerId, containerName,
         inputDisposableRef.current = null;
       }
     };
-  }, [open, containerId, containerName, session]);
+  }, [open, visible, containerId, containerName, session]);
 
   if (!visible) return null;
 
