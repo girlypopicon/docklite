@@ -85,6 +85,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/users", handlers.Auth(hnd.CSRFMiddleware(handlers.Users)))
 	mux.HandleFunc("/api/users/password", handlers.Auth(hnd.CSRFMiddleware(handlers.UserPassword)))
 	mux.HandleFunc("/api/system/check-folders", handlers.Auth(handlers.SystemCheckFolders))
+	mux.HandleFunc("/api/system/shell-access", handlers.Auth(hnd.CSRFMiddleware(handlers.ShellAccess)))
 	mux.HandleFunc("/api/system/update/status", handlers.Auth(handlers.SystemUpdateStatus))
 	mux.HandleFunc("/api/system/update/run", handlers.Auth(hnd.CSRFMiddleware(handlers.SystemUpdateRun)))
 	mux.HandleFunc("/api/db/cleanup", handlers.Auth(hnd.CSRFMiddleware(handlers.DBCleanup)))

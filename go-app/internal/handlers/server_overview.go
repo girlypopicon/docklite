@@ -331,6 +331,7 @@ func (h *Handlers) ServerServiceAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.audit(r, "service."+action, service, nil)
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 

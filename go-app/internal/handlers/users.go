@@ -60,6 +60,7 @@ func (h *Handlers) Users(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		h.audit(r, "user.create", body.Username, map[string]any{"role": role})
 		if err := ensureUserFolder(body.Username); err != nil {
 			// User was created but their directory couldn't be made.
 			// Return a warning alongside the created user rather than failing.
@@ -119,6 +120,7 @@ func (h *Handlers) Users(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		h.audit(r, "user.delete", targetUser.Username, map[string]any{"userId": targetID, "sitesMovedTo": transferTo})
 		writeJSON(w, http.StatusOK, map[string]any{"success": true})
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -162,6 +164,7 @@ func (h *Handlers) UserPassword(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		h.audit(r, "user.password-reset", targetUser.Username, map[string]any{"userId": *body.UserID})
 		writeJSON(w, http.StatusOK, map[string]any{"success": true})
 		return
 	}

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -98,6 +99,7 @@ func (h *Handlers) TokenRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	recordTokenRateAction(rateKey)
+	h.audit(r, "token.revoke", strconv.FormatInt(body.ID, 10), nil)
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
@@ -217,6 +219,7 @@ func (h *Handlers) createToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	recordTokenRateAction(rateKey)
+	h.audit(r, "token.create", created.Name, map[string]any{"tokenId": created.ID})
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"token": map[string]any{
