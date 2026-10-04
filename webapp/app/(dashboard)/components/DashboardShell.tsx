@@ -74,6 +74,7 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
         onClose={() => setTerminalOpen(false)}
         containerId={terminalTarget?.id}
         containerName={terminalTarget?.name}
+        onSelectTarget={(id, name) => setTerminalTarget({ id, name })}
       />
     </SettingsModalProvider>
   );

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Lightning } from '@phosphor-icons/react';
+import { ArrowClockwise, Lightning } from '@phosphor-icons/react';
+import TerminalContainerPicker from './TerminalContainerPicker';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
@@ -11,9 +12,21 @@ type XtermDrawerProps = {
   onClose: () => void;
   containerId?: string;
   containerName?: string;
+  /** Called when a container is chosen from the picker in the drawer's header. */
+  onSelectTarget?: (id: string, name: string) => void;
 };
 
-export default function XtermDrawer({ open, onClose, containerId, containerName }: XtermDrawerProps) {
+type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'closed' | 'error';
+
+const STATUS_LABEL: Record<ConnectionStatus, { text: string; color: string }> = {
+  idle: { text: 'Not connected', color: 'var(--text-secondary)' },
+  connecting: { text: 'Connecting…', color: 'var(--status-warning)' },
+  connected: { text: 'Connected', color: 'var(--neon-green)' },
+  closed: { text: 'Disconnected', color: 'var(--status-error)' },
+  error: { text: 'Connection failed', color: 'var(--status-error)' },
+};
+
+export default function XtermDrawer({ open, onClose, containerId, containerName, onSelectTarget }: XtermDrawerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -21,6 +34,9 @@ export default function XtermDrawer({ open, onClose, containerId, containerName 
   const inputDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const [visible, setVisible] = useState(open);
   const [closing, setClosing] = useState(false);
+  const [status, setStatus] = useState<ConnectionStatus>('idle');
+  // Bumped by Reconnect to run the connection effect again for the same container.
+  const [session, setSession] = useState(0);
 
   useEffect(() => {
     if (open) {
@@ -93,6 +109,7 @@ export default function XtermDrawer({ open, onClose, containerId, containerName 
     }
 
     if (!containerId) {
+      setStatus('idle');
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
@@ -116,6 +133,7 @@ export default function XtermDrawer({ open, onClose, containerId, containerName 
       inputDisposableRef.current = null;
     }
 
+    setStatus('connecting');
     terminalRef.current.reset();
     terminalRef.current.writeln(`Connecting to ${containerName || containerId}...`);
 
@@ -138,7 +156,9 @@ export default function XtermDrawer({ open, onClose, containerId, containerName 
     };
 
     socket.addEventListener('open', () => {
+      setStatus('connected');
       sendResize();
+      terminalRef.current?.focus();
     });
 
     socket.addEventListener('message', (event) => {
@@ -153,15 +173,17 @@ export default function XtermDrawer({ open, onClose, containerId, containerName 
     });
 
     socket.addEventListener('close', () => {
+      setStatus((prev) => (prev === 'error' ? prev : 'closed'));
       if (!terminalRef.current) return;
       terminalRef.current.writeln('');
-      terminalRef.current.writeln('Disconnected.');
+      terminalRef.current.writeln('Disconnected. Use Reconnect, or pick another container.');
     });
 
     socket.addEventListener('error', () => {
+      setStatus('error');
       if (!terminalRef.current) return;
       terminalRef.current.writeln('');
-      terminalRef.current.writeln('Connection error.');
+      terminalRef.current.writeln('Could not open a shell. The container may have stopped, or it has no shell (sh/bash) installed.');
     });
 
     inputDisposableRef.current = terminalRef.current.onData((data) => {
@@ -188,13 +210,13 @@ export default function XtermDrawer({ open, onClose, containerId, containerName 
         inputDisposableRef.current = null;
       }
     };
-  }, [open, containerId, containerName]);
+  }, [open, containerId, containerName, session]);
 
   if (!visible) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-[9998] ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
+      className={`fixed inset-0 z-[10000] ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
     >
       <div
         className={`absolute inset-0 z-0 transition-opacity duration-300 ${
@@ -211,7 +233,7 @@ export default function XtermDrawer({ open, onClose, containerId, containerName 
       >
         <div className="mx-auto max-w-[1200px]">
           <div
-            className="rounded-t-2xl border-2 shadow-2xl overflow-hidden"
+            className="rounded-t-2xl border-2 shadow-2xl"
             style={{
               background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)',
               borderColor: 'rgba(var(--status-success-rgb), 0.4)',
@@ -222,14 +244,34 @@ export default function XtermDrawer({ open, onClose, containerId, containerName 
               className="flex items-center justify-between px-4 py-3 border-b"
               style={{ borderColor: 'rgba(var(--status-success-rgb), 0.2)' }}
             >
-              <div className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
-                <Lightning size={16} weight="duotone" />
-                DockLite Terminal
-                {containerName ? (
-                  <span className="text-xs font-mono opacity-80" style={{ color: 'var(--text-secondary)' }}>
-                    {containerName}
-                  </span>
-                ) : null}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+                  <Lightning size={16} weight="duotone" />
+                  Terminal
+                </div>
+                <TerminalContainerPicker
+                  currentId={containerId}
+                  currentName={containerName}
+                  onSelect={(id, name) => onSelectTarget?.(id, name)}
+                />
+                {containerId && (
+                  <>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: STATUS_LABEL[status].color }}>
+                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: STATUS_LABEL[status].color }} />
+                      {STATUS_LABEL[status].text}
+                    </span>
+                    {(status === 'closed' || status === 'error') && (
+                      <button
+                        type="button"
+                        onClick={() => setSession((n) => n + 1)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg border"
+                        style={{ borderColor: 'rgba(var(--status-success-rgb), 0.5)', color: 'var(--neon-green)' }}
+                      >
+                        <ArrowClockwise size={12} weight="bold" /> Reconnect
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
               <button
                 onClick={onClose}
@@ -250,7 +292,18 @@ export default function XtermDrawer({ open, onClose, containerId, containerName 
                 boxShadow: 'inset 0 -8px 20px rgba(0, 0, 0, 0.45)',
               }}
             >
-              <div ref={containerRef} className="h-full w-full" />
+              <div className="relative h-full w-full">
+                <div ref={containerRef} className="h-full w-full" />
+                {!containerId && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-6" style={{ background: 'rgba(0, 0, 0, 0.55)' }}>
+                    <div className="text-sm font-bold" style={{ color: 'var(--neon-green)' }}>Open a shell inside one of your containers</div>
+                    <p className="text-xs max-w-md opacity-80" style={{ color: 'var(--text-primary)' }}>
+                      You get a real command line inside the container — move around, read files, run commands — as if it were its own Linux machine.
+                    </p>
+                    <TerminalContainerPicker inline onSelect={(id, name) => onSelectTarget?.(id, name)} />
+                  </div>
+                )}
+              </div>
             </div>
             <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, rgba(var(--status-success-rgb), 0.5), rgba(var(--status-info-rgb), 0.5))' }} />
           </div>
