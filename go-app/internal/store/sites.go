@@ -19,7 +19,7 @@ type SiteRecord struct {
 
 func (s *SQLiteStore) GetSiteByID(id int64) (*SiteRecord, error) {
 	row := s.DB.QueryRow(`
-    SELECT id, domain, user_id, container_id, template_type, code_path, status, folder_id, created_at
+    SELECT id, domain, user_id, container_id, template_type, COALESCE(code_path, ""), status, folder_id, created_at
     FROM sites
     WHERE id = ?
   `, id)
@@ -47,7 +47,7 @@ func (s *SQLiteStore) GetSiteByID(id int64) (*SiteRecord, error) {
 
 func (s *SQLiteStore) ListSites() ([]SiteRecord, error) {
 	rows, err := s.DB.Query(`
-    SELECT id, domain, user_id, container_id, template_type, code_path, status, folder_id, created_at
+    SELECT id, domain, user_id, container_id, template_type, COALESCE(code_path, ""), status, folder_id, created_at
     FROM sites
     ORDER BY created_at DESC
   `)
@@ -81,7 +81,7 @@ func (s *SQLiteStore) ListSites() ([]SiteRecord, error) {
 
 func (s *SQLiteStore) GetSiteByDomain(domain string) (*SiteRecord, error) {
 	row := s.DB.QueryRow(`
-    SELECT id, domain, user_id, container_id, template_type, code_path, status, folder_id, created_at
+    SELECT id, domain, user_id, container_id, template_type, COALESCE(code_path, ""), status, folder_id, created_at
     FROM sites
     WHERE domain = ?
   `, domain)
@@ -90,7 +90,7 @@ func (s *SQLiteStore) GetSiteByDomain(domain string) (*SiteRecord, error) {
 
 func (s *SQLiteStore) GetSiteByContainerIDRecord(containerID string) (*SiteRecord, error) {
 	row := s.DB.QueryRow(`
-    SELECT id, domain, user_id, container_id, template_type, code_path, status, folder_id, created_at
+    SELECT id, domain, user_id, container_id, template_type, COALESCE(code_path, ""), status, folder_id, created_at
     FROM sites
     WHERE container_id = ?
   `, containerID)
