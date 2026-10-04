@@ -119,7 +119,7 @@ function SettingsModal({
         // Panel styled like the other modals (card-vapor neon-border + the same
         // inline gradient) so themes that restyle card-vapor, like Unicorn,
         // keep their readable colors instead of getting dark text on dark.
-        className={`card-vapor neon-border w-full max-w-6xl flex flex-col rounded-2xl outline-none overflow-hidden ${
+        className={`card-vapor neon-border docklite-settings-panel w-full max-w-6xl flex flex-col rounded-2xl outline-none overflow-hidden ${
           editingBar ? 'h-[calc(100vh-8rem)] max-h-[820px]' : 'h-[min(92vh,860px)] mt-16'
         }`}
         style={{

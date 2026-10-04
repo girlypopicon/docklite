@@ -1103,6 +1103,27 @@
       0 0 calc(26px * var(--glow)) rgba(var(--neon-pink-rgb), 0.35);
   }
 
+  /* Unicorn's text colors are dark, meant for its cream surfaces, but the
+     Settings panel is a dark surface: inactive tab labels and every page shown
+     inside it came out dark-on-dark and unreadable. Inside the panel only,
+     use light text and translucent-light surfaces. Everything in the panel
+     reads these variables, so one scoped override fixes all of it. */
+  [data-theme='unicorn'] .docklite-settings-panel {
+    background: linear-gradient(135deg, rgba(22, 14, 34, 0.98), rgba(12, 9, 22, 0.98)) !important;
+    --text-primary: #f3ecff;
+    --text-secondary: #cdbfe6;
+    --text-muted: #a99bc4;
+    --text-muted-rgb: 169, 155, 196;
+    --surface-dim: rgba(255, 255, 255, 0.06);
+    --surface-muted: rgba(255, 255, 255, 0.09);
+    --surface-strong: rgba(255, 255, 255, 0.13);
+    --input-bg: rgba(255, 255, 255, 0.09);
+    color: var(--text-primary);
+  }
+  [data-theme='unicorn'] .docklite-settings-panel .card-vapor {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
   /* Slim, rounded scrollbars in the theme's colors (sidebars, schema browser). */
   .docklite-scroll {
     scrollbar-width: thin;
