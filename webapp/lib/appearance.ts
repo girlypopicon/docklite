@@ -55,12 +55,8 @@ export function loadAppearance(): Appearance {
   const glow = Number(read(KEYS.glow));
   const storedAnimations = read(KEYS.animations);
 
-  let animations = DEFAULT_APPEARANCE.animations;
-  if (storedAnimations !== null) {
-    animations = storedAnimations === 'true';
-  } else if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-    animations = false;
-  }
+  // Animations stay on unless they were explicitly turned off in Settings.
+  const animations = storedAnimations === null ? DEFAULT_APPEARANCE.animations : storedAnimations === 'true';
 
   return {
     theme: (THEMES as string[]).includes(theme) ? (theme as ThemeId) : DEFAULT_APPEARANCE.theme,
@@ -99,7 +95,7 @@ r.setAttribute('data-theme',t);
 var S={small:87.5,medium:100,large:112.5,xlarge:125},f=g('docklite-font-size');
 r.style.fontSize=(S[f]||100)+'%';
 var a=g('docklite-animations');
-if(a===null)a=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches?'false':'true';
+if(a===null)a='true';
 r.setAttribute('data-animations',a==='true'?'on':'off');
 var n=g('docklite-neon-intensity'),v=n===null?100:Number(n);
 if(!isFinite(v))v=100;

@@ -125,8 +125,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
             onClick={() => openSettings()}
             aria-label="Settings"
             title="Settings"
-            className="flex items-center justify-center p-2 rounded-xl border transition-all hover:scale-105 card-vapor"
-            style={{ color: 'var(--neon-purple)', borderColor: 'rgba(var(--neon-purple-rgb), 0.35)' }}
+            className="flex items-center justify-center p-2 transition-all hover:scale-105 card-vapor rounded-xl border text-neon-pink/70 hover:text-neon-pink border-neon-pink/20 hover:border-neon-pink/40"
           >
             <Gear size={22} weight="duotone" />
           </button>

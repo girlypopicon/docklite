@@ -95,9 +95,10 @@ function SettingsModal({
   return createPortal(
     // z-[9995]: above the page, below the top bar (z-[9999]) and the modals
     // that pages like Users open from inside it (z-[10000]).
+    // Same backdrop classes as every other modal in the app, so each theme's
+    // own modal-backdrop styling (e.g. Unicorn's soft blur) applies here too.
     <div
-      className="fixed inset-0 z-[9995] flex items-center justify-center p-3 sm:p-6"
-      style={{ background: 'var(--modal-backdrop)' }}
+      className="fixed inset-0 z-[9995] bg-black/80 backdrop-blur-lg flex items-center justify-center p-3 sm:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -108,11 +109,13 @@ function SettingsModal({
         aria-modal="true"
         aria-label="Settings"
         tabIndex={-1}
-        className="w-full max-w-6xl h-[min(92vh,860px)] mt-16 flex flex-col rounded-2xl border-2 outline-none overflow-hidden"
+        // Panel styled like the other modals (card-vapor neon-border + the same
+        // inline gradient) so themes that restyle card-vapor, like Unicorn,
+        // keep their readable colors instead of getting dark text on dark.
+        className="card-vapor neon-border w-full max-w-6xl h-[min(92vh,860px)] mt-16 flex flex-col rounded-2xl outline-none overflow-hidden"
         style={{
           background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)',
-          borderColor: 'var(--modal-border)',
-          boxShadow: '0 0 40px var(--modal-shadow)',
+          border: '2px solid rgba(var(--neon-cyan-rgb), 0.5)',
         }}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.3)' }}>

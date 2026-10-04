@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import FileManager from './FileManager';
 import SchemaBrowser from '../databases/SchemaBrowser';
-import { ChartLine, Scroll, Database, MagnifyingGlass, CaretLeft, CaretRight, Play, Gear } from '@phosphor-icons/react';
+import { ChartLine, Scroll, Database, MagnifyingGlass, CaretLeft, CaretRight, Play, Gear, FolderOpen, SidebarSimple } from '@phosphor-icons/react';
 import { useLayoutPrefs, type SidebarContent } from '@/lib/layout-prefs';
 import { useSettingsModal } from '@/lib/settings-modal';
 
@@ -153,6 +153,7 @@ export default function SidebarPanel({
   if (!isOpen || (!isFileBrowser && selectedContent === 'none')) {
     return (
       <button
+        data-side={side}
         onClick={() => {
           if (!isFileBrowser && selectedContent === 'none') {
             // Nothing chosen yet: pick what this sidebar should show.
@@ -161,19 +162,12 @@ export default function SidebarPanel({
           }
           setIsOpen(true);
         }}
-        className={`docklite-sidebar-toggle fixed ${side === 'left' ? 'left-0' : 'right-0'} top-1/2 -translate-y-1/2 px-3 py-6 text-sm font-bold rounded-${side === 'left' ? 'r' : 'l'}-lg transition-all hover:scale-105 z-40`}
-        style={{
-          background: 'linear-gradient(135deg, var(--neon-purple) 0%, var(--neon-cyan) 100%)',
-          color: 'var(--button-text)',
-          boxShadow: '0 0 12px rgba(var(--neon-purple-rgb), 0.4)',
-          writingMode: 'vertical-rl',
-        }}
+        className={`docklite-sidebar-toggle fixed ${side === 'left' ? 'left-0' : 'right-0'} top-1/2 -translate-y-1/2 z-40`}
         title={!isFileBrowser && selectedContent === 'none' ? 'Choose what this sidebar shows' : `Open ${side} sidebar`}
+        aria-label={!isFileBrowser && selectedContent === 'none' ? 'Choose what this sidebar shows' : `Open ${side} sidebar`}
       >
-        <span className="inline-flex items-center gap-2">
-          {side === 'left' ? <CaretRight size={14} weight="bold" /> : <CaretLeft size={14} weight="bold" />}
-          {isDbEditMode ? 'Schema' : isFileBrowser ? 'Files' : 'Sidebar'}
-        </span>
+        {isDbEditMode ? <Database size={16} weight="duotone" /> : isFileBrowser ? <FolderOpen size={16} weight="duotone" /> : <SidebarSimple size={16} weight="duotone" />}
+        <span className="docklite-sidebar-toggle-label">{isDbEditMode ? 'Schema' : isFileBrowser ? 'Files' : 'Panel'}</span>
       </button>
     );
   }
@@ -237,13 +231,9 @@ export default function SidebarPanel({
       {/* Close button - on inner edge (toward main content), centered vertically */}
       <button
         onClick={() => setIsOpen(false)}
-        className={`docklite-sidebar-close fixed top-1/2 -translate-y-1/2 ${side === 'left' ? '-translate-x-1/2' : 'translate-x-1/2'} px-2 py-4 text-sm font-bold rounded-lg transition-all hover:scale-110 z-50`}
-        style={{
-          [side === 'left' ? 'left' : 'right']: `${width}vw`,
-          background: 'linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 100%)',
-          color: 'var(--button-text)',
-          boxShadow: '0 0 12px rgba(var(--neon-pink-rgb), 0.6)',
-        }}
+        className={`docklite-sidebar-close fixed top-1/2 -translate-y-1/2 ${side === 'left' ? '-translate-x-1/2' : 'translate-x-1/2'} z-50`}
+        style={{ [side === 'left' ? 'left' : 'right']: `${width}vw` }}
+        aria-label="Close sidebar"
         title="Close sidebar"
       >
         {side === 'left' ? <CaretLeft size={14} weight="bold" /> : <CaretRight size={14} weight="bold" />}
