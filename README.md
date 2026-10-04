@@ -152,6 +152,30 @@ sudo apt-get install -y nodejs
 ./start-fullstack.sh
 ```
 
+## Using DockLite from the terminal (and with Claude)
+
+Everything the dashboard does is also a command. On the server:
+
+```bash
+docklite doctor              # is everything healthy? says how to fix what isn't
+docklite containers list     # what's running (sites, databases, other)
+docklite containers restart example.com
+docklite sites create example.com
+docklite ssl status
+docklite docs                # the full guide
+```
+
+- **Other people on the server:** log in with your own DockLite account (`docklite login`, nothing else needed),
+  or an admin can give a server user shell access with `docklite access grant <user>` (they can then run
+  `docklite` with full admin rights, so treat it like handing out root for DockLite).
+- **From your own computer:** `docklite --host https://your-panel.example.com login`, then the same commands.
+- **Scripts:** add `--json`; exit codes are stable (see the guide). Destructive commands refuse to run from a
+  script without `--yes`.
+- **AI assistants (Claude and others):** tell it to run `docklite docs` first — the guide is built into the
+  program, so it works even where this repository isn't checked out. `docklite commands --json` lists every
+  command, flagged destructive or not, for tools that want a machine-readable list. The guide's source is
+  [`go-app/cmd/docklite/docs/CLI.md`](go-app/cmd/docklite/docs/CLI.md).
+
 ## Features
 
 **Web GUI (Next.js):**

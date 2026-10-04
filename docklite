@@ -1022,6 +1022,11 @@ show_help() {
     echo -e "    ${GOLD}upgrade${NC}       Apply a new install, keeping config (used by install.sh)"
     echo -e "    ${GOLD}help${NC}          Show this help"
     echo ""
+    echo -e "  ${BOLD}Manage your server:${NC} containers, sites, ssl, nginx, dns, users, backups, server, doctor, access..."
+    echo -e "    ${DIM}docklite doctor        check everything is healthy${NC}"
+    echo -e "    ${DIM}docklite containers list${NC}"
+    echo -e "    ${DIM}docklite docs          full guide (also for AI assistants)${NC}"
+    echo ""
     echo -e "  ${DIM}Run without arguments for interactive menu.${NC}"
     echo ""
 }
@@ -1031,6 +1036,7 @@ show_help() {
 # ══════════════════════════════════════════════════════════════════════════════
 
 main() {
+    local original_dir="$PWD"
     cd "$SCRIPT_DIR"
 
     case "${1:-}" in
@@ -1091,6 +1097,12 @@ main() {
             fi
             ;;
         *)
+            # Anything that isn't a service command is an API command
+            # (containers, sites, ssl, doctor, docs, ...): hand it to the CLI.
+            if [[ -x "${SCRIPT_DIR}/bin/docklite-cli" ]]; then
+                cd "$original_dir"
+                exec "${SCRIPT_DIR}/bin/docklite-cli" "$@"
+            fi
             echo -e "  ${RED}Unknown command:${NC} $1"
             show_help
             exit 1

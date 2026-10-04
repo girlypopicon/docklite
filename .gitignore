@@ -9,6 +9,7 @@ ecosystem.config.js
 
 # Built binaries
 bin/docklite-agent
+bin/docklite-cli
 bin/docklite-tui
 
 # Go binaries in source tree

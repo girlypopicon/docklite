@@ -190,3 +190,79 @@ func TestActionNotAllowedIsDistinguishable(t *testing.T) {
 	testhelpers.AssertTrue(t, errors.Is(err, errActionNotAllowed), "refusals wrap errActionNotAllowed")
 	testhelpers.AssertFalse(t, errors.Is(errors.New("docker exploded"), errActionNotAllowed), "real failures don't")
 }
+
+func TestBootstrapTokenCreatedBeforeFirstUserStillActsAsSuperAdmin(t *testing.T) {
+	db := testhelpers.TestStoreWithTables(t)
+	s := &store.SQLiteStore{DB: db, Path: ":memory:"}
+	defer s.Close()
+	h := &Handlers{store: s, token: "master-secret"}
+
+	// The agent starts first: the token exists but there is no user yet.
+	testhelpers.AssertNoError(t, EnsureBootstrapToken(s, "master-secret"))
+
+	whoami := func() (int, string) {
+		req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+		req.Header.Set("Authorization", "Bearer master-secret")
+		rec := httptest.NewRecorder()
+		h.Auth(h.AuthMe)(rec, req)
+		return rec.Code, rec.Body.String()
+	}
+
+	code, body := whoami()
+	testhelpers.AssertEqual(t, http.StatusOK, code)
+	testhelpers.AssertTrue(t, strings.Contains(body, `"role":"super_admin"`), "an unlinked token still reports its role: "+body)
+
+	// The web app then creates the first super admin; the token now acts as them.
+	owner, err := s.CreateUser("root", "rootpassword1", "super_admin", nil)
+	testhelpers.AssertNoError(t, err)
+	code, body = whoami()
+	testhelpers.AssertEqual(t, http.StatusOK, code)
+	testhelpers.AssertTrue(t, strings.Contains(body, `"username":"root"`), "token should act as the super admin: "+body)
+
+	record, err := s.GetTokenByFingerprint(tokenFingerprint("master-secret"))
+	testhelpers.AssertNoError(t, err)
+	testhelpers.AssertTrue(t, record.UserID != nil && *record.UserID == owner.ID, "the link should be saved")
+}
+
+func TestShellAccessIsSuperAdminOnlyAndValidatesNames(t *testing.T) {
+	h := &Handlers{}
+	call := func(role, method, body string) int {
+		req := httptest.NewRequest(method, "/api/system/shell-access", strings.NewReader(body))
+		ctx := context.WithValue(req.Context(), ctxUserIDKey, int64(1))
+		ctx = context.WithValue(ctx, ctxUserRoleKey, role)
+		rec := httptest.NewRecorder()
+		h.ShellAccess(rec, req.WithContext(ctx))
+		return rec.Code
+	}
+
+	for _, role := range []string{"user", "admin"} {
+		testhelpers.AssertEqual(t, http.StatusForbidden, call(role, http.MethodGet, ""))
+		testhelpers.AssertEqual(t, http.StatusForbidden, call(role, http.MethodPost, `{"username":"alice","action":"grant"}`))
+	}
+	// Super admin, but the request itself is bad: rejected before the helper is ever run.
+	testhelpers.AssertEqual(t, http.StatusBadRequest, call("super_admin", http.MethodPost, `{"username":"Robert; rm -rf /","action":"grant"}`))
+	testhelpers.AssertEqual(t, http.StatusBadRequest, call("super_admin", http.MethodPost, `{"username":"-aG","action":"grant"}`))
+	testhelpers.AssertEqual(t, http.StatusBadRequest, call("super_admin", http.MethodPost, `{"username":"alice","action":"sudo"}`))
+	testhelpers.AssertEqual(t, http.StatusMethodNotAllowed, call("super_admin", http.MethodDelete, ""))
+}
+
+func TestAuditWritesOneJSONLinePerEvent(t *testing.T) {
+	dir := t.TempDir()
+	old, _ := os.Getwd()
+	testhelpers.AssertNoError(t, os.Chdir(dir))
+	defer os.Chdir(old)
+
+	h := &Handlers{}
+	req := httptest.NewRequest(http.MethodPost, "/x", nil)
+	req.RemoteAddr = "203.0.113.5:9999"
+	ctx := context.WithValue(req.Context(), ctxUserIDKey, int64(7))
+	ctx = context.WithValue(ctx, ctxUserRoleKey, "super_admin")
+	h.audit(req.WithContext(ctx), "shell-access.grant", "alice", map[string]any{"ok": true})
+	h.audit(req.WithContext(ctx), "shell-access.revoke", "alice", nil)
+
+	data, err := os.ReadFile(filepath.Join(dir, "logs", "audit.log"))
+	testhelpers.AssertNoError(t, err)
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	testhelpers.AssertEqual(t, 2, len(lines))
+	testhelpers.AssertTrue(t, strings.Contains(lines[0], `"actorId":7`) && strings.Contains(lines[0], `"target":"alice"`) && strings.Contains(lines[0], `"from":"203.0.113.5"`), "audit line has actor, target and source: "+lines[0])
+}

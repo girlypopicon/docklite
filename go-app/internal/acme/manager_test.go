@@ -189,6 +189,10 @@ func TestNewManager(t *testing.T) {
 	})
 
 	t.Run("uses default cert directory", func(t *testing.T) {
+		// The default lives under /var/lib, which only root can create.
+		if err := os.MkdirAll("/var/lib/docklite/certs", 0o755); err != nil {
+			t.Skipf("cannot create the default certificate directory here: %v", err)
+		}
 		config := &Config{
 			Email:      "test@example.com",
 			Production: false,

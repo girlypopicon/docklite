@@ -271,8 +271,9 @@ build_agent() {
     # and installing it would silently ship old code.
     local go_bin; go_bin=$(find_go)
     mkdir -p "${REPO_DIR}/bin"
-    (cd "${REPO_DIR}/go-app" && "$go_bin" build -o ../bin/docklite-agent ./cmd/docklite-agent 2>&1) &
-    spin $! "Compiling Go agent..." && ok "Agent built ($(du -h "${REPO_DIR}/bin/docklite-agent" | cut -f1))" || { fail "Agent build failed"; return 1; }
+    (cd "${REPO_DIR}/go-app" && "$go_bin" build -o ../bin/docklite-agent ./cmd/docklite-agent 2>&1 \
+        && "$go_bin" build -ldflags "-X main.version=$(cat "${REPO_DIR}/VERSION" 2>/dev/null || echo dev)" -o ../bin/docklite-cli ./cmd/docklite 2>&1) &
+    spin $! "Compiling Go agent and command line..." && ok "Agent and CLI built ($(du -h "${REPO_DIR}/bin/docklite-agent" | cut -f1))" || { fail "Agent build failed"; return 1; }
 }
 
 build_webapp() {
