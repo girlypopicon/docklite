@@ -2,12 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import { Palette, TextT, Sparkle, Eye, Package } from '@phosphor-icons/react';
+import {
+  DEFAULT_APPEARANCE,
+  FONT_SCALES,
+  applyAppearance,
+  loadAppearance,
+  saveAppearance,
+  type Appearance,
+} from '@/lib/appearance';
 
 export default function AppearanceSettingsPage() {
-  const [theme, setTheme] = useState('cyberpunk');
-  const [animations, setAnimations] = useState(true);
-  const [neonIntensity, setNeonIntensity] = useState(100);
-  const [fontSize, setFontSize] = useState('medium');
+  const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
+  const { theme, fontSize, animations, glow: neonIntensity } = appearance;
+
+  // Every change applies immediately and is remembered, so there is nothing
+  // to "save": what you see is what you'll get after a reload too.
+  const update = (change: Partial<Appearance>) => {
+    const next = { ...appearance, ...change };
+    setAppearance(next);
+    applyAppearance(next);
+    saveAppearance(next);
+  };
 
   const themes = [
     {
@@ -38,33 +53,16 @@ export default function AppearanceSettingsPage() {
 
   const fontSizes = [
     { id: 'small', name: 'Small', size: '12px' },
-    { id: 'medium', name: 'Medium', size: '14px' },
+    { id: 'medium', name: 'Medium (default)', size: '14px' },
     { id: 'large', name: 'Large', size: '16px' },
-    { id: 'xlarge', name: 'Extra Large', size: '18px' }
-  ];
-
-  const applyTheme = (themeId: string) => {
-    document.documentElement.setAttribute('data-theme', themeId);
-  };
+    { id: 'xlarge', name: 'Extra Large', size: '18px' },
+  ] as const;
 
   useEffect(() => {
-    let savedTheme = localStorage.getItem('docklite-theme') || 'cyberpunk';
-    // Migrate old 'new' theme to 'unicorn'
-    if (savedTheme === 'new') {
-      savedTheme = 'unicorn';
-      localStorage.setItem('docklite-theme', 'unicorn');
-    }
-    setTheme(savedTheme);
-    applyTheme(savedTheme);
+    setAppearance(loadAppearance());
   }, []);
 
-  const handleSaveSettings = () => {
-    localStorage.setItem('docklite-theme', theme);
-    localStorage.setItem('docklite-animations', animations.toString());
-    localStorage.setItem('docklite-neon-intensity', neonIntensity.toString());
-    localStorage.setItem('docklite-font-size', fontSize);
-    applyTheme(theme);
-  };
+  const resetToDefaults = () => update(DEFAULT_APPEARANCE);
 
   return (
     <div className="space-y-8">
@@ -95,10 +93,7 @@ export default function AppearanceSettingsPage() {
               } : {
                 borderColor: 'rgba(var(--neon-purple-rgb), 0.2)'
               }}
-              onClick={() => {
-                setTheme(themeOption.id);
-                applyTheme(themeOption.id);
-              }}
+              onClick={() => update({ theme: themeOption.id as Appearance['theme'] })}
             >
               <div className={`w-full h-20 rounded-lg mb-3 ${themeOption.preview}`}></div>
               <h3 className="font-bold mb-1">{themeOption.name}</h3>
@@ -116,12 +111,13 @@ export default function AppearanceSettingsPage() {
         </h2>
         <div className="space-y-4">
           <div>
-            <label className="block font-bold mb-3">Font Size</label>
+            <label className="block font-bold mb-1">Text Size</label>
+            <p className="text-xs opacity-70 mb-3">Scales all text and spacing in the dashboard ({FONT_SCALES[fontSize]}% of normal).</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {fontSizes.map((size) => (
                 <button
                   key={size.id}
-                  onClick={() => setFontSize(size.id)}
+                  onClick={() => update({ fontSize: size.id })}
                   className="p-3 rounded-lg border-2 transition-all"
                   style={fontSize === size.id ? {
                     borderColor: 'var(--neon-cyan)',
@@ -152,7 +148,7 @@ export default function AppearanceSettingsPage() {
               <div className="text-sm opacity-70">Enable smooth animations and hover effects</div>
             </div>
             <button
-              onClick={() => setAnimations(!animations)}
+              onClick={() => update({ animations: !animations })}
               className="px-4 py-2 rounded-lg font-bold transition-all"
               style={animations ? {
                 background: 'var(--status-success)',
@@ -174,7 +170,7 @@ export default function AppearanceSettingsPage() {
                 min="0"
                 max="200"
                 value={neonIntensity}
-                onChange={(e) => setNeonIntensity(Number(e.target.value))}
+                onChange={(e) => update({ glow: Number(e.target.value) })}
                 className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
                 style={{ background: 'var(--neon-purple)' }}
               />
@@ -195,7 +191,6 @@ export default function AppearanceSettingsPage() {
         </h2>
         <div className="p-6 rounded-lg border-2" style={{
           borderColor: 'rgba(var(--neon-purple-rgb), 0.3)',
-          filter: `brightness(${neonIntensity / 100})`
         }}>
           <div className="text-center mb-4">
             <div className="flex justify-center mb-2 animate-float">
@@ -205,7 +200,7 @@ export default function AppearanceSettingsPage() {
               Sample Container
             </h3>
             <div className="text-sm opacity-70" style={{ color: 'var(--text-secondary)' }}>
-              Preview of your theme settings
+              Updates live as you change the settings above
             </div>
           </div>
           <div className="flex gap-2 justify-center">
@@ -222,16 +217,13 @@ export default function AppearanceSettingsPage() {
         </div>
       </div>
 
-      {/* Save Settings */}
+      {/* Reset */}
       <div className="text-center">
-        <button
-          onClick={handleSaveSettings}
-          className="btn-neon px-8 py-3 font-bold text-lg"
-        >
-          Apply Theme
+        <button onClick={resetToDefaults} className="btn-neon px-8 py-3 font-bold text-lg">
+          Reset to defaults
         </button>
         <div className="text-xs opacity-60 mt-2" style={{ color: 'var(--text-secondary)' }}>
-          Theme updates immediately.
+          Changes apply and are saved automatically in this browser.
         </div>
       </div>
     </div>

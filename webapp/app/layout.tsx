@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import ThemeInit from './theme-init'
+import { APPEARANCE_BOOT_SCRIPT } from '@/lib/appearance'
 
 export const metadata: Metadata = {
   title: 'DockLite - Docker Control Panel',
@@ -17,7 +18,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: APPEARANCE_BOOT_SCRIPT }} />
+      </head>
       <body>
         <ThemeInit />
         {children}

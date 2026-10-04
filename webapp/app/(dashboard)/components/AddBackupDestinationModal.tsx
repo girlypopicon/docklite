@@ -179,7 +179,7 @@ export default function AddBackupDestinationModal({ onClose, onSuccess }: AddBac
               className="flex-1 px-4 py-3 rounded-lg font-bold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 background: 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%)',
-                color: 'white',
+                color: 'var(--button-text)',
                 boxShadow: '0 0 20px rgba(var(--status-success-rgb), 0.4)',
               }}
             >
