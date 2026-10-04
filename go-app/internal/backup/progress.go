@@ -21,12 +21,14 @@ const (
 	kindCounting  = "counting"  // sizing up the work
 	kindWorking   = "working"   // producing the archive/dump
 	kindVerifying = "verifying" // reading the finished backup back
+	kindStepped   = "stepped"   // a step that owns a fixed slice of the bar (restores)
 
 	maxWarnings  = 20
 	keepFinished = time.Hour
 )
 
 type Progress struct {
+	Kind         string   `json:"kind"` // "backup" or "restore"
 	BackupID     int64    `json:"backup_id"`
 	TargetType   string   `json:"target_type"`
 	TargetID     int64    `json:"target_id"`
@@ -49,6 +51,8 @@ type Progress struct {
 	ElapsedSecs  int64    `json:"elapsed_seconds"`
 
 	kind     string
+	rangeLo  float64
+	rangeHi  float64
 	started  time.Time
 	finished time.Time
 }
@@ -64,6 +68,12 @@ var DefaultTracker = &Tracker{runs: map[int64]*Progress{}}
 // Start registers a running backup. It returns nil if one is already
 // running for the same target, so a double click can't start two.
 func (t *Tracker) Start(backupID int64, targetType string, targetID int64) *Reporter {
+	return t.StartKind(backupID, "backup", targetType, targetID)
+}
+
+// StartKind is Start for any kind of long operation ("backup", "restore").
+// A restore and a backup of the same target also exclude each other.
+func (t *Tracker) StartKind(id int64, kind, targetType string, targetID int64) *Reporter {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.pruneLocked()
@@ -73,8 +83,9 @@ func (t *Tracker) Start(backupID int64, targetType string, targetID int64) *Repo
 		}
 	}
 	now := time.Now()
-	t.runs[backupID] = &Progress{
-		BackupID:   backupID,
+	t.runs[id] = &Progress{
+		Kind:       kind,
+		BackupID:   id,
 		TargetType: targetType,
 		TargetID:   targetID,
 		Status:     StatusRunning,
@@ -85,7 +96,7 @@ func (t *Tracker) Start(backupID int64, targetType string, targetID int64) *Repo
 		started:    now,
 		kind:       kindCounting,
 	}
-	return &Reporter{t: t, id: backupID}
+	return &Reporter{t: t, id: id}
 }
 
 // RunningFor returns the backup id already running for a target, if any.
@@ -165,6 +176,16 @@ func (r *Reporter) Phase(kind, label string, total int64) {
 	})
 }
 
+// Step starts a stage that owns the slice [lo, hi] percent of the bar
+// (restores). total is the bytes it will process, or 0 if unknown, in which
+// case the bar holds at lo until the stage ends.
+func (r *Reporter) Step(label string, lo, hi float64, total int64) {
+	r.update(func(p *Progress) {
+		p.kind, p.Phase, p.BytesDone, p.BytesTotal = kindStepped, label, 0, total
+		p.rangeLo, p.rangeHi = lo, hi
+	})
+}
+
 func (r *Reporter) Add(n int64) {
 	r.update(func(p *Progress) { p.BytesDone += n })
 }
@@ -235,6 +256,8 @@ func recomputePercent(p *Progress) {
 		}
 	case kindVerifying:
 		p.Percent = 90 + 10*frac()
+	case kindStepped:
+		p.Percent = p.rangeLo + (p.rangeHi-p.rangeLo)*frac()
 	}
 }
 

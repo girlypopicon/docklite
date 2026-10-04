@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -11,6 +12,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"docklite-agent/internal/models"
 
@@ -305,6 +307,63 @@ func (c *Client) ExecCommandToWriter(ctx context.Context, containerID string, cm
 			message = fmt.Sprintf("command exited with code %d", inspect.ExitCode)
 		}
 		return fmt.Errorf(message)
+	}
+	return nil
+}
+
+// ExecCommandWithInput runs a command in a container, feeding it stdin and
+// copying its stdout to a writer. It is how a database dump is piped into
+// pg_restore. A non-zero exit is an error carrying the command's stderr.
+func (c *Client) ExecCommandWithInput(ctx context.Context, containerID string, cmd []string, env []string, stdin io.Reader, stdout io.Writer) error {
+	if len(cmd) == 0 {
+		return fmt.Errorf("command is required")
+	}
+	execResp, err := c.Client.ContainerExecCreate(ctx, containerID, types.ExecConfig{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          cmd,
+		Env:          env,
+	})
+	if err != nil {
+		return err
+	}
+	attachResp, err := c.Client.ContainerExecAttach(ctx, execResp.ID, types.ExecStartCheck{})
+	if err != nil {
+		return err
+	}
+	defer attachResp.Close()
+
+	// Feed stdin, then close the write side so the command sees end-of-input.
+	copyDone := make(chan error, 1)
+	go func() {
+		_, err := io.Copy(attachResp.Conn, stdin)
+		_ = attachResp.CloseWrite()
+		copyDone <- err
+	}()
+
+	var stderrBuf bytes.Buffer
+	if _, err := stdcopy.StdCopy(stdout, &stderrBuf, attachResp.Reader); err != nil && err != io.EOF {
+		return err
+	}
+	attachResp.Close()
+	// If the command quit early, the copy fails with a broken pipe; that is
+	// the command's exit status to report, not ours.
+	select {
+	case <-copyDone:
+	case <-time.After(5 * time.Second):
+	}
+
+	inspect, err := c.Client.ContainerExecInspect(ctx, execResp.ID)
+	if err != nil {
+		return err
+	}
+	if inspect.ExitCode != 0 {
+		message := strings.TrimSpace(stderrBuf.String())
+		if message == "" {
+			message = fmt.Sprintf("command exited with code %d", inspect.ExitCode)
+		}
+		return errors.New(message)
 	}
 	return nil
 }
