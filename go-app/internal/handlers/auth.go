@@ -8,6 +8,19 @@ import (
 func (h *Handlers) AuthMe(w http.ResponseWriter, r *http.Request) {
 	userID, ok := readUserIDFromContext(r)
 	if !ok {
+		// Authenticated by an API token that isn't tied to a user (no
+		// super admin exists yet): say so instead of "not authenticated".
+		if role, hasRole := readUserRoleFromContext(r); hasRole {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"user": map[string]any{
+					"userId":   0,
+					"username": "(API token)",
+					"isAdmin":  role == "admin" || role == "super_admin",
+					"role":     role,
+				},
+			})
+			return
+		}
 		writeError(w, http.StatusUnauthorized, "Not authenticated")
 		return
 	}

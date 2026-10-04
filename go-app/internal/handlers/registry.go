@@ -40,15 +40,24 @@ func (h *Handlers) Auth(next http.HandlerFunc) http.HandlerFunc {
 			record, err := h.authenticateBearer(r.Context(), authToken)
 			if err == nil && record != nil {
 				ctx := r.Context()
-				if record.UserID != nil {
-					ctx = context.WithValue(ctx, ctxUserIDKey, *record.UserID)
+				userID := record.UserID
+				if userID == nil && record.Role != nil && (*record.Role == "super_admin" || *record.Role == "admin") {
+					// The bootstrap token can predate the first user; once a
+					// super admin exists, the token acts as them.
+					if owner, err := h.store.GetUserByRole("super_admin"); err == nil && owner != nil {
+						userID = &owner.ID
+						_ = h.store.LinkTokenUser(record.ID, owner.ID)
+					}
+				}
+				if userID != nil {
+					ctx = context.WithValue(ctx, ctxUserIDKey, *userID)
 				}
 				role := ""
 				if record.Role != nil {
 					role = *record.Role
 				}
-				if role == "" && record.UserID != nil {
-					if user, err := h.store.GetUserByIDFull(*record.UserID); err == nil && user != nil {
+				if role == "" && userID != nil {
+					if user, err := h.store.GetUserByIDFull(*userID); err == nil && user != nil {
 						role = user.Role
 					}
 				}
