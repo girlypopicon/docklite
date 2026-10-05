@@ -88,7 +88,11 @@ type createContainerRequest struct {
 
 func (h *Handlers) ListContainers(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		h.createContainer(w, r)
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		h.createContainer(rec, r)
+		if rec.status < 400 {
+			h.audit(r, "container.create", "", nil)
+		}
 		return
 	}
 	if r.Method != http.MethodGet {
@@ -287,6 +291,16 @@ func (h *Handlers) Container(w http.ResponseWriter, r *http.Request) {
 	action := ""
 	if len(parts) > 1 {
 		action = parts[1]
+	}
+
+	if r.Method != http.MethodGet && auditedContainerActions[action] {
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		w = rec
+		defer func() {
+			if rec.status < 400 {
+				h.audit(r, "container."+action, h.containerAuditName(r.Context(), id), map[string]any{"container": id})
+			}
+		}()
 	}
 
 	switch action {
@@ -604,6 +618,7 @@ func (h *Handlers) transferSiteToUser(w http.ResponseWriter, r *http.Request, co
 		writeError(w, http.StatusInternalServerError, "failed to update site record: "+err.Error())
 		return
 	}
+	h.audit(r, "site.transfer", site.Domain, map[string]any{"from": oldUsername, "to": newUser.Username})
 
 	container, inspErr := h.docker.InspectContainer(ctx, containerID)
 	if inspErr != nil {
@@ -975,8 +990,13 @@ func (h *Handlers) authorizeContainerAccess(ctx context.Context, r *http.Request
 func containerInfo(container types.ContainerJSON) models.ContainerInfo {
 	createdAt, err := time.Parse(time.RFC3339Nano, container.Created)
 	uptime := "-"
-	if err == nil && container.State != nil && container.State.Running {
-		uptime = formatUptime(time.Since(createdAt))
+	if container.State != nil && container.State.Running {
+		// Uptime is time since the last start, not since the container was created.
+		if started, serr := time.Parse(time.RFC3339Nano, container.State.StartedAt); serr == nil && !started.IsZero() && started.Year() > 1 {
+			uptime = formatUptime(time.Since(started))
+		} else if err == nil {
+			uptime = formatUptime(time.Since(createdAt))
+		}
 	}
 	state := "stopped"
 	status := ""
@@ -1292,4 +1312,35 @@ const server = http.createServer((req, res) => {
 server.listen(port, hostname, () => {
   console.log(` + "`" + `Server running at http://${hostname}:${port}/` + "`" + `);
 });`
+}
+
+// auditedContainerActions are the container operations that change something.
+var auditedContainerActions = map[string]bool{
+	"start": true, "stop": true, "restart": true, "delete": true, "assign": true,
+	"claim": true, "transfer": true, "track": true, "untrack": true, "write-manifest": true,
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (s *statusRecorder) WriteHeader(code int) {
+	s.status = code
+	s.ResponseWriter.WriteHeader(code)
+}
+
+// Unwrap lets http.ResponseController reach the real writer. Only plain JSON
+// actions are wrapped; the terminal websocket is not.
+func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }
+
+// containerAuditName is the site's domain when known, else the container's name.
+func (h *Handlers) containerAuditName(ctx context.Context, id string) string {
+	if site, _ := h.store.GetSiteByContainerIDRecord(id); site != nil {
+		return site.Domain
+	}
+	if c, err := h.docker.InspectContainer(ctx, id); err == nil {
+		return strings.TrimPrefix(c.Name, "/")
+	}
+	return id
 }

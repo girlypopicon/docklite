@@ -38,7 +38,14 @@ func (c *Client) ListContainers(ctx context.Context, all bool) ([]models.Contain
 		}
 		uptime := "-"
 		if item.State == "running" && item.Created > 0 {
-			uptime = formatUptime(time.Since(time.Unix(item.Created, 0)))
+			// Time since the last start (not creation), falling back to creation.
+			since := time.Unix(item.Created, 0)
+			if info, err := c.Client.ContainerInspect(ctx, item.ID); err == nil && info.State != nil {
+				if started, err := time.Parse(time.RFC3339Nano, info.State.StartedAt); err == nil && started.Year() > 1 {
+					since = started
+				}
+			}
+			uptime = formatUptime(time.Since(since))
 		}
 		results = append(results, models.ContainerInfo{
 			ID:      item.ID,
