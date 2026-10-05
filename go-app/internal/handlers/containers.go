@@ -942,6 +942,10 @@ func (h *Handlers) resolveContainerOwner(container models.ContainerInfo, userCac
 	if user == nil {
 		return ownerID, "", nil
 	}
+	if site == nil && !labelOwnerPlausible(user, time.Unix(container.Created, 0)) {
+		// A leftover label from an older install whose user ids were reused.
+		return 0, "", nil
+	}
 	userCache[ownerID] = user.Username
 	return ownerID, user.Username, nil
 }
@@ -984,7 +988,26 @@ func (h *Handlers) authorizeContainerAccess(ctx context.Context, r *http.Request
 	if labelUserID == "" || labelUserID != fmt.Sprintf("%d", userID) {
 		return nil, errForbidden
 	}
+	if user, _ := h.store.GetUserByIDFull(userID); user != nil {
+		if c, err := h.docker.InspectContainer(ctx, containerID); err == nil {
+			if created, perr := time.Parse(time.RFC3339Nano, c.Created); perr == nil && !labelOwnerPlausible(user, created) {
+				return nil, errForbidden
+			}
+		}
+	}
 	return nil, nil
+}
+
+// labelOwnerPlausible rejects a docklite.user.id label that cannot be genuine:
+// a container can't belong to a user account created after the container
+// existed. This happens when an install is wiped and user ids are handed out
+// again, so an old container's label would otherwise name a stranger.
+func labelOwnerPlausible(user *store.UserRecord, containerCreated time.Time) bool {
+	created, err := time.Parse("2006-01-02 15:04:05", user.CreatedAt)
+	if err != nil {
+		return true
+	}
+	return !created.After(containerCreated.Add(time.Minute))
 }
 
 func containerInfo(container types.ContainerJSON) models.ContainerInfo {

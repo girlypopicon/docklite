@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"docklite-agent/internal/store"
 	"docklite-agent/internal/testhelpers"
@@ -265,4 +266,12 @@ func TestAuditWritesOneJSONLinePerEvent(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	testhelpers.AssertEqual(t, 2, len(lines))
 	testhelpers.AssertTrue(t, strings.Contains(lines[0], `"actorId":7`) && strings.Contains(lines[0], `"target":"alice"`) && strings.Contains(lines[0], `"from":"203.0.113.5"`), "audit line has actor, target and source: "+lines[0])
+}
+
+func TestLabelOwnerPlausible(t *testing.T) {
+	user := &store.UserRecord{CreatedAt: "2026-10-03 15:28:48"}
+	old := time.Date(2026, 1, 4, 22, 59, 0, 0, time.UTC)
+	fresh := time.Date(2026, 10, 4, 9, 0, 0, 0, time.UTC)
+	testhelpers.AssertFalse(t, labelOwnerPlausible(user, old), "container older than the user must not match")
+	testhelpers.AssertTrue(t, labelOwnerPlausible(user, fresh), "container newer than the user may match")
 }
