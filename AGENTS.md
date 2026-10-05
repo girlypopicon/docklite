@@ -345,7 +345,7 @@ Key endpoint groups:
 
 ## Deployment Notes
 
-See detailed deployment guide in `DEPLOYMENT.md`.
+See detailed deployment guide in `docs/INSTALL.md`.
 
 Quick production checklist:
 - [ ] Set `DOCKLITE_TOKEN` to secure random string

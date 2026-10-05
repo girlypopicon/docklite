@@ -75,3 +75,7 @@ test-coverage:
 install-test-deps:
 	cd webapp && bun install
 	@echo "Test dependencies installed"
+
+.PHONY: version
+version:
+	@scripts/release.sh status

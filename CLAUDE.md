@@ -18,6 +18,14 @@ backups and server health, always supports `--json`, and refuses destructive act
 `--yes` when the person you're working for asked for that exact action. The guide's source is
 `go-app/cmd/docklite/docs/CLI.md`; update it whenever commands change.
 
+## Versioning (do this every session)
+
+The owner relies on Claude Code to maintain versions. After any user-visible change, add a bullet under
+`## Unreleased` in `CHANGELOG.md`. Run `make version` when finishing work; it flags drift between `VERSION`,
+`webapp/package.json`, the latest git tag and the changelog. To release, use `scripts/release.sh patch|minor|major`
+(add `--dry-run` first); it commits and tags locally and never pushes. Remind the owner to push and tag from `main`
+after they merge. See `CONTRIBUTING.md`.
+
 ## Build & Run Commands
 
 ```bash
