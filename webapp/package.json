@@ -40,5 +40,6 @@
     "tailwindcss": "^3.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "license": "AGPL-3.0-or-later"
 }

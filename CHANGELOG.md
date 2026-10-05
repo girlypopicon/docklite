@@ -6,6 +6,7 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## Unreleased
 
 ### Added
+- Licensed under the GNU AGPL v3 (`LICENSE`).
 - The `docklite` command line: containers, sites, SSL, nginx, DNS, users, backups, server health, `doctor`,
   `--json` everywhere and a built-in guide (`docklite docs`).
 - Shell access for server users (`docklite access grant`) and an audit log for sensitive actions; container

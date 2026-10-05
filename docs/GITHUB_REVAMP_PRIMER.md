@@ -84,8 +84,8 @@ useful), `SSL-TESTING-PATCH-README.md`, `docklite-ssl-testing.patch`, `check-db.
 flows that predate the PM2 installer, and says nothing about the CLI, backups, or the safety story.
 Also: `VERSION` says 1.1.0 while the latest git tag is v1.0.3; remotes are `origin`
 (`sgauth0/docklite-new`) and `girlypop` (`girlypopicon/docklite`, the canonical public repo). Confirm with
-Stella which URL the README should use. There is no LICENSE file, `.github/` folder, issue templates, or CI badge;
-suggest them, but ask before choosing a license.
+Stella which URL the README should use. The project is AGPL-3.0-or-later (LICENSE added). There is no `.github/` folder, issue templates, or CI badge;
+suggest them.
 
 ## 5. Suggested plan
 

@@ -12,6 +12,8 @@ make build-gui     # dashboard
 Keep changes small and focused, add a test where there is logic, and update
 `go-app/cmd/docklite/docs/CLI.md` when commands change.
 
+By contributing you agree your work is released under the project's AGPL-3.0-or-later license.
+
 ## Versioning
 
 Add a line under **Unreleased** in `CHANGELOG.md` for every user-visible change as you make it.

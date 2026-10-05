@@ -96,6 +96,12 @@ Planned, not built yet: a backup scheduler and one-click restore, portable `.dkl
 bundled to move elsewhere), adopting existing sites and cleaning up leftovers from the dashboard, an activity log
 viewer, more database types, and a refreshed terminal UI.
 
+## License
+
+DockLite is free software under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-or-later). You
+can use, change and share it. If you run a modified version as a network service, you must offer its source
+code to the people using it.
+
 ## Versions
 
 Version history is in [CHANGELOG.md](CHANGELOG.md). The release process is in [CONTRIBUTING.md](CONTRIBUTING.md).
