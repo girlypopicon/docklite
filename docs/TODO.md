@@ -108,3 +108,12 @@
 - [ ] Add targeted Go tests for critical security paths.
 - [ ] Add CI checks for vulnerabilities and dependency drift.
 - [ ] Complete controlled dependency updates.
+
+## Ops / Automation (added 2026-10-05)
+
+- [ ] Let an admin session manage a remote DockLite host (SMOLL, 74.208.155.141) over its API.
+  - SMOLL has an old Next.js copy in `/opt/docklite` with the `docklite` service inactive, so there is no API to call yet. Sites there are plain docker containers and hand-written `/etc/nginx/conf.d/*.conf`.
+  - Install the current Go DockLite on SMOLL (see the panel-domain plan: `smoll.docklite.net`).
+  - Add a scoped API token (create site, attach domain, issue cert) so a non-root SSH session can onboard a domain without `sudo`. The `stella` user on SMOLL has no passwordless sudo.
+- [ ] Add-domain flow that also does the Cloudflare side (A/CNAME records, proxied), driven by the Cloudflare API.
+- [ ] First pending use: serve `evrqr.com` (QR product) from SMOLL once the domain is registered and its nameservers point at Cloudflare.

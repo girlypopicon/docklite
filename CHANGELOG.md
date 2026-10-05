@@ -6,6 +6,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## Unreleased
 
 ### Added
+- `sudo bash install.sh --dry-run`: reports what is already on the server (nginx sites, older DockLite, containers,
+  site folders) and what the installer will and won't touch, changing nothing. An older install in `/opt/docklite`
+  is backed up to `/var/backups/docklite/` before files are replaced.
 - Licensed under the GNU AGPL v3 (`LICENSE`).
 - The `docklite` command line: containers, sites, SSL, nginx, DNS, users, backups, server health, `doctor`,
   `--json` everywhere and a built-in guide (`docklite docs`).
@@ -21,6 +24,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- Installing on a server that already hosts sites: DockLite no longer disables the `default` and `docklite-sites` nginx
+  configs, never adds a second `default_server`, and undoes its own nginx change if the config test fails.
 - Container uptime now counts from the last start, not from creation.
 - Containers from an older install no longer appear to belong to unrelated users after user ids are reused.
 - Terminal showed "Not connected"; pop-ups hidden under the top bar; Unicorn theme readability; backups page flash.

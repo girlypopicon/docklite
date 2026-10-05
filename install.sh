@@ -291,8 +291,106 @@ build_webapp() {
     spin $! "Building Next.js app..." && ok "Webapp built" || { fail "Build failed"; return 1; }
 }
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Preflight: what is already on this server? (read-only)
+# ══════════════════════════════════════════════════════════════════════════════
+
+DRY_RUN=0
+OLD_INSTALL=0
+
+preflight() {
+    local nginx_files=() f n
+    echo ""
+    echo -e "  ${BOLD}Looking at this server (read-only)${NC}"
+    echo ""
+
+    # nginx (these folders are root-only on many systems; never claim "none" if we couldn't look)
+    local R="" nginx_readable=1
+    if [[ ! -r /etc/nginx/sites-enabled || ! -r /etc/nginx/conf.d ]]; then
+        if [[ "$EUID" -ne 0 ]] && sudo -n true 2>/dev/null; then R="sudo -n"; else nginx_readable=0; fi
+    fi
+    if [[ "$nginx_readable" -eq 1 ]]; then
+        while IFS= read -r f; do
+            n="$(basename "$f")"
+            [[ "$n" == docklite-default.conf ]] && continue
+            nginx_files+=("$n")
+        done < <($R sh -c 'ls -1d /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf 2>/dev/null')
+    fi
+    if [[ "$nginx_readable" -eq 0 ]]; then
+        warn "Could not read /etc/nginx as this user, so existing sites were not checked. Re-run with: sudo bash install.sh --dry-run"
+    elif [[ ${#nginx_files[@]} -gt 0 ]]; then
+        ok "nginx already serves ${#nginx_files[@]} config file(s): ${nginx_files[*]:0:12}$([[ ${#nginx_files[@]} -gt 12 ]] && echo ' …')"
+        if printf '%s\n' "${nginx_files[@]}" | grep -qx docklite-sites; then
+            info "  'docklite-sites' belongs to an older DockLite and holds site blocks — it stays enabled."
+        fi
+        local ds
+        ds="$($R grep -rls 'default_server' /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | grep -v docklite-default.conf | tr '\n' ' ')"
+        if [[ -n "$ds" ]]; then
+            info "  A default_server already exists (${ds}); DockLite will not add another."
+        fi
+    else
+        ok "nginx has no sites yet"
+    fi
+
+    # older DockLite
+    if [[ -f "${INSTALL_DIR}/.docklite.conf" ]]; then
+        ok "A current DockLite is installed in ${INSTALL_DIR}: this will be an upgrade (data and settings kept)"
+    elif [[ -d "${INSTALL_DIR}" ]] && [[ -n "$(ls -A "${INSTALL_DIR}" 2>/dev/null)" ]]; then
+        OLD_INSTALL=1
+        warn "An older DockLite is in ${INSTALL_DIR}. It will be backed up to /var/backups/docklite/ before anything changes."
+    else
+        ok "No DockLite in ${INSTALL_DIR} yet"
+    fi
+    local units
+    units="$(systemctl list-units --all --no-legend 'docklite*' 2>/dev/null | awk '{print $1"("$4")"}' | tr '\n' ' ')"
+    [[ -n "$units" ]] && warn "Older DockLite services exist: ${units}— they are left alone; DockLite picks free ports."
+
+    # docker + sites
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+        local running
+        running="$(docker ps -q 2>/dev/null | wc -l)"
+        ok "Docker has ${running} running container(s). They are not stopped, restarted or recreated by the installer."
+    fi
+    if [[ -d /var/www/sites ]]; then
+        local flat=0 d
+        for d in /var/www/sites/*/; do
+            [[ -d "$d" ]] || continue
+            [[ "$(basename "$d")" == *.* ]] && flat=$((flat + 1))
+        done
+        ok "/var/www/sites exists. Nothing in it is moved or re-owned."
+        [[ $flat -gt 0 ]] && info "  ${flat} folder(s) sit directly in it without a user folder; after installing, 'docklite sites layout' shows how to tidy them."
+    fi
+    local free
+    free="$(df -BM --output=avail /opt 2>/dev/null | tail -1 | tr -dc '0-9')"
+    [[ -n "$free" && "$free" -lt 2000 ]] && warn "Only ${free} MB free on /opt; the build needs about 2 GB."
+
+    echo ""
+    echo -e "  ${BOLD}The installer will never:${NC}"
+    echo -e "    ${MINT}•${NC} disable or overwrite an existing nginx site, or add a second default_server"
+    echo -e "    ${MINT}•${NC} stop nginx (it only reloads it once, after a successful config test, and undoes its own"
+    echo -e "      change if the test fails)"
+    echo -e "    ${MINT}•${NC} change ownership of anything inside /var/www/sites"
+    echo -e "    ${MINT}•${NC} stop, restart or delete any existing container"
+    echo ""
+}
+
+# Keep a copy of an older install before the sync overwrites its files.
+backup_old_install() {
+    [[ "$OLD_INSTALL" -eq 1 ]] || return 0
+    local out="/var/backups/docklite/old-install-$(date +%Y%m%d-%H%M%S).tar.gz"
+    $SUDO mkdir -p /var/backups/docklite
+    if $SUDO tar czf "$out" --exclude=node_modules --exclude=.next --exclude=.git -C / "${INSTALL_DIR#/}" 2>/dev/null; then
+        $SUDO chmod 600 "$out"
+        ok "Backed up the older install to ${out}"
+    else
+        fail "Could not back up ${INSTALL_DIR}; stopping so nothing is lost"
+        exit 1
+    fi
+}
+
 install_to_opt() {
     step_header "Installing to ${INSTALL_DIR}"
+    backup_old_install
     $SUDO mkdir -p "${INSTALL_DIR}"
     # Runtime state lives only in INSTALL_DIR, never in the repo. Excluding
     # it also keeps --delete from wiping the database, logs and config when
@@ -454,7 +552,25 @@ show_install_plan() {
 # ══════════════════════════════════════════════════════════════════════════════
 
 main() {
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            --dry-run) DRY_RUN=1 ;;
+            -h|--help)
+                echo "Usage: sudo bash install.sh [--dry-run]"
+                echo "  --dry-run   look at this server and say what would happen; changes nothing"
+                exit 0 ;;
+        esac
+    done
     banner
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo -e "  ${BOLD}Dry run: nothing will be changed.${NC}"
+        preflight
+        echo -e "  ${DIM}Run without --dry-run to install.${NC}"
+        echo ""
+        exit 0
+    fi
 
     echo -e "  ${BOLD}Welcome to the DockLite installer!${NC}"
     echo ""
@@ -477,6 +593,7 @@ main() {
 
     # ── detect ──
     detect_deps
+    preflight
 
     # ── show plan ──
     show_install_plan

@@ -68,6 +68,22 @@ case "$cmd" in
         check_name "${1:-}"
         rm -f "${SITES_ENABLED}/$1" "${SITES_AVAILABLE}/$1"
         ;;
+    nginx-survey)     # nginx-survey   (read-only: what nginx already serves)
+        # Lines: "enabled NAME", "default_server NAME" (declares default_server),
+        # and "stock_default yes|no" (is sites-enabled/default the untouched Debian page?).
+        shopt -s nullglob
+        for f in "${SITES_ENABLED}"/* /etc/nginx/conf.d/*.conf; do
+            n=$(basename "$f")
+            echo "enabled $n"
+            grep -qE 'listen[^;]*default_server' "$f" 2>/dev/null && echo "default_server $n"
+        done
+        if [[ -e "${SITES_ENABLED}/default" ]] && grep -q 'root /var/www/html' "${SITES_ENABLED}/default" 2>/dev/null \
+            && ! grep -q 'proxy_pass' "${SITES_ENABLED}/default" 2>/dev/null; then
+            echo "stock_default yes"
+        else
+            echo "stock_default no"
+        fi
+        ;;
     group-list)       # group-list   (members of the docklite group, one per line)
         getent group docklite | cut -d: -f4 | tr ',' '\n' | sed '/^$/d'
         ;;

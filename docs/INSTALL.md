@@ -63,6 +63,19 @@ It asks before removing services, configuration, and (separately) your data.
 
 ## Installing on a server that already hosts sites
 
-Run `bash inventory.sh` first. It only reads, and prints what is installed, which nginx sites go to which ports
-and which containers are present. DockLite's installer does not touch existing nginx site files or re-own
-existing site folders.
+First look, without changing anything:
+
+```bash
+sudo bash install.sh --dry-run     # what is here, and what the installer will and won't touch
+bash inventory.sh                  # a fuller read-only report of nginx sites, ports and containers
+```
+
+On a server with existing sites the installer:
+
+- keeps every existing nginx config enabled (including an older DockLite's `docklite-sites`) and never adds a
+  second `default_server`; if one exists, DockLite is reached through its panel domain or its own port;
+- reloads nginx once, only after `nginx -t` passes, and undoes its own change if the test fails;
+- backs up an older DockLite found in `/opt/docklite` to `/var/backups/docklite/` before replacing its files;
+- does not move or re-own anything in `/var/www/sites`, and does not stop, restart or recreate containers.
+
+Afterwards, `docklite sites layout` shows whether sites follow the `/var/www/sites/<user>/<domain>/` layout.
