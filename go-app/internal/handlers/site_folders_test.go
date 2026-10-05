@@ -95,3 +95,20 @@ func TestScanAdoptAndTrashFolders(t *testing.T) {
 func itoa(n int64) string {
 	return strings.TrimSpace(strings.Repeat(" ", 0) + func() string { return strconv.FormatInt(n, 10) }())
 }
+
+func TestManifestKeepsPreviousOwners(t *testing.T) {
+	dir := t.TempDir()
+	testhelpers.AssertNoError(t, WriteDKLManifest(dir, "a.com", "static", "alice", 0, true, nil))
+	RecordPreviousOwner(dir, "alice", "transfer", "root")
+	// Rewriting for the new owner must keep the history and original creation time.
+	first, _ := readDKL(dir)
+	testhelpers.AssertNoError(t, WriteDKLManifest(dir, "a.com", "static", "bob", 0, true, nil))
+	m, ok := readDKL(dir)
+	testhelpers.AssertTrue(t, ok, "manifest readable")
+	testhelpers.AssertEqual(t, m.Username, "bob")
+	testhelpers.AssertEqual(t, len(m.PreviousOwners), 1)
+	testhelpers.AssertEqual(t, m.PreviousOwners[0].Username, "alice")
+	testhelpers.AssertEqual(t, m.PreviousOwners[0].By, "root")
+	testhelpers.AssertTrue(t, m.CreatedAt.Equal(first.CreatedAt), "created time kept")
+	RecordPreviousOwner(t.TempDir(), "x", "transfer", "") // no manifest: must not panic or create one
+}

@@ -116,9 +116,21 @@ func (h *Handlers) Users(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "Invalid transfer user")
 			return
 		}
+		var ownedPaths []string
+		if sites, lerr := h.store.ListSites(); lerr == nil {
+			for _, st := range sites {
+				if st.UserID == targetID && st.CodePath != "" {
+					ownedPaths = append(ownedPaths, st.CodePath)
+				}
+			}
+		}
 		if err := h.store.DeleteUserWithTransfer(targetID, transferTo); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
+		}
+		by := actorName(h, r)
+		for _, path := range ownedPaths {
+			RecordPreviousOwner(path, targetUser.Username, "user-deleted", by)
 		}
 		h.audit(r, "user.delete", targetUser.Username, map[string]any{"userId": targetID, "sitesMovedTo": transferTo})
 		writeJSON(w, http.StatusOK, map[string]any{"success": true})

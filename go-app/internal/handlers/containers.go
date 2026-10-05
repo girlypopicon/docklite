@@ -666,6 +666,7 @@ func (h *Handlers) transferSiteToUser(w http.ResponseWriter, r *http.Request, co
 		}
 	}
 
+	RecordPreviousOwner(newPath, oldUsername, "transfer", actorName(h, r))
 	_ = WriteDKLManifest(newPath, site.Domain, templateType, newUser.Username, internalPort, includeWww, nil)
 
 	resp := map[string]any{
@@ -1366,4 +1367,14 @@ func (h *Handlers) containerAuditName(ctx context.Context, id string) string {
 		return strings.TrimPrefix(c.Name, "/")
 	}
 	return id
+}
+
+// actorName is the username of whoever made the request, or "" (e.g. the master token).
+func actorName(h *Handlers, r *http.Request) string {
+	if id, ok := readUserIDFromContext(r); ok {
+		if u, _ := h.store.GetUserByIDFull(id); u != nil {
+			return u.Username
+		}
+	}
+	return ""
 }

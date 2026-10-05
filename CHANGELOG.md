@@ -11,6 +11,7 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - Shell access for server users (`docklite access grant`) and an audit log for sensitive actions; container
   start/stop/restart/delete/assign/transfer are now recorded.
 - `docklite sites layout` and `docklite repair`: check and fix the `/var/www/sites/<user>/<domain>` layout.
+- A site's previous owners are recorded in its `.dkl` manifest (transfers and user deletions), and kept when it is rewritten, backed up or exported.
 - Adopt unregistered site folders and move orphan folders to a trash folder (API).
 - Cloudflare setup that explains itself, domain import, and SSL mode controls.
 - Settings pop-up, optional sidebars and a customizable top bar; container filter tabs; running-first sorting.
