@@ -16,6 +16,8 @@ import {
   ArrowClockwise,
   Plug,
 } from '@phosphor-icons/react';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
+import SiteHttpsCard from './SiteHttpsCard';
 
 interface ContainerStats {
   cpu: number;
@@ -65,6 +67,7 @@ interface Props {
 }
 
 export default function ContainerDetailsModal({ containerId, containerName, onClose }: Props) {
+  useBodyScrollLock();
   const [details, setDetails] = useState<ContainerDetails | null>(null);
   const [stats, setStats] = useState<ContainerStats | null>(null);
   const [logs, setLogs] = useState<string>('');
@@ -292,6 +295,11 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <>
+              {/* HTTPS status, for containers that serve a website */}
+              {details.labels?.['docklite.domain'] && (
+                <SiteHttpsCard domain={details.labels['docklite.domain']} />
+              )}
+
               {/* Real-time Stats */}
               {isRunning && stats && stats.cpu !== undefined && (
                 <div className="card-vapor p-6 rounded-xl">

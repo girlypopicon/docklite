@@ -12,6 +12,7 @@ import {
   Plus,
   Trash,
 } from '@phosphor-icons/react';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useToast } from '@/lib/hooks/useToast';
 
 interface SslCert {
@@ -125,14 +126,7 @@ export default function SslStatus() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (showAllModal || showIssueModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [showAllModal, showIssueModal]);
+  useBodyScrollLock(showAllModal || showIssueModal);
 
   const getStatusColor = (status: string) => {
     switch (status) {

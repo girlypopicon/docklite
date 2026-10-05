@@ -210,6 +210,7 @@ export default function ServerPage() {
   const [dockliteLogs, setDockliteLogs] = useState('');
   const [loadingSystemLogs, setLoadingSystemLogs] = useState(false);
   const [loadingDockliteLogs, setLoadingDockliteLogs] = useState(false);
+  const [downloadingDiagnostics, setDownloadingDiagnostics] = useState(false);
 
   const fetchOverview = useCallback(async () => {
     if (accessDenied) return;
@@ -308,6 +309,13 @@ export default function ServerPage() {
     fetchStorage();
     fetchSecurity();
   }, [fetchOverview, fetchUpdates, fetchServices, fetchStorage, fetchSecurity]);
+
+  // Show logs on arrival instead of empty boxes until Refresh is clicked.
+  useEffect(() => {
+    handleSystemLogs();
+    handleDockliteLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const memoryUsedPercent = useMemo(() => {
     if (!overview || overview.memory.total === 0) return 0;
@@ -415,8 +423,35 @@ export default function ServerPage() {
     }
   };
 
-  const downloadDiagnostics = () => {
-    window.location.href = '/api/server/diagnostics';
+  // Fetch the bundle instead of navigating to the API URL: on failure the
+  // browser used to land on a blank page showing nothing of the error.
+  const downloadDiagnostics = async () => {
+    setDownloadingDiagnostics(true);
+    try {
+      const res = await fetch('/api/server/diagnostics');
+      if (res.status === 403) {
+        setAccessDenied(true);
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ? `Diagnostics failed: ${data.error}` : 'Diagnostics failed');
+      }
+      const blob = await res.blob();
+      const match = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') || '');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = match?.[1] || 'docklite-diagnostics.tar.gz';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.message || 'Diagnostics failed');
+    } finally {
+      setDownloadingDiagnostics(false);
+    }
   };
 
   return (
@@ -937,9 +972,13 @@ export default function ServerPage() {
             <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
               Stored at <span className="font-mono">/var/backups/docklite/diagnostics</span> (keeps last 5).
             </div>
-            <button className="btn-neon px-4 py-2 text-sm font-bold inline-flex items-center gap-2" onClick={downloadDiagnostics}>
-              <ArrowClockwise size={16} weight="duotone" />
-              Download diagnostics bundle
+            <button
+              className="btn-neon px-4 py-2 text-sm font-bold inline-flex items-center gap-2"
+              onClick={downloadDiagnostics}
+              disabled={downloadingDiagnostics}
+            >
+              <ArrowClockwise size={16} weight="duotone" className={downloadingDiagnostics ? 'animate-spin' : undefined} />
+              {downloadingDiagnostics ? 'Building bundle...' : 'Download diagnostics bundle'}
             </button>
           </div>
         </div>

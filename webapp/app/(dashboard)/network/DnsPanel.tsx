@@ -5,6 +5,8 @@ import { Globe, Plus, ArrowsClockwise, Gear, WarningCircle } from '@phosphor-ico
 import AddDnsZoneModal from '../components/AddDnsZoneModal';
 import AddDnsRecordModal from '../components/AddDnsRecordModal';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import CloudflareSetup from './CloudflareSetup';
+import ZoneSslControls from './ZoneSslControls';
 
 export default function DnsPanel() {
   const [dnsTab, setDnsTab] = useState<'config' | 'zones' | 'records'>('config');
@@ -63,25 +65,20 @@ export default function DnsPanel() {
     }
   }, [selectedZone, dnsTab, loadRecords]);
 
-  const saveConfig = async (apiToken: string) => {
+  const importZones = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/dns/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_token: apiToken, enabled: 1 })
-      });
-
-      if (res.ok) {
-        alert('Configuration saved successfully!');
-        loadConfig();
-      } else {
-        const data = await res.json();
-        alert(`Error: ${data.error}`);
-      }
-    } catch (error) {
-      console.error('Error saving config:', error);
-      alert('Failed to save configuration');
+      const res = await fetch('/api/dns/zones/import', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Import failed');
+      alert(
+        data.imported?.length
+          ? `Imported ${data.imported.length} domain(s): ${data.imported.join(', ')}`
+          : `All ${data.total} of your Cloudflare domains are already here.`
+      );
+      loadZones();
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -229,15 +226,14 @@ export default function DnsPanel() {
 
       <div className="cyber-card p-6">
         {dnsTab === 'config' && (
-          <ConfigTab
-            config={config}
-            onSave={saveConfig}
-            loading={loading}
-          />
+          <CloudflareSetup config={config} onSaved={loadConfig} />
         )}
         {dnsTab === 'zones' && (
           <ZonesTab
             zones={zones}
+            canImport={Boolean(config?.hasToken && config?.enabled)}
+            importing={loading}
+            onImport={importZones}
             onAddZone={() => setShowAddZoneModal(true)}
             onDeleteZone={(id: number, domain: string) => setDeleteZone({ id, domain })}
           />
@@ -301,113 +297,39 @@ export default function DnsPanel() {
   );
 }
 
-function ConfigTab({ config, onSave, loading }: any) {
-  const [apiToken, setApiToken] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (apiToken.trim()) {
-      onSave(apiToken);
-      setApiToken('');
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-neon-cyan mb-4">Cloudflare API Configuration</h2>
-        <p className="text-gray-400 mb-6">
-          Enter your Cloudflare API token to enable DNS management.
-          Create a token at{' '}
-          <a
-            href="https://dash.cloudflare.com/profile/api-tokens"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-neon-pink hover:underline"
-          >
-            dash.cloudflare.com/profile/api-tokens
-          </a>
-        </p>
-
-        <div className="bg-dark-bg/50 p-4 rounded-lg mb-6">
-          <p className="text-sm text-gray-400">
-            Status: {config?.hasToken ? (
-              <span className="text-neon-green">✓ Configured</span>
-            ) : (
-                                <span className="text-status-warning flex items-center gap-2">                <WarningCircle size={14} weight="duotone" />
-                Not configured
-              </span>
-            )}
-          </p>
-          {config?.hasToken && (
-            <p className="text-sm text-gray-400 mt-2">
-              Integration: {config.enabled ? (
-                <span className="text-neon-green">Enabled</span>
-              ) : (
-                <span className="text-gray-500">Disabled</span>
-              )}
-            </p>
-          )}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-neon-cyan mb-2">
-              Cloudflare API Token
-            </label>
-            <input
-              type="password"
-              value={apiToken}
-              onChange={(e) => setApiToken(e.target.value)}
-              placeholder="Enter your Cloudflare API token..."
-              className="input-vapor w-full"
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500 mt-2">
-              Your token is stored securely and never exposed in the UI
-            </p>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !apiToken.trim()}
-            className="cyber-button"
-          >
-            {loading ? 'Verifying...' : 'Save Configuration'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function ZonesTab({ zones, onAddZone, onDeleteZone }: any) {
+function ZonesTab({ zones, canImport, importing, onImport, onAddZone, onDeleteZone }: any) {
+  const [sslZone, setSslZone] = useState<number | null>(null);
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-neon-cyan">DNS Zones</h2>
-        <button
-          onClick={onAddZone}
-          className="cyber-button-sm flex items-center gap-2"
-        >
-          <Plus size={16} weight="duotone" />
-          Add Zone
-        </button>
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <h2 className="text-xl font-bold text-neon-cyan">Domains</h2>
+        <div className="flex gap-2">
+          {canImport && (
+            <button onClick={onImport} disabled={importing} className="cyber-button-sm flex items-center gap-2">
+              <ArrowsClockwise size={16} weight="duotone" />
+              {importing ? 'Importing…' : 'Import from Cloudflare'}
+            </button>
+          )}
+          <button onClick={onAddZone} className="cyber-button-sm flex items-center gap-2">
+            <Plus size={16} weight="duotone" />
+            Add manually
+          </button>
+        </div>
       </div>
 
       {zones.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
-          No DNS zones configured yet
+          {canImport
+            ? 'No domains yet — click “Import from Cloudflare” to bring them all in.'
+            : 'No domains yet — connect Cloudflare in the Configuration tab first.'}
         </div>
       ) : (
         zones.map((zone: any) => (
-          <div
-            key={zone.id}
-            className="flex items-center justify-between p-4 bg-dark-bg/50 rounded-lg border border-neon-purple/20"
-          >
+          <div key={zone.id} className="p-4 bg-dark-bg/50 rounded-lg border border-neon-purple/20 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="font-bold text-neon-cyan">{zone.domain}</h3>
-              <p className="text-sm text-gray-400">Zone ID: {zone.zone_id}</p>
+              <p className="text-xs text-gray-500 font-mono">Zone ID: {zone.zone_id}</p>
               {zone.last_synced_at && (
                 <p className="text-xs text-gray-500">
                   Last synced: {new Date(zone.last_synced_at).toLocaleString()}
@@ -415,6 +337,14 @@ function ZonesTab({ zones, onAddZone, onDeleteZone }: any) {
               )}
             </div>
             <div className="flex gap-2">
+              {canImport && (
+                <button
+                  onClick={() => setSslZone(sslZone === zone.id ? null : zone.id)}
+                  className="cyber-button-sm"
+                >
+                  {sslZone === zone.id ? 'Hide SSL' : 'SSL settings'}
+                </button>
+              )}
               <button
                 onClick={() => onDeleteZone(zone.id, zone.domain)}
                 className="cyber-button-sm bg-red-500/20 hover:bg-red-500/30 border border-red-500/30"
@@ -423,6 +353,8 @@ function ZonesTab({ zones, onAddZone, onDeleteZone }: any) {
                 Delete
               </button>
             </div>
+          </div>
+          {sslZone === zone.id && <ZoneSslControls zoneId={zone.id} />}
           </div>
         ))
       )}

@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"docklite-agent/internal/cloudflare"
 	"docklite-agent/internal/store"
@@ -33,20 +35,28 @@ func (h *Handlers) DNSConfig(w http.ResponseWriter, r *http.Request) {
 		})
 	case http.MethodPost:
 		var body struct {
-			APIToken  string `json:"api_token"`
-			AccountID string `json:"account_id"`
-			Enabled   *bool  `json:"enabled"`
+			APIToken  string    `json:"api_token"`
+			AccountID string    `json:"account_id"`
+			Enabled   *flexBool `json:"enabled"`
 		}
 		if err := readJSON(w, r, &body); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
+		body.APIToken = strings.TrimSpace(body.APIToken)
+		// Blank fields mean "keep what's stored": the form never shows the
+		// saved token, so saving without retyping it used to erase it.
+		var apiToken, accountID *string
 		if body.APIToken != "" {
-			client := cloudflare.NewClient(body.APIToken)
-			if !client.VerifyToken() {
-				writeError(w, http.StatusBadRequest, "Invalid Cloudflare API token")
+			if !cloudflare.NewClient(body.APIToken).VerifyToken() {
+				writeError(w, http.StatusBadRequest, "Cloudflare didn't accept this token. Check it was copied completely and has the Zone → Zone → Read permission.")
 				return
 			}
+			apiToken = &body.APIToken
+		}
+		if strings.TrimSpace(body.AccountID) != "" {
+			trimmed := strings.TrimSpace(body.AccountID)
+			accountID = &trimmed
 		}
 		var enabled *int
 		if body.Enabled != nil {
@@ -55,10 +65,11 @@ func (h *Handlers) DNSConfig(w http.ResponseWriter, r *http.Request) {
 				value = 1
 			}
 			enabled = &value
+		} else if apiToken != nil {
+			value := 1
+			enabled = &value
 		}
-		apiToken := body.APIToken
-		accountID := body.AccountID
-		if err := h.store.UpdateCloudflareConfig(&apiToken, &accountID, enabled); err != nil {
+		if err := h.store.UpdateCloudflareConfig(apiToken, accountID, enabled); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -278,6 +289,41 @@ func (h *Handlers) DNSRecords(w http.ResponseWriter, r *http.Request) {
 		if body.Proxied != nil {
 			params["proxied"] = *body.Proxied
 		}
+		// Push the change to Cloudflare first; editing only the local copy
+		// left the real DNS record unchanged.
+		existing, err := h.store.GetDNSRecordByID(body.ID)
+		if err != nil || existing == nil {
+			writeError(w, http.StatusNotFound, "DNS record not found")
+			return
+		}
+		if client, zone := h.cloudflareForZone(existing.ZoneID); client != nil && existing.CloudflareRecordID.Valid && existing.CloudflareRecordID.String != "" {
+			merged := cloudflare.DNSRecord{
+				Type:    pickString(body.Type, existing.Type),
+				Name:    pickString(body.Name, existing.Name),
+				Content: pickString(body.Content, existing.Content),
+				TTL:     existing.TTL,
+				Proxied: existing.Proxied == 1,
+			}
+			if body.TTL != nil {
+				merged.TTL = *body.TTL
+			}
+			if merged.TTL == 0 {
+				merged.TTL = 1
+			}
+			if body.Proxied != nil {
+				merged.Proxied = *body.Proxied == 1
+			}
+			if body.Priority != nil {
+				merged.Priority = body.Priority
+			} else if existing.Priority.Valid {
+				p := int(existing.Priority.Int64)
+				merged.Priority = &p
+			}
+			if _, err := client.UpdateDNSRecord(zone.ZoneID, existing.CloudflareRecordID.String, merged); err != nil {
+				writeError(w, http.StatusBadGateway, err.Error())
+				return
+			}
+		}
 		if err := h.store.UpdateDNSRecord(body.ID, params); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -289,6 +335,19 @@ func (h *Handlers) DNSRecords(w http.ResponseWriter, r *http.Request) {
 		if err != nil || id <= 0 {
 			writeError(w, http.StatusBadRequest, "Missing required parameter: id")
 			return
+		}
+		existing, err := h.store.GetDNSRecordByID(id)
+		if err != nil || existing == nil {
+			writeError(w, http.StatusNotFound, "DNS record not found")
+			return
+		}
+		if client, zone := h.cloudflareForZone(existing.ZoneID); client != nil && existing.CloudflareRecordID.Valid && existing.CloudflareRecordID.String != "" {
+			// A record already gone from Cloudflare is fine to drop locally.
+			if err := client.DeleteDNSRecord(zone.ZoneID, existing.CloudflareRecordID.String); err != nil &&
+				!strings.Contains(strings.ToLower(err.Error()), "not exist") && !strings.Contains(strings.ToLower(err.Error()), "not found") {
+				writeError(w, http.StatusBadGateway, err.Error())
+				return
+			}
 		}
 		if err := h.store.DeleteDNSRecord(id); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
@@ -427,4 +486,51 @@ func boolToInt(value bool) int {
 		return 1
 	}
 	return 0
+}
+
+// flexBool accepts true/false as well as 1/0: the web UI sends numbers for
+// flags stored as integers, and decoding 1 into a bool failed the request.
+type flexBool bool
+
+func (b *flexBool) UnmarshalJSON(data []byte) error {
+	switch strings.Trim(strings.ToLower(string(data)), `"`) {
+	case "true", "1":
+		*b = true
+	case "false", "0", "null", "":
+		*b = false
+	default:
+		return fmt.Errorf("invalid boolean %s", data)
+	}
+	return nil
+}
+
+// cloudflareClient returns a client when Cloudflare is configured and
+// enabled, or nil.
+func (h *Handlers) cloudflareClient() *cloudflare.Client {
+	config, err := h.store.GetCloudflareConfig()
+	if err != nil || config == nil || config.Enabled != 1 || !config.APIToken.Valid || config.APIToken.String == "" {
+		return nil
+	}
+	return cloudflare.NewClient(config.APIToken.String)
+}
+
+// cloudflareForZone returns a client and the zone for a DockLite zone id,
+// or nil when Cloudflare isn't configured or the zone is unknown.
+func (h *Handlers) cloudflareForZone(zoneID int64) (*cloudflare.Client, *store.DNSZone) {
+	client := h.cloudflareClient()
+	if client == nil {
+		return nil, nil
+	}
+	zone, err := h.store.GetDNSZoneByID(zoneID)
+	if err != nil || zone == nil {
+		return nil, nil
+	}
+	return client, zone
+}
+
+func pickString(value *string, fallback string) string {
+	if value != nil {
+		return *value
+	}
+	return fallback
 }

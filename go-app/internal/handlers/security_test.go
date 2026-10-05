@@ -135,3 +135,34 @@ func TestIsSecretColumn(t *testing.T) {
 		testhelpers.AssertFalse(t, isSecretColumn(c), "expected visible: "+c)
 	}
 }
+
+func TestDNSConfigSaveKeepsTokenAndAcceptsNumericEnabled(t *testing.T) {
+	db := testhelpers.TestStoreWithTables(t)
+	s := &store.SQLiteStore{DB: db, Path: ":memory:"}
+	defer s.Close()
+	h := &Handlers{store: s}
+	saved := "existing-token"
+	testhelpers.AssertNoError(t, s.UpdateCloudflareConfig(&saved, nil, nil))
+
+	post := func(body string) int {
+		req := httptest.NewRequest(http.MethodPost, "/api/dns/config", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		ctx := context.WithValue(req.Context(), ctxUserIDKey, int64(1))
+		ctx = context.WithValue(ctx, ctxUserRoleKey, "super_admin")
+		rec := httptest.NewRecorder()
+		h.DNSConfig(rec, req.WithContext(ctx))
+		return rec.Code
+	}
+
+	// The web UI sends enabled as a number; that used to fail to decode.
+	testhelpers.AssertEqual(t, http.StatusOK, post(`{"api_token":"","enabled":1}`))
+	config, err := s.GetCloudflareConfig()
+	testhelpers.AssertNoError(t, err)
+	testhelpers.AssertEqual(t, "existing-token", config.APIToken.String)
+	testhelpers.AssertEqual(t, 1, config.Enabled)
+
+	testhelpers.AssertEqual(t, http.StatusOK, post(`{"enabled":false}`))
+	config, _ = s.GetCloudflareConfig()
+	testhelpers.AssertEqual(t, "existing-token", config.APIToken.String)
+	testhelpers.AssertEqual(t, 0, config.Enabled)
+}

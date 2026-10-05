@@ -18,6 +18,7 @@ import {
   SignOut,
   UsersThree,
 } from '@phosphor-icons/react';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 
 type DashboardNavProps = {
   user: UserSession;
@@ -41,6 +42,8 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
   const isActive = (path: string) => pathname === path;
 
   // Close dropdown when clicking outside
+  useBodyScrollLock(isDropdownOpen);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
@@ -61,17 +64,10 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscapeKey);
     
-    // Prevent scrolling when dropdown is open
-    if (isDropdownOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscapeKey);
-      document.body.style.overflow = 'unset';
     };
   }, [isDropdownOpen]);
 
