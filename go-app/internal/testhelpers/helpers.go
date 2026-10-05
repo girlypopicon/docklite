@@ -51,6 +51,9 @@ func TestStoreWithTables(t *testing.T) *sql.DB {
 			user_id INTEGER NOT NULL,
 			container_id TEXT,
 			template_type TEXT NOT NULL,
+			code_path TEXT,
+			status TEXT DEFAULT 'stopped',
+			folder_id INTEGER,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (user_id) REFERENCES users(id)
 		)

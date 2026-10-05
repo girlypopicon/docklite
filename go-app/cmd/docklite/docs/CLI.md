@@ -82,6 +82,8 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Let a server user run docklite | `docklite access grant alice --yes` (they must log out and in once) |
 | Remove that access | `docklite access revoke alice --yes` |
 | See all backups | `docklite backups list` |
+| Check sites follow `/var/www/sites/<user>/<domain>` | `docklite sites layout` (report only) |
+| Move sites into that layout | `docklite sites layout --apply --yes` (copies; old folders are kept) |
 | Stop an unused service | `docklite server service traefik stop --yes` |
 
 ## Concepts

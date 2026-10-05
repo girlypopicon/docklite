@@ -21,7 +21,7 @@ import (
 	"github.com/docker/go-connections/nat"
 )
 
-const siteBaseDir = "/var/www/sites"
+var siteBaseDir = "/var/www/sites"
 
 var dockliteUID, dockliteGID int
 

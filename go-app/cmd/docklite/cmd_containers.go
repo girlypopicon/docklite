@@ -375,5 +375,64 @@ func init() {
 			return nil
 		},
 	})
+	register(command{
+		Path: []string{"sites", "layout"}, Summary: "Check (and fix) that every site lives in /var/www/sites/<user>/<domain>",
+		Usage:       "sites layout [--apply] [--domain example.com] [--yes]",
+		Destructive: true,
+		Examples:    []string{"docklite sites layout", "docklite sites layout --apply --domain example.com"},
+		Run: func(a *app, args []string) error {
+			var apply bool
+			var domain string
+			pos, err := a.flags("sites layout", args, func(fs *flag.FlagSet) {
+				fs.BoolVar(&apply, "apply", false, "")
+				fs.StringVar(&domain, "domain", "", "")
+			})
+			if err != nil {
+				return err
+			}
+			if len(pos) != 0 {
+				return usageError("usage: docklite sites layout [--apply] [--domain example.com]")
+			}
+			if apply {
+				if err := a.confirm("copy sites into /var/www/sites/<user>/<domain> and restart each moved site's container (old folders are kept)"); err != nil {
+					return err
+				}
+			}
+			data, err := a.post("/api/sites/layout", map[string]any{"apply": apply, "domain": domain})
+			if err != nil {
+				return err
+			}
+			if a.opts.JSON {
+				a.emit(data)
+				return nil
+			}
+			var rep struct {
+				Items []struct {
+					Domain, Owner, From, To, Action, Reason string
+				} `json:"items"`
+				Strays []struct{ Path, Note string } `json:"strays"`
+				ToMove int                           `json:"to_move"`
+			}
+			if err := json.Unmarshal(data, &rep); err != nil {
+				return err
+			}
+			rows := [][]string{}
+			for _, it := range rep.Items {
+				note := it.Reason
+				if it.Action == "move" || it.Action == "moved" {
+					note = it.From + " -> " + it.To
+				}
+				rows = append(rows, []string{it.Domain, it.Owner, it.Action, note})
+			}
+			a.table([]string{"SITE", "OWNER", "STATE", "DETAILS"}, rows)
+			for _, s := range rep.Strays {
+				a.say("unregistered: %s (%s)", s.Path, s.Note)
+			}
+			if !apply && rep.ToMove > 0 {
+				a.say("\n%d site(s) would move. Nothing was changed. Run: docklite sites layout --apply", rep.ToMove)
+			}
+			return nil
+		},
+	})
 	_ = url.QueryEscape
 }

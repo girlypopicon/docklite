@@ -354,7 +354,8 @@ setup_user_and_dirs() {
     ok "User 'docklite' in docker group"
 
     $SUDO mkdir -p /var/www/sites
-    $SUDO chown -R docklite:docklite /var/www/sites
+    # Only the top folder: existing sites (and their owners) are never re-owned here.
+    $SUDO chown docklite:docklite /var/www/sites
     $SUDO chmod 775 /var/www/sites
     ok "Site directory: /var/www/sites (owned by docklite)"
 

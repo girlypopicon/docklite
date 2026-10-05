@@ -544,6 +544,34 @@ is_first_run() {
 # session secret and panel domain from .docklite.conf, regenerates the PM2
 # ecosystem (it may have changed), restarts both apps and re-renders the
 # nginx configs. install.sh runs this when a config already exists.
+# Report (never change) where site folders live; the fix is an explicit, separate step.
+check_site_layout() {
+    [[ -x "${SCRIPT_DIR}/bin/docklite-cli" ]] || return 0
+    local out
+    out="$("${SCRIPT_DIR}/bin/docklite-cli" sites layout 2>/dev/null)" || return 0
+    if grep -qE "unregistered:|(^| )move( |$)" <<<"$out"; then
+        echo -e "  ${YELLOW}Some sites are not in the standard /var/www/sites/<user>/<domain> layout:${NC}"
+        echo "$out" | sed 's/^/    /'
+        echo ""
+        echo -e "  ${DIM}Nothing was moved. To fix it: ${NC}docklite sites layout --apply${DIM} (copies, keeps the old folders)${NC}"
+        echo ""
+    fi
+}
+
+run_repair() {
+    is_first_run && die "No existing config at ${CONF_FILE} — run: docklite setup"
+    load_config
+    echo ""
+    echo -e "  ${BOLD}${CYAN}DockLite repair${NC} ${DIM}(checks only; changes need your confirmation)${NC}"
+    echo ""
+    "${SCRIPT_DIR}/bin/docklite-cli" doctor || true
+    echo ""
+    "${SCRIPT_DIR}/bin/docklite-cli" sites layout || true
+    echo ""
+    echo -e "  ${DIM}To move sites into /var/www/sites/<user>/<domain>/: ${NC}docklite sites layout --apply"
+    echo ""
+}
+
 run_upgrade() {
     if is_first_run; then
         die "No existing config at ${CONF_FILE} — run: docklite setup"
@@ -571,6 +599,7 @@ run_upgrade() {
         echo -e "  ${CYAN}🌐 Dashboard:${NC} ${BOLD}https://${PANEL_DOMAIN}${NC}"
     fi
     echo ""
+    check_site_layout || true
 }
 
 run_wizard() {
@@ -1020,6 +1049,7 @@ show_help() {
     echo -e "    ${GOLD}tui${NC}           Launch terminal UI"
     echo -e "    ${GOLD}setup${NC}         Run setup wizard"
     echo -e "    ${GOLD}upgrade${NC}       Apply a new install, keeping config (used by install.sh)"
+    echo -e "    ${GOLD}repair${NC}        Check health and whether sites follow the /sites/<user>/<domain> layout"
     echo -e "    ${GOLD}help${NC}          Show this help"
     echo ""
     echo -e "  ${BOLD}Manage your server:${NC} containers, sites, ssl, nginx, dns, users, backups, server, doctor, access..."
@@ -1084,6 +1114,9 @@ main() {
             ;;
         upgrade)
             run_upgrade
+            ;;
+        repair)
+            run_repair
             ;;
         help|--help|-h)
             show_help
