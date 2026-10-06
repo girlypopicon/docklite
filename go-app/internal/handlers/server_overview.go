@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 )
 
@@ -867,7 +866,7 @@ func nginxIsActive() bool {
 }
 
 func (h *Handlers) findContainer(ctx context.Context, match func(types.Container) bool) (types.Container, bool) {
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := h.docker.VisibleContainers(ctx, true)
 	if err != nil {
 		return types.Container{}, false
 	}
@@ -1181,7 +1180,7 @@ func (h *Handlers) readDockliteLogs(ctx context.Context, tail int) (string, erro
 		return strings.Join(sections, "\n\n"), nil
 	}
 
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := h.docker.VisibleContainers(ctx, true)
 	if err == nil {
 		for i := range containers {
 			if isDockliteContainer(containers[i]) {

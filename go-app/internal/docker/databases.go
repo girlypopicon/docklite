@@ -107,7 +107,7 @@ func (c *Client) CreateDatabaseContainer(ctx context.Context, name string, usern
 }
 
 func (c *Client) ListDatabases(ctx context.Context) ([]models.DatabaseInfo, error) {
-	containers, err := c.Client.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := c.VisibleContainers(ctx, true)
 	if err != nil {
 		return nil, err
 	}

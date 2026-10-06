@@ -13,6 +13,8 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIR="${DOCKLITE_DEMO_DIR:-$HOME/docklite-demo}"
 AGENT_PORT="${DOCKLITE_DEMO_AGENT_PORT:-3100}"
 GUI_PORT="${DOCKLITE_DEMO_GUI_PORT:-3102}"
+# Site files live outside $HOME so screenshots of mount paths don't contain your username.
+SITES="${DOCKLITE_DEMO_SITES_DIR:-/tmp/docklite-demo/sites}"
 API="http://127.0.0.1:${AGENT_PORT}"
 
 die() { echo "demo: $*" >&2; exit 1; }
@@ -23,7 +25,7 @@ demo_containers() { docker ps -aq --filter label=docklite.demo=1; }
 
 up() {
     shift || true
-    mkdir -p "$DIR"/{bin,data,logs,sites,backups}
+    mkdir -p "$DIR"/{bin,data,logs,backups} "$SITES"
     chmod 700 "$DIR"
     local token session pass
     token="$(secret .token)"; session="$(secret .session 48)"; pass="$(secret .demo-password 12)"
@@ -41,7 +43,7 @@ up() {
         # exec so the recorded pid is node itself; detach from our output so callers don't wait on it
         ( cd "$REPO/webapp" && exec env PORT="$GUI_PORT" HOSTNAME=127.0.0.1 NODE_ENV=production \
             DATABASE_PATH="$DIR/data/docklite.db" AGENT_URL="$API" AGENT_TOKEN="$token" SESSION_SECRET="$session" \
-            SEED_ADMIN_USERNAME=demo SEED_ADMIN_PASSWORD="$pass" DOCKLITE_DEMO=1 DOCKLITE_SITES_DIR="$DIR/sites" NEXT_DIST_DIR=.next-demo \
+            SEED_ADMIN_USERNAME=demo SEED_ADMIN_PASSWORD="$pass" DOCKLITE_DEMO=1 DOCKLITE_SITES_DIR="$SITES" NEXT_DIST_DIR=.next-demo \
             node node_modules/.bin/next start -H 127.0.0.1 -p "$GUI_PORT" ) >"$DIR/logs/gui.log" 2>&1 </dev/null &
         echo $! > "$DIR/gui.pid"
     fi
@@ -52,14 +54,14 @@ up() {
     done
     if ! alive "$DIR/agent.pid"; then
         ( exec env LISTEN_ADDR="127.0.0.1:${AGENT_PORT}" DATABASE_PATH="$DIR/data/docklite.db" DOCKLITE_TOKEN="$token" \
-            NEXTJS_URL="http://127.0.0.1:${GUI_PORT}" DOCKLITE_DEMO=1 DOCKLITE_SITES_DIR="$DIR/sites" \
+            NEXTJS_URL="http://127.0.0.1:${GUI_PORT}" DOCKLITE_DEMO=1 DOCKLITE_SITES_DIR="$SITES" \
             BACKUP_BASE_DIR="$DIR/backups" "$DIR/bin/docklite-agent" ) >"$DIR/logs/agent.log" 2>&1 </dev/null &
         echo $! > "$DIR/agent.pid"
     fi
     for i in $(seq 1 30); do curl -sf -o /dev/null -H "Authorization: Bearer $token" "$API/api/containers" && break; sleep 1; done
     curl -sf -o /dev/null -H "Authorization: Bearer $token" "$API/api/containers" || die "the demo agent didn't start; see $DIR/logs/agent.log"
 
-    DEMO_API="$API" DEMO_TOKEN="$token" DEMO_SITES="$DIR/sites" python3 "$REPO/scripts/demo_seed.py"
+    DEMO_API="$API" DEMO_TOKEN="$token" DEMO_SITES="$SITES" python3 "$REPO/scripts/demo_seed.py"
     status
 }
 
@@ -82,7 +84,7 @@ down() {
     local ids; ids="$(demo_containers)"
     [[ -n "$ids" ]] && docker rm -f $ids >/dev/null
     echo "Demo stopped; demo containers removed."
-    if [[ "${1:-}" == "--wipe" ]]; then rm -rf "$DIR"; echo "Demo data deleted."; fi
+    if [[ "${1:-}" == "--wipe" ]]; then rm -rf "$DIR" "$(dirname "$SITES")"; echo "Demo data deleted."; fi
 }
 
 case "${1:-}" in

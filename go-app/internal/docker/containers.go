@@ -26,17 +26,29 @@ const (
 	nodeImageName       = "node:20-alpine"
 )
 
+// VisibleContainers lists containers this DockLite instance should see. A demo instance
+// sees only demo containers and a real one never sees them; every listing goes through here.
+func (c *Client) VisibleContainers(ctx context.Context, all bool) ([]types.Container, error) {
+	list, err := c.Client.ContainerList(ctx, container.ListOptions{All: all})
+	if err != nil {
+		return nil, err
+	}
+	out := list[:0:0]
+	for _, item := range list {
+		if (item.Labels[demo.Label] == "1") == demo.On {
+			out = append(out, item)
+		}
+	}
+	return out, nil
+}
+
 func (c *Client) ListContainers(ctx context.Context, all bool) ([]models.ContainerInfo, error) {
-	containers, err := c.Client.ContainerList(ctx, container.ListOptions{All: all})
+	containers, err := c.VisibleContainers(ctx, all)
 	if err != nil {
 		return nil, err
 	}
 	results := make([]models.ContainerInfo, 0, len(containers))
 	for _, item := range containers {
-		// A demo instance shows only demo containers; a real one never shows them.
-		if (item.Labels[demo.Label] == "1") != demo.On {
-			continue
-		}
 		name := ""
 		if len(item.Names) > 0 {
 			name = strings.TrimPrefix(item.Names[0], "/")
