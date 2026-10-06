@@ -29,6 +29,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- The one-line install left `/opt/docklite` read-only for the docklite group, so the setup wizard could not write its
+  settings ("Permission denied"). The installer now sets the folder group-writable itself.
 - The dashboard-domain question in setup now explains how to type it (just the hostname), that DNS must point at the server
   first, that ports 80/443 must be open, and that the dashboard is then reached only at that address. A pasted URL is
   trimmed to the hostname, and it shows what DNS currently says for the name.

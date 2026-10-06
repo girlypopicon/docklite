@@ -438,6 +438,10 @@ install_to_opt() {
         "${REPO_DIR}/" "${INSTALL_DIR}/"
     $SUDO mkdir -p "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs"
     $SUDO chown -R docklite:docklite "${INSTALL_DIR}"
+    # The launcher runs as the admin (a docklite group member) and creates .docklite.conf and
+    # ecosystem.config.js here on first setup, so the folder itself must be group-writable. Do not
+    # inherit this from the source checkout: a root-made clone (the one-line install) is 755.
+    $SUDO chmod 775 "${INSTALL_DIR}"
     # The launcher runs as the admin (a docklite group member) and rewrites
     # these, so they must stay group-writable after the chown above.
     local f
