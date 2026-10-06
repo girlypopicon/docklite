@@ -1,6 +1,17 @@
-# DockLite
+<h1 align="center">DockLite</h1>
 
-**Turn a Linux server into a web host.** DockLite runs your websites and databases in Docker containers, puts
+<p align="center"><b>Turn a Linux server into a web host.</b><br>
+Sites, databases, HTTPS, backups and DNS, managed from one neon-lit dashboard, a command line, or a terminal UI.</p>
+
+<p align="center">
+  <img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-ff6ad5">
+  <img alt="Latest release" src="https://img.shields.io/github/v/tag/girlypopicon/docklite?label=release&color=9ad0ff">
+  <img alt="Built with Go and Next.js" src="https://img.shields.io/badge/built%20with-Go%20%2B%20Next.js-b8f2a2">
+</p>
+
+<p align="center"><img src="docs/img/containers.jpg" alt="The DockLite dashboard showing site and database containers" width="900"></p>
+
+DockLite runs your websites and databases in Docker containers, puts
 nginx in front, gets HTTPS certificates, and gives you a dashboard, a command line and a terminal UI to manage it
 all. It is built to be safe to run on a server that already hosts live sites.
 
@@ -16,6 +27,41 @@ all. It is built to be safe to run on a server that already hosts live sites.
 - Nothing runs as root except one small, validated helper script.
 
 > DockLite is young and moving fast. See the [roadmap](#roadmap) for what is still planned.
+
+## A look around
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/container-details.jpg" alt="Container details with live CPU and memory, HTTPS status and mounts"><br><sub><b>Container details</b>: live resources, HTTPS status, mounts, logs</sub></td>
+    <td width="50%"><img src="docs/img/databases.jpg" alt="PostgreSQL databases as glowing cards"><br><sub><b>Databases</b>: Postgres in a container, with an inspector</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/terminal.jpg" alt="A web terminal connected to a site container"><br><sub><b>Web terminal</b> into any container</sub></td>
+    <td><img src="docs/img/card-menu.jpg" alt="The container actions menu"><br><sub><b>One menu</b> for details, terminal, assign, move and delete</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/new-container.jpg" alt="The new site dialog"><br><sub><b>New site</b>: a domain and a template</sub></td>
+    <td><img src="docs/img/users.jpg" alt="User management with roles"><br><sub><b>Users and roles</b>: everyone sees only their own sites</sub></td>
+  </tr>
+</table>
+
+## Make it yours
+
+Pick a look in **Settings → Appearance**, and rebuild the top bar by dragging items right on it. The sidebars are
+optional too.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/theme-corpo.jpg" alt="The Corpo theme"><br><sub><b>Corpo</b>: clean greys with soft pink</sub></td>
+    <td width="50%"><img src="docs/img/theme-corpo-blue.jpg" alt="The Corpo Blue theme"><br><sub><b>Corpo Blue</b>: clean greys with cool blue</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/themes-picker.jpg" alt="The theme picker showing Neon, Corpo, Corpo Blue and Unicorn"><br><sub>Four themes: <b>Neon</b> (default), Corpo, Corpo Blue and Unicorn</sub></td>
+    <td><img src="docs/img/top-bar-editor.jpg" alt="Editing the top bar by dragging items"><br><sub><b>Top bar editor</b>: drag, reorder, remove, add back</sub></td>
+  </tr>
+</table>
+
+<sub>All screenshots are from the built-in demo mode (`scripts/demo.sh up`), which uses fake data.</sub>
 
 ## Install
 
