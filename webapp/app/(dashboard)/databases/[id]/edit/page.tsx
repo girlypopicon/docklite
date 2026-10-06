@@ -402,7 +402,7 @@ export default function DatabaseEditPage() {
             className="px-4 py-2 rounded-lg font-bold transition-all hover:scale-105"
             style={{
               background: 'linear-gradient(135deg, var(--neon-purple) 0%, var(--neon-pink) 100%)',
-              color: 'white',
+              color: 'var(--button-text)',
             }}
           >
             <span className="inline-flex items-center gap-2">

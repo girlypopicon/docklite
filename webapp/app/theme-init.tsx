@@ -1,18 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
+import { applyAppearance, loadAppearance } from '@/lib/appearance';
 
+// Re-applies the saved look after hydration. The inline boot script in
+// layout.tsx already did this before first paint; this keeps it correct
+// if the attributes get reset (e.g. by a hot reload).
 export default function ThemeInit() {
   useEffect(() => {
-    const stored = localStorage.getItem('docklite-theme');
-    if (stored) {
-      // Migrate old 'new' theme to 'unicorn'
-      const themeToApply = stored === 'new' ? 'unicorn' : stored;
-      if (stored === 'new') {
-        localStorage.setItem('docklite-theme', 'unicorn');
-      }
-      document.documentElement.setAttribute('data-theme', themeToApply);
-    }
+    applyAppearance(loadAppearance());
   }, []);
 
   return null;

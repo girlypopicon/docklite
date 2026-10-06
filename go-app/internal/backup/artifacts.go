@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -49,6 +48,7 @@ type Manifest struct {
 }
 
 type ArtifactResult struct {
+	Verified     bool
 	Path         string
 	Size         int64
 	Sha256       string
@@ -84,18 +84,21 @@ func CreateSiteBackup(ctx context.Context, storeHandle *store.SQLiteStore, baseD
 	tempPath := filepath.Join(tmpDir, filename+".partial")
 	finalPath := filepath.Join(destDir, filename)
 
-	cmd := exec.CommandContext(ctx, "tar", "-czf", tempPath, "-C", filepath.Dir(site.CodePath), filepath.Base(site.CodePath))
-	if output, err := cmd.CombinedOutput(); err != nil {
-		_ = os.Remove(tempPath)
-		return nil, fmt.Errorf("tar failed: %s", strings.TrimSpace(string(output)))
-	}
-	if err := os.Rename(tempPath, finalPath); err != nil {
+	rep := reporterFrom(ctx)
+	entries, err := writeSiteArchive(ctx, site.CodePath, tempPath, rep)
+	if err != nil {
 		_ = os.Remove(tempPath)
 		return nil, err
 	}
-
-	size, sha, err := hashFile(finalPath)
+	// Check the file before it gets its real name, so a bad backup never
+	// shows up in the list looking like a good one.
+	sha, size, err := verifySiteArchive(tempPath, entries, rep)
 	if err != nil {
+		_ = os.Remove(tempPath)
+		return nil, err
+	}
+	if err := os.Rename(tempPath, finalPath); err != nil {
+		_ = os.Remove(tempPath)
 		return nil, err
 	}
 
@@ -122,6 +125,7 @@ func CreateSiteBackup(ctx context.Context, storeHandle *store.SQLiteStore, baseD
 
 	relative, _ := filepath.Rel(baseDir, finalPath)
 	return &ArtifactResult{
+		Verified:     true,
 		Path:         finalPath,
 		Size:         size,
 		Sha256:       sha,
@@ -173,6 +177,9 @@ func CreateDatabaseExport(ctx context.Context, dockerClient *docker.Client, base
 	tempPath := filepath.Join(tmpDir, filename+".partial")
 	finalPath := filepath.Join(destDir, filename)
 
+	rep := reporterFrom(ctx)
+	rep.Phase(kindWorking, "Exporting the database", 0)
+
 	file, err := os.Create(tempPath)
 	if err != nil {
 		return nil, err
@@ -180,14 +187,14 @@ func CreateDatabaseExport(ctx context.Context, dockerClient *docker.Client, base
 	defer file.Close()
 
 	gzipWriter := gzip.NewWriter(file)
-	defer gzipWriter.Close()
 
 	cmd := []string{"pg_dump", "-U", username, "-d", dbName, "-F", "c"}
 	var env []string
 	if password != nil && *password != "" {
 		env = append(env, fmt.Sprintf("PGPASSWORD=%s", *password))
 	}
-	if err := dockerClient.ExecCommandToWriter(ctx, containerID, cmd, env, gzipWriter); err != nil {
+	if err := dockerClient.ExecCommandToWriter(ctx, containerID, cmd, env, progressWriter{w: gzipWriter, rep: rep}); err != nil {
+		_ = gzipWriter.Close()
 		_ = os.Remove(tempPath)
 		return nil, err
 	}
@@ -203,13 +210,13 @@ func CreateDatabaseExport(ctx context.Context, dockerClient *docker.Client, base
 		_ = os.Remove(tempPath)
 		return nil, err
 	}
-	if err := os.Rename(tempPath, finalPath); err != nil {
+	sha, size, err := verifyDatabaseDump(tempPath, rep)
+	if err != nil {
 		_ = os.Remove(tempPath)
 		return nil, err
 	}
-
-	size, sha, err := hashFile(finalPath)
-	if err != nil {
+	if err := os.Rename(tempPath, finalPath); err != nil {
+		_ = os.Remove(tempPath)
 		return nil, err
 	}
 
@@ -233,6 +240,7 @@ func CreateDatabaseExport(ctx context.Context, dockerClient *docker.Client, base
 
 	relative, _ := filepath.Rel(baseDir, finalPath)
 	return &ArtifactResult{
+		Verified:     true,
 		Path:         finalPath,
 		Size:         size,
 		Sha256:       sha,

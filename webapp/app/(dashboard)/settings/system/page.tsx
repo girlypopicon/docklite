@@ -148,7 +148,7 @@ export default function SystemSettingsPage() {
               <div className="font-bold">Container logs retention</div>
               <div className="text-sm opacity-70">Keep container logs for 7 days</div>
             </div>
-            <button className="px-4 py-2 rounded-lg font-bold transition-all" style={{ background: 'var(--neon-purple)', color: 'white' }}>
+            <button className="px-4 py-2 rounded-lg font-bold transition-all" style={{ background: 'var(--neon-purple)', color: 'var(--button-text)' }}>
               7 days
             </button>
           </div>
@@ -217,7 +217,7 @@ export default function SystemSettingsPage() {
                   background: (updating || updateStatus.updateRunning)
                     ? 'rgba(var(--text-muted-rgb), 0.3)'
                     : 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%)',
-                  color: 'white',
+                  color: 'var(--button-text)',
                 }}
               >
                 <ArrowFatUp size={16} weight="duotone" className={(updating || updateStatus.updateRunning) ? 'animate-bounce' : ''} />
@@ -287,7 +287,7 @@ export default function SystemSettingsPage() {
                   background: checkingFolders
                     ? 'rgba(var(--text-muted-rgb), 0.3)'
                     : 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%)',
-                  color: 'white',
+                  color: 'var(--button-text)',
                 }}
               >
                 {checkingFolders ? (

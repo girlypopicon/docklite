@@ -157,7 +157,7 @@ export default function SidebarPanel({
         className={`docklite-sidebar-toggle fixed ${side === 'left' ? 'left-0' : 'right-0'} top-1/2 -translate-y-1/2 px-3 py-6 text-sm font-bold rounded-${side === 'left' ? 'r' : 'l'}-lg transition-all hover:scale-105 z-40`}
         style={{
           background: 'linear-gradient(135deg, var(--neon-purple) 0%, var(--neon-cyan) 100%)',
-          color: 'white',
+          color: 'var(--button-text)',
           boxShadow: '0 0 12px rgba(var(--neon-purple-rgb), 0.4)',
           writingMode: 'vertical-rl',
         }}
@@ -236,7 +236,7 @@ export default function SidebarPanel({
         style={{
           [side === 'left' ? 'left' : 'right']: `${width}vw`,
           background: 'linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 100%)',
-          color: 'white',
+          color: 'var(--button-text)',
           boxShadow: '0 0 12px rgba(var(--neon-pink-rgb), 0.6)',
         }}
         title="Close sidebar"
