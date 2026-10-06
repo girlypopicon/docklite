@@ -29,6 +29,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- Installing over an older DockLite that runs as systemd services (`docklite-agent`, `docklite-web`): the installer now asks
+  to stop and disable them first, because they run from the folder being replaced. Sites keep running (nginx and Docker
+  serve them). If the backup fails, the services are started again.
 - The dashboard footer and Settings showed a hard-coded "v1.0"; they now show the real version.
 - The 404 page listed Containers twice; the second link now goes to Backups.
 - Installing on a server that already hosts sites: DockLite no longer disables the `default` and `docklite-sites` nginx

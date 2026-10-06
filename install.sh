@@ -297,6 +297,7 @@ build_webapp() {
 
 DRY_RUN=0
 OLD_INSTALL=0
+OLD_UNITS=()   # older DockLite systemd services (docklite-agent.service, ...)
 
 preflight() {
     local nginx_files=() f n
@@ -342,8 +343,14 @@ preflight() {
         ok "No DockLite in ${INSTALL_DIR} yet"
     fi
     local units
-    units="$(systemctl list-units --all --no-legend 'docklite*' 2>/dev/null | awk '{print $1"("$4")"}' | tr '\n' ' ')"
-    [[ -n "$units" ]] && warn "Older DockLite services exist: ${units}— they are left alone; DockLite picks free ports."
+    units="$(systemctl list-units --all --no-legend 'docklite*.service' 2>/dev/null | sed 's/^[^a-z]*//' | awk '{print $1"("$4")"}' | tr '\n' ' ')"
+    OLD_UNITS=()
+    while read -r f; do [[ -n "$f" ]] && OLD_UNITS+=("$f"); done < <(systemctl list-units --all --no-legend 'docklite*.service' 2>/dev/null | sed 's/^[^a-z]*//' | awk '{print $1}')
+    if [[ ${#OLD_UNITS[@]} -gt 0 ]]; then
+        warn "Older DockLite services exist: ${units}"
+        info "  They run from the folder this install replaces, so you will be asked to stop and disable them first."
+        info "  Your sites do not depend on them: nginx and Docker serve the sites."
+    fi
 
     # docker + sites
     if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
@@ -375,6 +382,29 @@ preflight() {
 }
 
 # Keep a copy of an older install before the sync overwrites its files.
+# The older DockLite's services run from the folder we are about to replace. Stop and disable
+# them (after asking) so two DockLites never share files; sites keep running via nginx and Docker.
+STOPPED_UNITS=()
+stop_old_services() {
+    [[ ${#OLD_UNITS[@]} -gt 0 ]] || return 0
+    echo
+    warn "Older DockLite services are installed: ${OLD_UNITS[*]}"
+    info "They run from ${INSTALL_DIR}, which this install replaces. Your sites keep running, because"
+    info "nginx and Docker serve them, not DockLite itself. Stopping them avoids two DockLites fighting."
+    if ask_yn "Stop and disable the older services?" "Y"; then
+        local u
+        for u in "${OLD_UNITS[@]}"; do
+            if $SUDO systemctl disable --now "$u" >/dev/null 2>&1; then
+                STOPPED_UNITS+=("$u"); ok "Stopped and disabled ${u}"
+            else
+                warn "Could not stop ${u}; stop it yourself: sudo systemctl disable --now ${u}"
+            fi
+        done
+    else
+        warn "Leaving them running; they may misbehave while their files are replaced."
+    fi
+}
+
 backup_old_install() {
     [[ "$OLD_INSTALL" -eq 1 ]] || return 0
     local out="/var/backups/docklite/old-install-$(date +%Y%m%d-%H%M%S).tar.gz"
@@ -384,12 +414,15 @@ backup_old_install() {
         ok "Backed up the older install to ${out}"
     else
         fail "Could not back up ${INSTALL_DIR}; stopping so nothing is lost"
+        local u
+        for u in "${STOPPED_UNITS[@]+"${STOPPED_UNITS[@]}"}"; do $SUDO systemctl enable --now "$u" >/dev/null 2>&1 || true; done
         exit 1
     fi
 }
 
 install_to_opt() {
     step_header "Installing to ${INSTALL_DIR}"
+    stop_old_services
     backup_old_install
     $SUDO mkdir -p "${INSTALL_DIR}"
     # Runtime state lives only in INSTALL_DIR, never in the repo. Excluding
