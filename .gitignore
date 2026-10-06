@@ -9,6 +9,7 @@ ecosystem.config.js
 
 # Built binaries
 bin/docklite-agent
+bin/docklite-cli
 bin/docklite-tui
 
 # Go binaries in source tree
@@ -78,3 +79,4 @@ temp/
 # Local backup of git directory
 .git.bak
 .gitignore.root.bak
+.next-demo/

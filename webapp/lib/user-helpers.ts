@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const SITES_BASE_PATH = '/var/www/sites';
+const SITES_BASE_PATH = process.env.DOCKLITE_SITES_DIR || '/var/www/sites';
 
 /**
  * Ensures a user's home directory exists in /var/www/sites/{username}

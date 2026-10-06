@@ -142,3 +142,11 @@ func scanToken(scanner interface {
 	}
 	return &record, nil
 }
+
+// LinkTokenUser attaches a token that has no user yet to one. The bootstrap
+// token is created when the agent first starts, which can be before the web
+// app has created the first super admin, so it starts out unlinked.
+func (s *SQLiteStore) LinkTokenUser(tokenID int64, userID int64) error {
+	_, err := s.DB.Exec(`UPDATE tokens SET user_id = ? WHERE id = ? AND user_id IS NULL`, userID, tokenID)
+	return err
+}

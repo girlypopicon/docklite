@@ -64,6 +64,11 @@
     color-scheme: light;
   }
 
+  /* Unicorn is left exactly as it was: no forced color scheme. */
+  [data-theme='unicorn'] {
+    color-scheme: normal;
+  }
+
   [data-theme='corpo'] {
     --bg-dark: #e2e5ec;
     --bg-darker: #f4f6fa;
@@ -883,18 +888,30 @@
     color: var(--text-primary) !important;
   }
 
+  /* Corpo themes: flat light tabs with an accent edge, no glow or pulse. */
   [data-theme='corpo'] .docklite-sidebar-toggle,
   [data-theme='corpo'] .docklite-sidebar-close {
-    background: linear-gradient(135deg, rgba(255, 45, 142, 0.85), rgba(122, 79, 107, 0.65)) !important;
-    color: var(--button-text) !important;
-    box-shadow: 0 8px 18px rgba(31, 33, 43, 0.16) !important;
+    background: rgba(248, 249, 253, 0.95) !important;
+    color: #c4166d !important;
+    border-color: rgba(255, 45, 142, 0.5) !important;
+    box-shadow: 0 6px 16px rgba(31, 33, 43, 0.14) !important;
+    animation: none !important;
   }
 
   [data-theme='corpo-blue'] .docklite-sidebar-toggle,
   [data-theme='corpo-blue'] .docklite-sidebar-close {
-    background: linear-gradient(135deg, rgba(45, 123, 255, 0.85), rgba(41, 92, 168, 0.65)) !important;
-    color: var(--button-text) !important;
-    box-shadow: 0 8px 18px rgba(31, 33, 43, 0.16) !important;
+    background: rgba(248, 249, 253, 0.95) !important;
+    color: #1f5fd1 !important;
+    border-color: rgba(45, 123, 255, 0.5) !important;
+    box-shadow: 0 6px 16px rgba(31, 33, 43, 0.14) !important;
+    animation: none !important;
+  }
+
+  /* Unicorn: pink-to-cyan glow on dark glass, so the label stays readable on its pastel pages. */
+  [data-theme='unicorn'] .docklite-sidebar-toggle,
+  [data-theme='unicorn'] .docklite-sidebar-close {
+    color: var(--neon-pink);
+    border-color: rgba(var(--neon-pink-rgb), 0.6);
   }
 
   [data-theme='corpo'] .docklite-sidebar-edge {
@@ -1015,6 +1032,139 @@
 
   .neon-glow {
     box-shadow: 0 0 calc(6px * var(--glow)) var(--neon-pink), 0 0 calc(12px * var(--glow)) var(--neon-pink), 0 0 calc(18px * var(--glow)) var(--neon-pink);
+  }
+
+  /* Sidebar tabs: slim glass tabs hugging the screen edge, softly glowing.
+     Colors/glow come from theme variables; the glow scales with
+     Settings → Appearance → glow and stops with animations off. */
+  .docklite-sidebar-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    width: 2.1rem;
+    padding: 0.85rem 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--neon-cyan);
+    background: linear-gradient(180deg, rgba(24, 14, 44, 0.82), rgba(10, 8, 28, 0.82));
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(var(--neon-cyan-rgb), 0.55);
+    box-shadow: 0 0 calc(10px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.4),
+      inset 0 0 calc(8px * var(--glow)) rgba(var(--neon-purple-rgb), 0.25);
+    animation: docklite-tab-pulse 3.4s ease-in-out infinite;
+    transition: width 0.2s ease, color 0.2s ease;
+  }
+  .docklite-sidebar-toggle[data-side='left'] {
+    border-left-width: 0;
+    border-radius: 0 0.9rem 0.9rem 0;
+  }
+  .docklite-sidebar-toggle[data-side='right'] {
+    border-right-width: 0;
+    border-radius: 0.9rem 0 0 0.9rem;
+  }
+  .docklite-sidebar-toggle:hover,
+  .docklite-sidebar-toggle:focus-visible {
+    width: 2.7rem;
+    color: var(--neon-pink);
+    animation: none;
+    box-shadow: 0 0 calc(18px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.75),
+      0 0 calc(30px * var(--glow)) rgba(var(--neon-pink-rgb), 0.35),
+      inset 0 0 calc(10px * var(--glow)) rgba(var(--neon-purple-rgb), 0.35);
+  }
+  .docklite-sidebar-toggle-label {
+    writing-mode: vertical-rl;
+    white-space: nowrap;
+  }
+  .docklite-sidebar-toggle[data-side='right'] .docklite-sidebar-toggle-label {
+    transform: rotate(180deg);
+  }
+
+  .docklite-sidebar-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 3.4rem;
+    border-radius: 999px;
+    color: var(--neon-cyan);
+    background: linear-gradient(180deg, rgba(24, 14, 44, 0.9), rgba(10, 8, 28, 0.9));
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(var(--neon-cyan-rgb), 0.55);
+    box-shadow: 0 0 calc(8px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.4);
+    transition: box-shadow 0.2s ease, color 0.2s ease;
+  }
+  .docklite-sidebar-close:hover,
+  .docklite-sidebar-close:focus-visible {
+    color: var(--neon-pink);
+    box-shadow: 0 0 calc(16px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.75),
+      0 0 calc(26px * var(--glow)) rgba(var(--neon-pink-rgb), 0.35);
+  }
+
+  /* Unicorn's text colors are dark, meant for its cream surfaces, but the
+     Settings panel is a dark surface: inactive tab labels and every page shown
+     inside it came out dark-on-dark and unreadable. Inside the panel only,
+     use light text and translucent-light surfaces. Everything in the panel
+     reads these variables, so one scoped override fixes all of it. */
+  [data-theme='unicorn'] .docklite-settings-panel {
+    background: linear-gradient(135deg, rgba(22, 14, 34, 0.98), rgba(12, 9, 22, 0.98)) !important;
+    --text-primary: #f3ecff;
+    --text-secondary: #cdbfe6;
+    --text-muted: #a99bc4;
+    --text-muted-rgb: 169, 155, 196;
+    --surface-dim: rgba(255, 255, 255, 0.06);
+    --surface-muted: rgba(255, 255, 255, 0.09);
+    --surface-strong: rgba(255, 255, 255, 0.13);
+    --input-bg: rgba(255, 255, 255, 0.09);
+    color: var(--text-primary);
+  }
+  [data-theme='unicorn'] .docklite-settings-panel .card-vapor {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  /* Slim, rounded scrollbars in the theme's colors (sidebars, schema browser). */
+  .docklite-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--neon-pink-rgb), 0.7) transparent;
+  }
+  .docklite-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .docklite-scroll::-webkit-scrollbar-track {
+    margin: 6px 0;
+    border-radius: 999px;
+    background: rgba(var(--neon-purple-rgb), 0.1);
+  }
+  .docklite-scroll::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--neon-pink), var(--neon-purple) 55%, var(--neon-cyan)) padding-box;
+  }
+  .docklite-scroll::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple) 55%, var(--neon-pink)) padding-box;
+  }
+  [data-theme='unicorn'] .docklite-scroll::-webkit-scrollbar-thumb {
+    background: var(--spectrum-gradient) padding-box;
+  }
+  [data-theme='corpo'] .docklite-scroll,
+  [data-theme='corpo-blue'] .docklite-scroll {
+    scrollbar-color: rgba(var(--neon-pink-rgb), 0.55) transparent;
+  }
+
+  @keyframes docklite-tab-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 calc(7px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.3),
+        inset 0 0 calc(6px * var(--glow)) rgba(var(--neon-purple-rgb), 0.2);
+    }
+    50% {
+      box-shadow: 0 0 calc(18px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.7),
+        0 0 calc(30px * var(--glow)) rgba(var(--neon-purple-rgb), 0.3),
+        inset 0 0 calc(10px * var(--glow)) rgba(var(--neon-purple-rgb), 0.3);
+    }
   }
 
   .card-vapor {
@@ -1677,10 +1827,11 @@
     transform-origin: center;
   }
 
-  /* Ensure main content is below nav */
+  /* Page content sits below the nav. No z-index here on purpose: a z-index on
+     <main> makes it a stacking context, which traps every modal rendered inside
+     a page beneath the top bar no matter how high its own z-index is. */
   main {
     position: relative;
-    z-index: 10 !important;
   }
 
   /* High DPI display enhancements */

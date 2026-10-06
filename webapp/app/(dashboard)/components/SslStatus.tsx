@@ -342,7 +342,7 @@ function IssueSslModal({ onClose, onIssue, loading }: { onClose: () => void; onI
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
       style={{ backgroundColor: 'var(--modal-backdrop, rgba(0, 0, 0, 0.8))' }}
       onClick={onClose}
     >

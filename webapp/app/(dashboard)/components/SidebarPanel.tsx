@@ -4,9 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import FileManager from './FileManager';
 import SchemaBrowser from '../databases/SchemaBrowser';
-import { ChartLine, Scroll, Database, MagnifyingGlass, CaretLeft, CaretRight, Play } from '@phosphor-icons/react';
+import { ChartLine, Scroll, Database, MagnifyingGlass, CaretLeft, CaretRight, Play, Gear, FolderOpen, SidebarSimple } from '@phosphor-icons/react';
+import { useLayoutPrefs, type SidebarContent } from '@/lib/layout-prefs';
+import { useSettingsModal } from '@/lib/settings-modal';
+import DatabaseContextPanel from './DatabaseContextPanel';
 
-type SidebarContent = 'stats' | 'logs' | 'database' | 'search' | 'none';
+// Fixed sidebars hug the bottom of the top bar while it's on screen and the
+// top of the screen once it has scrolled away (see useNavOffset).
+const BELOW_NAV = { top: 'var(--nav-offset, 5rem)', height: 'calc(100vh - var(--nav-offset, 5rem))' } as const;
 
 interface SidebarPanelProps {
   side: 'left' | 'right';
@@ -18,7 +23,6 @@ interface SidebarPanelProps {
 
 export default function SidebarPanel({
   side,
-  defaultContent = 'none',
   mode = 'modular',
   defaultOpen = false,
   userSession = null,
@@ -26,7 +30,13 @@ export default function SidebarPanel({
   const isFileBrowser = mode === 'file-browser';
   const pathname = usePathname();
   const isDbEditMode = Boolean(pathname?.match(/^\/databases\/\d+\/edit/));
-  const [selectedContent, setSelectedContent] = useState<SidebarContent>(defaultContent);
+  // Which sidebars exist and what the right one shows is chosen in
+  // Settings → Sidebars, not here.
+  const { prefs } = useLayoutPrefs();
+  const { openSettings } = useSettingsModal();
+  const enabled = side === 'left' ? prefs.leftSidebar.enabled : prefs.rightSidebar.enabled;
+  const selectedContent: SidebarContent = isFileBrowser ? 'none' : prefs.rightSidebar.content;
+  const showTableDetails = isDbEditMode && side === 'right';
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   // Resize functionality
@@ -101,21 +111,36 @@ export default function SidebarPanel({
     };
   }, [isResizing, side]);
 
+  // On the edit-database page the data is the point, so sidebars push the
+  // page over (via --sidebar-push-*) rather than sitting on top of it.
+  const pushesContent = isDbEditMode && (side === 'left' || (isOpen && enabled));
+  useEffect(() => {
+    if (!isDbEditMode) return;
+    const name = side === 'left' ? '--sidebar-push-left' : '--sidebar-push-right';
+    document.documentElement.style.setProperty(name, pushesContent ? `${width}vw` : '0px');
+    return () => {
+      document.documentElement.style.removeProperty(name);
+    };
+  }, [isDbEditMode, side, pushesContent, width]);
+
+  if (!enabled && !(isDbEditMode && side === 'left')) return null;
+
   if (isDbEditMode && side === 'left') {
     return (
       <div className="relative">
         <div
-          className="fixed top-20 left-0 h-[calc(100vh-80px)] bg-gradient-to-b from-purple-900/30 to-cyan-900/30 backdrop-blur-md border-r border-purple-500/20 flex flex-col z-40"
-          style={{ width: `${width}vw` }}
+          className="docklite-sidebar-panel fixed left-0 bg-gradient-to-b from-purple-900/30 to-cyan-900/30 backdrop-blur-md border-r border-purple-500/20 flex flex-col z-40"
+          style={{ ...BELOW_NAV, width: `${width}vw` }}
         >
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-auto p-4 docklite-scroll">
             <SchemaBrowser />
           </div>
         </div>
         {/* Resize handle */}
         <div
-          className="fixed top-20 h-[calc(100vh-80px)] w-1 cursor-col-resize hover:w-2 transition-all z-50 group"
+          className="fixed w-1 cursor-col-resize hover:w-2 transition-all z-50 group"
           style={{
+            ...BELOW_NAV,
             left: `${width}vw`,
             background: isResizing
               ? 'linear-gradient(180deg, var(--neon-pink) 0%, var(--neon-purple) 50%, var(--neon-cyan) 100%)'
@@ -135,38 +160,36 @@ export default function SidebarPanel({
     );
   }
 
-  const contentOptions: Array<{ value: SidebarContent; label: string }> = [
-    { value: 'none', label: 'None' },
-    { value: 'stats', label: 'Live Stats' },
-    { value: 'logs', label: 'Container Logs' },
-    { value: 'database', label: 'Database Query' },
-    { value: 'search', label: 'Search' },
-  ];
+  const contentLabels: Record<SidebarContent, string> = {
+    none: 'Empty',
+    stats: 'Live Stats',
+    logs: 'Container Logs',
+    database: 'Database Query',
+    search: 'Search',
+  };
+
+  // Nothing chosen for this sidebar yet (the edit-database page always has its details panel).
+  const nothingChosen = !isFileBrowser && !showTableDetails && selectedContent === 'none';
 
   // Toggle button when sidebar is closed
-  if (!isOpen || (!isFileBrowser && selectedContent === 'none')) {
+  if (!isOpen || nothingChosen) {
     return (
       <button
+        data-side={side}
         onClick={() => {
-          if (!isFileBrowser && selectedContent === 'none') {
-            const nextContent = defaultContent === 'none' ? 'stats' : defaultContent;
-            setSelectedContent(nextContent);
+          if (nothingChosen) {
+            // Nothing chosen yet: pick what this sidebar should show.
+            openSettings('sidebars');
+            return;
           }
           setIsOpen(true);
         }}
-        className={`docklite-sidebar-toggle fixed ${side === 'left' ? 'left-0' : 'right-0'} top-1/2 -translate-y-1/2 px-3 py-6 text-sm font-bold rounded-${side === 'left' ? 'r' : 'l'}-lg transition-all hover:scale-105 z-40`}
-        style={{
-          background: 'linear-gradient(135deg, var(--neon-purple) 0%, var(--neon-cyan) 100%)',
-          color: 'var(--button-text)',
-          boxShadow: '0 0 12px rgba(var(--neon-purple-rgb), 0.4)',
-          writingMode: 'vertical-rl',
-        }}
-        title={`Open ${side} sidebar`}
+        className={`docklite-sidebar-toggle fixed ${side === 'left' ? 'left-0' : 'right-0'} top-1/2 -translate-y-1/2 z-40`}
+        title={nothingChosen ? 'Choose what this sidebar shows' : `Open ${side} sidebar`}
+        aria-label={nothingChosen ? 'Choose what this sidebar shows' : `Open ${side} sidebar`}
       >
-        <span className="inline-flex items-center gap-2">
-          {side === 'left' ? <CaretRight size={14} weight="bold" /> : <CaretLeft size={14} weight="bold" />}
-          {isDbEditMode ? 'Schema' : isFileBrowser ? 'Files' : 'Sidebar'}
-        </span>
+        {isDbEditMode ? <Database size={16} weight="duotone" /> : isFileBrowser ? <FolderOpen size={16} weight="duotone" /> : <SidebarSimple size={16} weight="duotone" />}
+        <span className="docklite-sidebar-toggle-label">{isDbEditMode ? (side === 'left' ? 'Schema' : 'Details') : isFileBrowser ? 'Files' : 'Panel'}</span>
       </button>
     );
   }
@@ -174,44 +197,44 @@ export default function SidebarPanel({
   return (
     <div className="relative">
       <div
-        className={`docklite-sidebar-panel fixed top-20 ${side === 'left' ? 'left-0' : 'right-0'} h-[calc(100vh-80px)] bg-gradient-to-b from-purple-900/30 to-cyan-900/30 backdrop-blur-md border-${side === 'left' ? 'r' : 'l'} border-purple-500/20 flex flex-col z-40`}
-        style={{ width: `${width}vw` }}
+        className={`docklite-sidebar-panel fixed ${side === 'left' ? 'left-0' : 'right-0'} bg-gradient-to-b from-purple-900/30 to-cyan-900/30 backdrop-blur-md border-${side === 'left' ? 'r' : 'l'} border-purple-500/20 flex flex-col z-40`}
+        style={{ ...BELOW_NAV, width: `${width}vw` }}
       >
-        {/* Header with selector only */}
+        {/* Header: what's showing, and a way to change it in Settings */}
         {!isFileBrowser && (
-          <div className="p-4 border-b border-purple-500/20">
-            <select
-              value={selectedContent}
-              onChange={(e) => setSelectedContent(e.target.value as SidebarContent)}
-              className="input-vapor px-3 py-2 text-sm font-bold w-full"
-              style={{
-                background: 'var(--surface-muted)',
-                border: '2px solid var(--neon-cyan)',
-              }}
+          <div className="p-4 border-b border-purple-500/20 flex items-center justify-between gap-2">
+            <div className="font-bold text-sm" style={{ color: 'var(--neon-cyan)' }}>
+              {showTableDetails ? 'Table details' : contentLabels[selectedContent]}
+            </div>
+            {!showTableDetails && <button
+              type="button"
+              onClick={() => openSettings('sidebars')}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-colors"
+              style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.4)', color: 'var(--neon-cyan)' }}
+              title="Change what this sidebar shows"
             >
-              {contentOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              <Gear size={14} weight="duotone" />
+              Change
+            </button>}
           </div>
         )}
 
         {/* Content Area - simple padding, no notch */}
-        <div className={`flex-1 overflow-auto ${isFileBrowser ? 'p-0' : 'p-4'}`}>
+        <div className={`flex-1 overflow-auto docklite-scroll ${isFileBrowser ? 'p-0' : 'p-4'}`}>
+          {showTableDetails && <DatabaseContextPanel />}
           {isFileBrowser && (isDbEditMode ? <SchemaBrowser /> : <FileManager embedded userSession={userSession} />)}
-          {!isFileBrowser && selectedContent === 'stats' && <StatsContent />}
-          {!isFileBrowser && selectedContent === 'logs' && <LogsContent />}
-          {!isFileBrowser && selectedContent === 'database' && <DatabaseContent />}
-          {!isFileBrowser && selectedContent === 'search' && <SearchContent />}
+          {!isFileBrowser && !showTableDetails && selectedContent === 'stats' && <StatsContent />}
+          {!isFileBrowser && !showTableDetails && selectedContent === 'logs' && <LogsContent />}
+          {!isFileBrowser && !showTableDetails && selectedContent === 'database' && <DatabaseContent />}
+          {!isFileBrowser && !showTableDetails && selectedContent === 'search' && <SearchContent />}
         </div>
       </div>
 
       {/* Resize handle with neon line on inner edge */}
       <div
-        className={`docklite-sidebar-edge fixed ${side === 'left' ? '' : ''} top-20 h-[calc(100vh-80px)] w-1 cursor-col-resize hover:w-2 transition-all z-50 group`}
+        className="docklite-sidebar-edge fixed w-1 cursor-col-resize hover:w-2 transition-all z-50 group"
         style={{
+          ...BELOW_NAV,
           [side === 'left' ? 'left' : 'right']: `${width}vw`,
           background: isResizing
             ? 'linear-gradient(180deg, var(--neon-pink) 0%, var(--neon-purple) 50%, var(--neon-cyan) 100%)'
@@ -232,13 +255,9 @@ export default function SidebarPanel({
       {/* Close button - on inner edge (toward main content), centered vertically */}
       <button
         onClick={() => setIsOpen(false)}
-        className={`docklite-sidebar-close fixed top-1/2 -translate-y-1/2 ${side === 'left' ? '-translate-x-1/2' : 'translate-x-1/2'} px-2 py-4 text-sm font-bold rounded-lg transition-all hover:scale-110 z-50`}
-        style={{
-          [side === 'left' ? 'left' : 'right']: `${width}vw`,
-          background: 'linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 100%)',
-          color: 'var(--button-text)',
-          boxShadow: '0 0 12px rgba(var(--neon-pink-rgb), 0.6)',
-        }}
+        className={`docklite-sidebar-close fixed top-1/2 -translate-y-1/2 ${side === 'left' ? '-translate-x-1/2' : 'translate-x-1/2'} z-50`}
+        style={{ [side === 'left' ? 'left' : 'right']: `${width}vw` }}
+        aria-label="Close sidebar"
         title="Close sidebar"
       >
         {side === 'left' ? <CaretLeft size={14} weight="bold" /> : <CaretRight size={14} weight="bold" />}

@@ -30,7 +30,7 @@ func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
 }
 
 func collectStatus(ctx context.Context, h *Handlers) (*models.StatusResponse, error) {
-	hostname, _ := os.Hostname()
+	hostname := hostName()
 	memoryTotal, memoryFree := readMemory()
 	uptime := readUptime()
 	cpuUsage, _ := readCPUUsage()

@@ -29,6 +29,41 @@ type dklManifest struct {
 	Username     string    `json:"username"`
 	Env          []string  `json:"env,omitempty"` // template-defined env vars (no secrets)
 	CreatedAt    time.Time `json:"createdAt"`
+	// PreviousOwners is the site's ownership history, oldest first. It lives in the
+	// manifest so it travels with the folder, backups and .dklpkg packages.
+	PreviousOwners []dklPreviousOwner `json:"previousOwners,omitempty"`
+}
+
+type dklPreviousOwner struct {
+	Username string    `json:"username"`
+	Until    time.Time `json:"until"`            // when they stopped owning it
+	Reason   string    `json:"reason,omitempty"` // "transfer", "user-deleted", ...
+	By       string    `json:"by,omitempty"`     // who made the change, when known
+}
+
+func readDKL(sitePath string) (dklManifest, bool) {
+	var m dklManifest
+	data, err := os.ReadFile(filepath.Join(sitePath, dklFilename))
+	if err != nil || json.Unmarshal(data, &m) != nil {
+		return m, false
+	}
+	return m, true
+}
+
+// RecordPreviousOwner adds a former owner to the site's .dkl. Best effort: a
+// folder with no manifest (or one we can't write) simply has no history file.
+func RecordPreviousOwner(sitePath, username, reason, by string) {
+	if username == "" || username == "unknown" {
+		return
+	}
+	m, ok := readDKL(sitePath)
+	if !ok {
+		return
+	}
+	m.PreviousOwners = append(m.PreviousOwners, dklPreviousOwner{Username: username, Until: time.Now().UTC(), Reason: reason, By: by})
+	if data, err := json.MarshalIndent(m, "", "  "); err == nil {
+		_ = os.WriteFile(filepath.Join(sitePath, dklFilename), data, 0o644)
+	}
 }
 
 // templateImage returns the Docker image for a given template type.
@@ -72,6 +107,13 @@ func WriteDKLManifest(sitePath, domain, templateType, username string, port int,
 		Username:     username,
 		Env:          env,
 		CreatedAt:    time.Now().UTC(),
+	}
+	// Rewriting a manifest must never lose what it already knows.
+	if prev, ok := readDKL(sitePath); ok {
+		manifest.PreviousOwners = prev.PreviousOwners
+		if !prev.CreatedAt.IsZero() {
+			manifest.CreatedAt = prev.CreatedAt
+		}
 	}
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {

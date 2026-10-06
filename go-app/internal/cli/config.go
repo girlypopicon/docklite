@@ -76,6 +76,10 @@ func SaveConfig(cfg *Config, path string) error {
 }
 
 func configPath() (string, error) {
+	// DOCKLITE_CONFIG lets scripts and tests point at a different file.
+	if override := os.Getenv("DOCKLITE_CONFIG"); override != "" {
+		return override, nil
+	}
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err

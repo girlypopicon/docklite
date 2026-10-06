@@ -6,13 +6,15 @@ BIN := $(ROOT)/bin
 # Build everything (agent, TUI, and GUI)
 build-all: build-agent build-tui build-gui
 
-# Build the Go agent (HTTP API server)
-build-agent:
+# Build the Go agent (HTTP API server) and the command line client
+build-agent: build-cli
 	mkdir -p $(BIN)
 	cd go-app && go build -o $(BIN)/docklite-agent ./cmd/docklite-agent
 
-# Build the CLI tool (alias for TUI)
-build-cli: build-tui
+# Build the command line client (docklite containers list, docklite doctor, ...)
+build-cli:
+	mkdir -p $(BIN)
+	cd go-app && go build -ldflags "-X main.version=$$(cat $(ROOT)/VERSION)" -o $(BIN)/docklite-cli ./cmd/docklite
 
 # Build the standalone TUI client
 build-tui:
@@ -73,3 +75,7 @@ test-coverage:
 install-test-deps:
 	cd webapp && bun install
 	@echo "Test dependencies installed"
+
+.PHONY: version
+version:
+	@scripts/release.sh status

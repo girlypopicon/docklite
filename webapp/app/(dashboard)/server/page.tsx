@@ -17,6 +17,8 @@ import {
   ArrowClockwise,
   SpinnerGap,
 } from '@phosphor-icons/react';
+import LogViewer from '../components/LogViewer';
+import ServiceCard, { type ServiceActionName, type ServiceKey } from '../components/ServiceCard';
 import NginxFlowPanel from './NginxFlowPanel';
 
 type LoadAvg = {
@@ -76,6 +78,10 @@ type ServiceStatus = {
   status: string;
   detail: string;
   startedAt: string;
+  note?: string;
+  warning?: string;
+  startSupported?: boolean;
+  stopSupported?: boolean;
   restartSupported: boolean;
   reloadSupported: boolean;
   logsSupported: boolean;
@@ -86,6 +92,8 @@ type ServicesResponse = {
   docklite: ServiceStatus | null;
   dockliteSecondary: ServiceStatus | null;
   proxy: ServiceStatus | null;
+  traefik: ServiceStatus | null;
+  legacyApi: ServiceStatus | null;
 };
 
 type MountUsage = {
@@ -202,7 +210,7 @@ export default function ServerPage() {
   const [loadingSecurity, setLoadingSecurity] = useState(true);
 
   const [serviceAction, setServiceAction] = useState<string | null>(null);
-  const [serviceLogsTarget, setServiceLogsTarget] = useState<'docklite' | 'proxy' | null>(null);
+  const [serviceLogsTarget, setServiceLogsTarget] = useState<ServiceKey | null>(null);
   const [serviceLogs, setServiceLogs] = useState('');
   const [loadingServiceLogs, setLoadingServiceLogs] = useState(false);
 
@@ -327,7 +335,11 @@ export default function ServerPage() {
     return Math.round((overview.disk.used / overview.disk.total) * 100);
   }, [overview]);
 
-  const handleServiceAction = async (service: 'docklite' | 'proxy', action: 'restart' | 'reload') => {
+  const handleServiceAction = async (service: ServiceKey, action: ServiceActionName) => {
+    const info = serviceInfo(service);
+    if (action === 'stop' && !window.confirm(`Stop ${info?.name || service}?\n\nAnything that depends on it will stop working until you start it again.`)) {
+      return;
+    }
     setServiceAction(`${service}:${action}`);
     try {
       const res = await fetch('/api/server/services/action', {
@@ -339,8 +351,13 @@ export default function ServerPage() {
         setAccessDenied(true);
         return;
       }
-      if (!res.ok) throw new Error('Service action failed');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Could not ${action} ${info?.name || service}`);
+      }
       await fetchServices();
+      // Keep an open log panel in step with what just happened.
+      if (serviceLogsTarget === service) await handleServiceLogs(service);
     } catch (err: any) {
       setError(err.message || 'Service action failed');
     } finally {
@@ -348,7 +365,12 @@ export default function ServerPage() {
     }
   };
 
-  const handleServiceLogs = async (target: 'docklite' | 'proxy') => {
+  const serviceInfo = (key: ServiceKey): ServiceStatus | null => {
+    if (!services) return null;
+    return { docklite: services.docklite, proxy: services.proxy, traefik: services.traefik, 'legacy-api': services.legacyApi }[key];
+  };
+
+  const handleServiceLogs = async (target: ServiceKey) => {
     setServiceLogsTarget(target);
     setLoadingServiceLogs(true);
     try {
@@ -648,7 +670,7 @@ export default function ServerPage() {
               <SpinnerGap size={16} className="animate-spin" /> Loading services...
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{services.docker.name}</div>
@@ -657,122 +679,39 @@ export default function ServerPage() {
                 {statusBadge(services.docker.status)}
               </div>
 
-              {services.docklite ? (
-                <div className="border-t border-white/10 pt-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{services.docklite.name}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{services.docklite.detail}</div>
-                      {services.docklite.startedAt && (
-                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                          Started {formatDateTime(services.docklite.startedAt)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {statusBadge(services.docklite.status)}
-                      {services.docklite.restartSupported && (
-                        <button
-                          className="btn-neon px-3 py-1 text-xs font-bold"
-                          onClick={() => handleServiceAction('docklite', 'restart')}
-                          disabled={serviceAction === 'docklite:restart'}
-                        >
-                          {serviceAction === 'docklite:restart' ? 'Restarting...' : 'Restart'}
-                        </button>
-                      )}
-                      {services.docklite.logsSupported && (
-                        <button
-                          className="btn-neon px-3 py-1 text-xs font-bold"
-                          onClick={() => handleServiceLogs('docklite')}
-                          disabled={loadingServiceLogs && serviceLogsTarget === 'docklite'}
-                        >
-                          Logs
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="border-t border-white/10 pt-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  DockLite service not detected.
-                </div>
-              )}
-
-              {services.dockliteSecondary && (
-                <div className="border-t border-white/10 pt-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                        {services.dockliteSecondary.name} (secondary)
-                      </div>
-                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{services.dockliteSecondary.detail}</div>
-                    </div>
-                    {statusBadge(services.dockliteSecondary.status)}
-                  </div>
-                </div>
-              )}
-
-              {services.proxy ? (
-                <div className="border-t border-white/10 pt-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{services.proxy.name}</div>
-                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{services.proxy.detail}</div>
-                      {services.proxy.startedAt && (
-                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                          Started {formatDateTime(services.proxy.startedAt)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {statusBadge(services.proxy.status)}
-                      {services.proxy.restartSupported && (
-                        <button
-                          className="btn-neon px-3 py-1 text-xs font-bold"
-                          onClick={() => handleServiceAction('proxy', 'restart')}
-                          disabled={serviceAction === 'proxy:restart'}
-                        >
-                          {serviceAction === 'proxy:restart' ? 'Restarting...' : 'Restart'}
-                        </button>
-                      )}
-                      {services.proxy.reloadSupported && (
-                        <button
-                          className="btn-neon px-3 py-1 text-xs font-bold"
-                          onClick={() => handleServiceAction('proxy', 'reload')}
-                          disabled={serviceAction === 'proxy:reload'}
-                        >
-                          {serviceAction === 'proxy:reload' ? 'Reloading...' : 'Reload'}
-                        </button>
-                      )}
-                      {services.proxy.logsSupported && (
-                        <button
-                          className="btn-neon px-3 py-1 text-xs font-bold"
-                          onClick={() => handleServiceLogs('proxy')}
-                          disabled={loadingServiceLogs && serviceLogsTarget === 'proxy'}
-                        >
-                          Logs
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="border-t border-white/10 pt-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Proxy service not detected.
-                </div>
+              {([
+                ['docklite', services.docklite],
+                ['proxy', services.proxy],
+                ['traefik', services.traefik],
+                ['legacy-api', services.legacyApi],
+              ] as Array<[ServiceKey, ServiceStatus | null]>).map(([key, service]) =>
+                service ? (
+                  <ServiceCard
+                    key={key}
+                    serviceKey={key}
+                    service={service}
+                    badge={statusBadge(service.status)}
+                    startedLabel={service.startedAt ? `Started ${formatDateTime(service.startedAt)}` : undefined}
+                    busy={serviceAction}
+                    logsOpen={serviceLogsTarget === key}
+                    logsLoading={loadingServiceLogs}
+                    onAction={handleServiceAction}
+                    onLogs={handleServiceLogs}
+                  />
+                ) : null
               )}
 
               {serviceLogsTarget && (
-                <div className="mt-4">
-                  <div className="text-xs font-bold mb-2" style={{ color: 'var(--neon-purple)' }}>
-                    {serviceLogsTarget.toUpperCase()} LOGS
+                <div className="mt-2">
+                  <div className="text-xs font-bold mb-1" style={{ color: 'var(--neon-purple)' }}>
+                    {(serviceInfo(serviceLogsTarget)?.name || serviceLogsTarget).toUpperCase()} LOGS
                   </div>
-                  <pre
-                    className="text-xs p-3 rounded-lg overflow-auto max-h-48"
-                    style={{ background: 'var(--surface-muted)', color: 'var(--text-primary)' }}
-                  >
-                    {loadingServiceLogs ? 'Loading logs...' : serviceLogs || 'No logs available'}
-                  </pre>
+                  <LogViewer
+                    text={serviceLogs}
+                    loading={loadingServiceLogs}
+                    emptyText="No logs available"
+                    onRefresh={() => handleServiceLogs(serviceLogsTarget)}
+                  />
                 </div>
               )}
             </div>
@@ -930,32 +869,24 @@ export default function ServerPage() {
           </h2>
           <div className="space-y-4">
             <div>
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-bold" style={{ color: 'var(--neon-purple)' }}>SYSTEM LOGS</div>
-                <button className="btn-neon px-3 py-1 text-xs font-bold" onClick={handleSystemLogs}>
-                  {loadingSystemLogs ? 'Loading...' : 'Refresh'}
-                </button>
-              </div>
-              <pre
-                className="text-xs p-3 rounded-lg overflow-auto max-h-48 mt-2"
-                style={{ background: 'var(--surface-muted)', color: 'var(--text-primary)' }}
-              >
-                {systemLogs || 'No system logs loaded.'}
-              </pre>
+              <div className="text-xs font-bold mb-1" style={{ color: 'var(--neon-purple)' }}>SYSTEM LOGS</div>
+              <LogViewer
+                text={systemLogs}
+                loading={loadingSystemLogs}
+                emptyText="No system logs loaded."
+                onRefresh={handleSystemLogs}
+                className="max-h-72"
+              />
             </div>
             <div>
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-bold" style={{ color: 'var(--neon-purple)' }}>DOCKLITE LOGS</div>
-                <button className="btn-neon px-3 py-1 text-xs font-bold" onClick={handleDockliteLogs}>
-                  {loadingDockliteLogs ? 'Loading...' : 'Refresh'}
-                </button>
-              </div>
-              <pre
-                className="text-xs p-3 rounded-lg overflow-auto max-h-48 mt-2"
-                style={{ background: 'var(--surface-muted)', color: 'var(--text-primary)' }}
-              >
-                {dockliteLogs || 'No DockLite logs loaded.'}
-              </pre>
+              <div className="text-xs font-bold mb-1" style={{ color: 'var(--neon-purple)' }}>DOCKLITE LOGS</div>
+              <LogViewer
+                text={dockliteLogs}
+                loading={loadingDockliteLogs}
+                emptyText="No DockLite logs loaded."
+                onRefresh={handleDockliteLogs}
+                className="max-h-72"
+              />
             </div>
           </div>
         </div>

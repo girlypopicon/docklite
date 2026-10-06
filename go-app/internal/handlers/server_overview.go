@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"archive/tar"
 	"compress/gzip"
 	"context"
@@ -18,7 +19,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 )
 
@@ -79,6 +79,10 @@ type serviceStatus struct {
 	Status           string `json:"status"`
 	Detail           string `json:"detail"`
 	StartedAt        string `json:"startedAt"`
+	Note             string `json:"note,omitempty"`    // plain-language context shown on the card
+	Warning          string `json:"warning,omitempty"` // something the user should know before acting
+	StartSupported   bool   `json:"startSupported"`
+	StopSupported    bool   `json:"stopSupported"`
 	RestartSupported bool   `json:"restartSupported"`
 	ReloadSupported  bool   `json:"reloadSupported"`
 	LogsSupported    bool   `json:"logsSupported"`
@@ -89,6 +93,8 @@ type serverServicesResponse struct {
 	Docklite          *serviceStatus `json:"docklite"`
 	DockliteSecondary *serviceStatus `json:"dockliteSecondary"`
 	Proxy             *serviceStatus `json:"proxy"`
+	Traefik           *serviceStatus `json:"traefik"`
+	LegacyAPI         *serviceStatus `json:"legacyApi"`
 }
 
 type mountUsage struct {
@@ -260,14 +266,12 @@ func (h *Handlers) ServerServices(w http.ResponseWriter, r *http.Request) {
 		dockerStatus.Detail = err.Error()
 	}
 
-	primary, secondary := h.detectDockliteService(ctx)
-	proxy := h.detectProxyService(ctx)
-
 	writeJSON(w, http.StatusOK, serverServicesResponse{
-		Docker:            dockerStatus,
-		Docklite:          primary,
-		DockliteSecondary: secondary,
-		Proxy:             proxy,
+		Docker:    dockerStatus,
+		Docklite:  h.detectDockliteService(),
+		Proxy:     h.detectProxyService(ctx),
+		Traefik:   h.detectTraefikService(ctx),
+		LegacyAPI: h.detectLegacyAPIService(ctx),
 	})
 }
 
@@ -289,7 +293,9 @@ func (h *Handlers) ServerServiceAction(w http.ResponseWriter, r *http.Request) {
 
 	action := strings.ToLower(strings.TrimSpace(payload.Action))
 	service := strings.ToLower(strings.TrimSpace(payload.Service))
-	if action != "restart" && action != "reload" {
+	switch action {
+	case "start", "stop", "restart", "reload":
+	default:
 		writeError(w, http.StatusBadRequest, "invalid action")
 		return
 	}
@@ -301,22 +307,30 @@ func (h *Handlers) ServerServiceAction(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := dockerContext(r.Context())
 	defer cancel()
 
+	var err error
 	switch service {
 	case "docklite":
-		if err := h.performDockliteAction(ctx, action); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-	case "proxy", "traefik":
-		if err := h.performProxyAction(ctx, action); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
+		err = h.performDockliteAction(ctx, action)
+	case "proxy", "nginx":
+		err = h.performProxyAction(ctx, action)
+	case "traefik":
+		err = h.performContainerServiceAction(ctx, isTraefikContainer, "Traefik", action)
+	case "legacy-api":
+		err = h.performContainerServiceAction(ctx, isDockliteContainer, "The old API container", action)
 	default:
 		writeError(w, http.StatusBadRequest, "unknown service")
 		return
 	}
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, errActionNotAllowed) {
+			status = http.StatusBadRequest
+		}
+		writeError(w, status, err.Error())
+		return
+	}
 
+	h.audit(r, "service."+action, service, nil)
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
@@ -429,6 +443,10 @@ func (h *Handlers) ServerLogs(w http.ResponseWriter, r *http.Request) {
 		logs, err = h.readDockliteLogs(r.Context(), tail)
 	case "proxy":
 		logs, err = h.readProxyLogs(r.Context(), tail)
+	case "traefik":
+		logs, err = h.readContainerLogs(r.Context(), isTraefikContainer, "Traefik", tail)
+	case "legacy-api":
+		logs, err = h.readContainerLogs(r.Context(), isDockliteContainer, "the old API container", tail)
 	default:
 		writeError(w, http.StatusBadRequest, "unknown log target")
 		return
@@ -835,68 +853,122 @@ func (h *Handlers) readDockerUsage(ctx context.Context) (dockerUsage, []dockerVo
 		volumes
 }
 
-func (h *Handlers) detectDockliteService(ctx context.Context) (*serviceStatus, *serviceStatus) {
-	var containerStatus *serviceStatus
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
-	if err == nil {
-		for i := range containers {
-			c := containers[i]
-			if isDockliteContainer(c) {
-				status := h.containerServiceStatus(ctx, c, "DockLite API")
-				containerStatus = &status
-				break
-			}
-		}
-	}
+// agentStartedAt is when this agent process started; shown as the uptime of
+// the DockLite service card.
+var agentStartedAt = time.Now()
 
-	systemdStatus, ok := systemdUnitStatus([]string{"docklite-agent.service", "docklite.service", "docklite-web.service"})
-	if !ok {
-		systemdStatus = nil
-	}
-
-	if containerStatus != nil {
-		return containerStatus, systemdStatus
-	}
-	if systemdStatus != nil {
-		return systemdStatus, nil
-	}
-	return nil, nil
+// nginxIsActive reports whether the system nginx is serving. `systemctl
+// is-active` exits non-zero for anything but "active", so the exit code is
+// ignored and its output read instead.
+func nginxIsActive() bool {
+	out, _ := exec.Command("systemctl", "is-active", "nginx").Output()
+	return strings.TrimSpace(string(out)) == "active"
 }
 
+func (h *Handlers) findContainer(ctx context.Context, match func(types.Container) bool) (types.Container, bool) {
+	containers, err := h.docker.VisibleContainers(ctx, true)
+	if err != nil {
+		return types.Container{}, false
+	}
+	for i := range containers {
+		if match(containers[i]) {
+			return containers[i], true
+		}
+	}
+	return types.Container{}, false
+}
+
+// detectDockliteService describes DockLite itself — the agent and web GUI
+// that are answering this request. (It used to describe whichever container
+// had "docklite" in its name, which on a server with an old install is an
+// unrelated container.)
+func (h *Handlers) detectDockliteService() *serviceStatus {
+	// Old systemd-style installs: the service manager knows about it.
+	if systemdStatus, ok := systemdUnitStatus([]string{"docklite-agent.service", "docklite.service", "docklite-web.service"}); ok && systemdStatus != nil {
+		return systemdStatus
+	}
+	version := "unknown"
+	if data, err := os.ReadFile("VERSION"); err == nil {
+		version = strings.TrimSpace(string(data))
+	}
+	return &serviceStatus{
+		Name:      "DockLite (agent + web)",
+		Kind:      "pm2",
+		Status:    "running",
+		Detail:    "Version " + version,
+		StartedAt: agentStartedAt.UTC().Format(time.RFC3339),
+		Note:      "This is the program serving this page. To restart it, run \"docklite restart\" on the server.",
+		LogsSupported: true,
+	}
+}
+
+// detectLegacyAPIService finds a leftover API container from an older
+// DockLite install (e.g. docklite_api) so it can be stopped or inspected.
+func (h *Handlers) detectLegacyAPIService(ctx context.Context) *serviceStatus {
+	c, ok := h.findContainer(ctx, isDockliteContainer)
+	if !ok {
+		return nil
+	}
+	name := "container"
+	if len(c.Names) > 0 {
+		name = strings.TrimPrefix(c.Names[0], "/")
+	}
+	status := h.containerServiceStatus(ctx, c, name+" (container)")
+	status.Note = "A container from an older DockLite setup, not the DockLite you are using now."
+	return &status
+}
+
+// detectTraefikService describes the Traefik container, if one exists, and
+// warns when nginx is already serving ports 80/443.
+func (h *Handlers) detectTraefikService(ctx context.Context) *serviceStatus {
+	c, ok := h.findContainer(ctx, isTraefikContainer)
+	if !ok {
+		return nil
+	}
+	status := h.containerServiceStatus(ctx, c, "Traefik")
+	status.ReloadSupported = c.State == "running"
+	if nginxIsActive() {
+		if c.State == "running" {
+			status.Warning = "nginx is serving ports 80 and 443 on this server. Traefik isn't needed here and can conflict with it, so you probably want it stopped."
+		} else {
+			status.Note = "Not in use: nginx is this server's proxy."
+		}
+	}
+	return &status
+}
+
+// detectProxyService is the proxy actually serving traffic: nginx when it
+// is running, otherwise a running Traefik container.
 func (h *Handlers) detectProxyService(ctx context.Context) *serviceStatus {
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
-	if err == nil {
-		for i := range containers {
-			c := containers[i]
-			if isTraefikContainer(c) {
-				status := h.containerServiceStatus(ctx, c, "Traefik Proxy")
-				status.RestartSupported = true
-				status.ReloadSupported = false
-				status.LogsSupported = true
-				return &status
-			}
+	if !nginxIsActive() {
+		if c, ok := h.findContainer(ctx, isTraefikContainer); ok && c.State == "running" {
+			status := h.containerServiceStatus(ctx, c, "Traefik Proxy")
+			status.ReloadSupported = true
+			return &status
 		}
 	}
 
-	out, err := exec.Command("systemctl", "is-active", "nginx").Output()
-	if err == nil {
-		state := strings.TrimSpace(string(out))
-		detail := ""
-		if verOut, verErr := exec.Command("nginx", "-v").CombinedOutput(); verErr == nil {
-			detail = strings.TrimSpace(string(verOut))
-		}
-		return &serviceStatus{
-			Name:             "Nginx",
-			Kind:             "systemd",
-			Status:           state,
-			Detail:           detail,
-			RestartSupported: true,
-			ReloadSupported:  true,
-			LogsSupported:    true,
-		}
+	if _, err := exec.LookPath("nginx"); err != nil {
+		return nil
 	}
-
-	return nil
+	state := "inactive"
+	if nginxIsActive() {
+		state = "active"
+	}
+	detail := ""
+	if verOut, verErr := exec.Command("nginx", "-v").CombinedOutput(); verErr == nil {
+		detail = strings.TrimSpace(string(verOut))
+	}
+	return &serviceStatus{
+		Name:             "Nginx",
+		Kind:             "systemd",
+		Status:           state,
+		Detail:           detail,
+		Note:             "Stopping nginx would take every site and this dashboard offline, so only Reload and Restart are offered here.",
+		RestartSupported: true,
+		ReloadSupported:  true,
+		LogsSupported:    true,
+	}
 }
 
 func (h *Handlers) containerServiceStatus(ctx context.Context, c types.Container, displayName string) serviceStatus {
@@ -905,6 +977,8 @@ func (h *Handlers) containerServiceStatus(ctx context.Context, c types.Container
 		Kind:             "container",
 		Status:           c.State,
 		Detail:           c.Status,
+		StartSupported:   c.State != "running",
+		StopSupported:    c.State == "running",
 		RestartSupported: true,
 		ReloadSupported:  false,
 		LogsSupported:    true,
@@ -1006,61 +1080,81 @@ func systemdUnitStatus(candidates []string) (*serviceStatus, bool) {
 	return nil, false
 }
 
-func (h *Handlers) performDockliteAction(ctx context.Context, action string) error {
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
-	if err == nil {
-		for i := range containers {
-			if isDockliteContainer(containers[i]) {
-				if action == "restart" {
-					return h.docker.Client.ContainerRestart(ctx, containers[i].ID, container.StopOptions{})
-				}
-				return fmt.Errorf("docklite reload not supported")
-			}
-		}
-	}
+// errActionNotAllowed marks a refusal that is the caller's doing (a request
+// DockLite won't carry out), as opposed to a failure while carrying it out.
+var errActionNotAllowed = errors.New("action not allowed")
 
-	unitStatus, ok := systemdUnitStatus([]string{"docklite-agent.service", "docklite.service", "docklite-web.service"})
-	if ok && unitStatus != nil {
-		unit := unitStatus.Name + ".service"
-		if action == "restart" {
-			_, err := runCommandTimeout(6*time.Second, "systemctl", "restart", unit)
-			return err
-		}
-		if action == "reload" {
-			_, err := runCommandTimeout(6*time.Second, "systemctl", "reload", unit)
-			return err
-		}
-	}
-	return fmt.Errorf("docklite service not found")
+func notAllowed(message string) error {
+	return fmt.Errorf("%w: %s", errActionNotAllowed, message)
 }
 
+// performContainerServiceAction starts, stops, restarts or HUP-reloads the
+// container a matcher finds.
+func (h *Handlers) performContainerServiceAction(ctx context.Context, match func(types.Container) bool, label string, action string) error {
+	c, ok := h.findContainer(ctx, match)
+	if !ok {
+		return notAllowed(label + " was not found on this server")
+	}
+	switch action {
+	case "start":
+		if c.State == "running" {
+			return nil
+		}
+		return h.docker.StartContainer(ctx, c.ID)
+	case "stop":
+		if c.State != "running" {
+			return nil
+		}
+		return h.docker.StopContainer(ctx, c.ID)
+	case "restart":
+		return h.docker.RestartContainer(ctx, c.ID)
+	case "reload":
+		if c.State != "running" {
+			return notAllowed(label + " is not running")
+		}
+		return h.docker.Client.ContainerKill(ctx, c.ID, "HUP")
+	}
+	return notAllowed("unknown action")
+}
+
+func (h *Handlers) performDockliteAction(ctx context.Context, action string) error {
+	if action != "restart" && action != "reload" {
+		return notAllowed("DockLite can't be started or stopped from its own page")
+	}
+	unitStatus, ok := systemdUnitStatus([]string{"docklite-agent.service", "docklite.service", "docklite-web.service"})
+	if !ok || unitStatus == nil {
+		return notAllowed("To restart DockLite, run \"docklite restart\" on the server")
+	}
+	unit := unitStatus.Name + ".service"
+	if action == "restart" {
+		_, err := runCommandTimeout(6*time.Second, "systemctl", "restart", unit)
+		return err
+	}
+	_, err := runCommandTimeout(6*time.Second, "systemctl", "reload", unit)
+	return err
+}
+
+// performProxyAction acts on the proxy that is actually serving: nginx when it
+// is running, otherwise a running Traefik. Start and stop are refused for
+// nginx: stopping it takes every site and this dashboard offline.
 func (h *Handlers) performProxyAction(ctx context.Context, action string) error {
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
-	if err == nil {
-		for i := range containers {
-			if isTraefikContainer(containers[i]) {
-				if action == "restart" {
-					return h.docker.Client.ContainerRestart(ctx, containers[i].ID, container.StopOptions{})
-				}
-				if action == "reload" {
-					return h.docker.Client.ContainerKill(ctx, containers[i].ID, "HUP")
-				}
-			}
+	if !nginxIsActive() {
+		if c, ok := h.findContainer(ctx, isTraefikContainer); ok && c.State == "running" {
+			return h.performContainerServiceAction(ctx, isTraefikContainer, "Traefik", action)
 		}
 	}
-
-	if _, lookErr := exec.LookPath("nginx"); lookErr == nil {
-		if action == "reload" {
-			_, err := runCommandTimeout(6*time.Second, "sudo", "-n", rootHelper, "nginx-reload")
-			return err
-		}
-		if action == "restart" {
-			_, err := runCommandTimeout(6*time.Second, "sudo", "-n", rootHelper, "nginx-restart")
-			return err
-		}
+	if _, err := exec.LookPath("nginx"); err != nil {
+		return notAllowed("no proxy service was found")
 	}
-
-	return fmt.Errorf("proxy service not found")
+	switch action {
+	case "reload":
+		_, err := runCommandTimeout(6*time.Second, "sudo", "-n", rootHelper, "nginx-reload")
+		return err
+	case "restart":
+		_, err := runCommandTimeout(6*time.Second, "sudo", "-n", rootHelper, "nginx-restart")
+		return err
+	}
+	return notAllowed("nginx can only be reloaded or restarted here — stopping it would take every site and this dashboard offline. Use the server shell if you really need that")
 }
 
 func (h *Handlers) readDockliteLogs(ctx context.Context, tail int) (string, error) {
@@ -1086,7 +1180,7 @@ func (h *Handlers) readDockliteLogs(ctx context.Context, tail int) (string, erro
 		return strings.Join(sections, "\n\n"), nil
 	}
 
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := h.docker.VisibleContainers(ctx, true)
 	if err == nil {
 		for i := range containers {
 			if isDockliteContainer(containers[i]) {
@@ -1108,15 +1202,22 @@ func (h *Handlers) readDockliteLogs(ctx context.Context, tail int) (string, erro
 	return "", fmt.Errorf("docklite logs unavailable")
 }
 
+func (h *Handlers) readContainerLogs(ctx context.Context, match func(types.Container) bool, label string, tail int) (string, error) {
+	c, ok := h.findContainer(ctx, match)
+	if !ok {
+		return "", fmt.Errorf("%s was not found on this server", label)
+	}
+	dockerCtx, cancel := dockerContext(ctx)
+	defer cancel()
+	return h.docker.ContainerLogs(dockerCtx, c.ID, strconv.Itoa(tail))
+}
+
+// readProxyLogs reads the logs of the proxy that is actually serving (nginx
+// when it's running), not whatever proxy container happens to exist.
 func (h *Handlers) readProxyLogs(ctx context.Context, tail int) (string, error) {
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
-	if err == nil {
-		for i := range containers {
-			if isTraefikContainer(containers[i]) {
-				dockerCtx, cancel := dockerContext(ctx)
-				defer cancel()
-				return h.docker.ContainerLogs(dockerCtx, containers[i].ID, strconv.Itoa(tail))
-			}
+	if !nginxIsActive() {
+		if c, ok := h.findContainer(ctx, isTraefikContainer); ok && c.State == "running" {
+			return h.readContainerLogs(ctx, isTraefikContainer, "Traefik", tail)
 		}
 	}
 

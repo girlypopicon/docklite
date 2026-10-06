@@ -2,505 +2,170 @@ package main
 
 import (
 	"bufio"
-	"context"
-	"encoding/json"
-	"flag"
 	"fmt"
+	"io"
 	"os"
-	"strconv"
 	"strings"
-	"syscall"
-	"time"
 
 	"docklite-agent/internal/cli"
-
-	"golang.org/x/crypto/ssh/terminal"
 )
 
-const version = "dev"
-
-type globalOptions struct {
-	Server  string
-	Host    string
-	Token   string
-	JSON    bool
-	Quiet   bool
-	Verbose bool
-	NoColor bool
-	Timeout time.Duration
-	Yes     bool
-}
+// version is set at build time (-ldflags "-X main.version=...") from VERSION.
+var version = "dev"
 
 func main() {
-	opts, args := parseGlobalFlags(os.Args[1:])
-	if len(args) == 0 || args[0] == "help" {
-		printUsage()
-		return
-	}
-
-	cfg, cfgPath, err := cli.LoadConfig()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to load config:", err)
-		os.Exit(1)
-	}
-
-	client, err := resolveClient(cfg, opts)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	switch args[0] {
-	case "version":
-		fmt.Println("docklite", version)
-	case "login":
-		handleLogin(cfg, cfgPath, client, opts, args[1:])
-	case "logout":
-		handleLogout(cfg, cfgPath, opts, args[1:])
-	case "status":
-		runGet(client, opts, "/api/status")
-	case "info":
-		runGet(client, opts, "/api/summary")
-	case "list":
-		runList(client, opts, args[1:])
-	case "tokens":
-		runGet(client, opts, "/api/tokens")
-	case "token":
-		handleToken(client, opts, args[1:])
-	case "config":
-		handleConfig(cfg, cfgPath, args[1:])
-	default:
-		fmt.Fprintln(os.Stderr, "unknown command:", args[0])
-		printUsage()
-		os.Exit(1)
-	}
+	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 
-func parseGlobalFlags(args []string) (globalOptions, []string) {
-	opts := globalOptions{Timeout: 15 * time.Second}
-	fs := flag.NewFlagSet("docklite", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
+// run is main without the process: it returns the exit code, which is what
+// lets the tests drive every command.
+func run(args []string, in io.Reader, out, errOut io.Writer) int {
+	a := &app{in: in, out: out, errOut: errOut, getenv: os.Getenv}
 
-	fs.StringVar(&opts.Server, "server", "", "server profile name")
-	fs.StringVar(&opts.Host, "host", "", "agent base URL")
-	fs.StringVar(&opts.Token, "token", "", "agent token")
-	fs.BoolVar(&opts.JSON, "json", false, "json output")
-	fs.BoolVar(&opts.Quiet, "quiet", false, "quiet output")
-	fs.BoolVar(&opts.Verbose, "verbose", false, "verbose output")
-	fs.BoolVar(&opts.NoColor, "no-color", false, "disable color")
-	fs.DurationVar(&opts.Timeout, "timeout", 15*time.Second, "request timeout")
-	fs.BoolVar(&opts.Yes, "yes", false, "auto-confirm")
+	opts, rest, err := extractGlobals(args)
+	a.opts = opts
+	if err != nil {
+		return a.finish(err)
+	}
+	if len(rest) == 0 {
+		a.printUsage()
+		return exitOK
+	}
 
-	_ = fs.Parse(args)
-	return opts, fs.Args()
-}
-
-func resolveClient(cfg *cli.Config, opts globalOptions) (*cli.Client, error) {
-	host := strings.TrimSpace(opts.Host)
-	token := strings.TrimSpace(opts.Token)
-	if host == "" {
-		if env := strings.TrimSpace(os.Getenv("DOCKLITE_HOST")); env != "" {
-			host = env
+	cmd, remaining := findCommand(rest)
+	if cmd == nil {
+		if isGroup(rest[0]) {
+			a.printGroupHelp(rest[0])
+			return exitOK
 		}
+		return a.finish(usageError("unknown command %q — see: docklite help", strings.Join(rest, " ")))
+	}
+	for _, arg := range remaining {
+		if arg == "-h" || arg == "--help" {
+			a.printCommandHelp(cmd)
+			return exitOK
+		}
+	}
+
+	a.cfg, a.cfgPath, err = cli.LoadConfig()
+	if err != nil {
+		return a.finish(fmt.Errorf("could not read the config file: %w", err))
+	}
+	a.resolveClient()
+
+	return a.finish(cmd.Run(a, remaining))
+}
+
+func (a *app) finish(err error) int {
+	if err == nil {
+		return exitOK
+	}
+	code := exitFailure
+	if ee, ok := err.(*exitError); ok {
+		code = ee.code
+	}
+	if a.opts.JSON {
+		fmt.Fprintf(a.errOut, "{\"error\":%q,\"code\":%d}\n", err.Error(), code)
+	} else {
+		fmt.Fprintln(a.errOut, "error: "+err.Error())
+	}
+	return code
+}
+
+// ---------------------------------------------------------------------------
+// Credentials
+
+const localConfPath = "/opt/docklite/.docklite.conf"
+
+type localAdmin struct {
+	Host  string
+	Token string
+}
+
+// readLocalAdmin reads the server's own DockLite config. Only users who can
+// read that file (the docklite user, or members of the docklite group — see
+// `docklite access`) get this "admin shell access".
+func readLocalAdmin(getenv func(string) string) *localAdmin {
+	path := getenv("DOCKLITE_CONF")
+	if path == "" {
+		path = localConfPath
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+
+	values := map[string]string{}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if key, value, ok := strings.Cut(line, "="); ok {
+			values[strings.TrimSpace(key)] = strings.Trim(strings.TrimSpace(value), `"'`)
+		}
+	}
+	if values["DOCKLITE_TOKEN"] == "" {
+		return nil
+	}
+	port := values["AGENT_PORT"]
+	if port == "" {
+		port = "3000"
+	}
+	return &localAdmin{Host: "http://127.0.0.1:" + port, Token: values["DOCKLITE_TOKEN"]}
+}
+
+// resolveClient picks the address and credential, in this order:
+//  1. --host / --token flags, DOCKLITE_HOST / DOCKLITE_TOKEN environment
+//  2. the saved profile (docklite login)
+//  3. local admin access, if this user can read the server's config file
+func (a *app) resolveClient() {
+	host := strings.TrimSpace(a.opts.Host)
+	token := strings.TrimSpace(a.opts.Token)
+	source := ""
+	if host == "" {
+		host = strings.TrimSpace(a.getenv("DOCKLITE_HOST"))
 	}
 	if token == "" {
-		if env := strings.TrimSpace(os.Getenv("DOCKLITE_TOKEN")); env != "" {
-			token = env
-		}
+		token = strings.TrimSpace(a.getenv("DOCKLITE_TOKEN"))
 	}
+	if token != "" {
+		source = "token from --token or DOCKLITE_TOKEN"
+	}
+	explicitHost := host != ""
 
-	serverName := opts.Server
-	if serverName == "" {
-		serverName = cfg.CurrentServer
+	profile := a.opts.Server
+	if profile == "" {
+		profile = a.cfg.CurrentServer
 	}
-	if host == "" && serverName != "" {
-		if server, ok := cfg.Servers[serverName]; ok {
+	profileHostIsDefault := true
+	if server, ok := a.cfg.Servers[profile]; ok {
+		if host == "" && server.Host != "" {
 			host = server.Host
-			if token == "" {
-				token = server.Token
-			}
+			profileHostIsDefault = server.Host == cli.DefaultHost()
+		}
+		if token == "" && server.Token != "" {
+			token = server.Token
+			source = fmt.Sprintf("saved login for server %q", profile)
 		}
 	}
 
+	// A user who can read the server's own config gets admin access with no
+	// login — but only when pointed at this machine, never a remote server.
+	if token == "" && !explicitHost && profileHostIsDefault {
+		if local := readLocalAdmin(a.getenv); local != nil {
+			host, token = local.Host, local.Token
+			source = "local admin access (you can read the server's DockLite config)"
+		}
+	}
 	if host == "" {
 		host = cli.DefaultHost()
 	}
-
-	return &cli.Client{
-		BaseURL: host,
-		Token:   token,
-		Timeout: opts.Timeout,
-	}, nil
+	if source == "" {
+		source = "none — run: docklite login"
+	}
+	a.client = &cli.Client{BaseURL: host, Token: token, Timeout: a.opts.Timeout}
+	a.credSource = source
 }
-
-func runGet(client *cli.Client, opts globalOptions, path string) {
-	data, err := client.Do(context.Background(), httpMethodGet, path, nil)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	if opts.JSON {
-		fmt.Println(string(data))
-		return
-	}
-	var payload any
-	if err := json.Unmarshal(data, &payload); err != nil {
-		fmt.Println(string(data))
-		return
-	}
-	pretty, _ := json.MarshalIndent(payload, "", "  ")
-	fmt.Println(string(pretty))
-}
-
-func runList(client *cli.Client, opts globalOptions, args []string) {
-	_ = args
-	data, err := client.Do(context.Background(), httpMethodGet, "/api/containers/all", nil)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	if opts.JSON {
-		fmt.Println(string(data))
-		return
-	}
-	var resp struct {
-		Containers []struct {
-			ID     string `json:"id"`
-			Name   string `json:"name"`
-			Status string `json:"status"`
-			State  string `json:"state"`
-		} `json:"containers"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		fmt.Println(string(data))
-		return
-	}
-	for _, c := range resp.Containers {
-		id := c.ID
-		if len(id) > 12 {
-			id = id[:12]
-		}
-		fmt.Printf("%s\t%s\t%s\t%s\n", id, c.Name, c.State, c.Status)
-	}
-}
-
-func handleToken(client *cli.Client, opts globalOptions, args []string) {
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "token subcommand required")
-		os.Exit(1)
-	}
-	switch args[0] {
-	case "create":
-		handleTokenCreate(client, opts, args[1:])
-	case "revoke":
-		handleTokenRevoke(client, opts, args[1:])
-	default:
-		fmt.Fprintln(os.Stderr, "unknown token subcommand:", args[0])
-		os.Exit(1)
-	}
-}
-
-func handleTokenCreate(client *cli.Client, opts globalOptions, args []string) {
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "token name required")
-		os.Exit(1)
-	}
-	name := args[0]
-	payload := map[string]any{"name": name}
-	data, err := client.Do(context.Background(), httpMethodPost, "/api/tokens", payload)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	if opts.JSON {
-		fmt.Println(string(data))
-		return
-	}
-	var resp struct {
-		Token map[string]any `json:"token"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		fmt.Println(string(data))
-		return
-	}
-	pretty, _ := json.MarshalIndent(resp, "", "  ")
-	fmt.Println(string(pretty))
-}
-
-func handleTokenRevoke(client *cli.Client, opts globalOptions, args []string) {
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "token id required")
-		os.Exit(1)
-	}
-	id, err := strconv.ParseInt(args[0], 10, 64)
-	if err != nil || id <= 0 {
-		fmt.Fprintln(os.Stderr, "invalid token id")
-		os.Exit(1)
-	}
-	payload := map[string]any{"id": id}
-	data, err := client.Do(context.Background(), httpMethodPost, "/api/tokens/revoke", payload)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	if opts.JSON {
-		fmt.Println(string(data))
-		return
-	}
-	fmt.Println("token revoked")
-}
-
-func handleLogin(cfg *cli.Config, cfgPath string, client *cli.Client, opts globalOptions, args []string) {
-	fs := flag.NewFlagSet("login", flag.ContinueOnError)
-	fs.SetOutput(os.Stderr)
-	tokenName := "cli"
-	expiresAt := ""
-	fs.StringVar(&tokenName, "token-name", "cli", "token name")
-	fs.StringVar(&expiresAt, "expires-at", "", "RFC3339 expiration timestamp")
-	_ = fs.Parse(args)
-
-	username, err := promptInput("Username: ")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to read username:", err)
-		os.Exit(1)
-	}
-	password, err := promptPassword("Password: ")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to read password:", err)
-		os.Exit(1)
-	}
-
-	payload := map[string]any{
-		"username":    username,
-		"password":    password,
-		"issue_token": true,
-		"token_name":  tokenName,
-	}
-	if strings.TrimSpace(expiresAt) != "" {
-		payload["expires_at"] = strings.TrimSpace(expiresAt)
-	}
-
-	loginClient := *client
-	loginClient.Token = ""
-
-	data, err := loginClient.Do(context.Background(), httpMethodPost, "/api/auth/login", payload)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	var resp struct {
-		Token struct {
-			Secret string `json:"secret"`
-		} `json:"token"`
-	}
-	if err := json.Unmarshal(data, &resp); err != nil {
-		fmt.Fprintln(os.Stderr, "failed to parse response:", err)
-		os.Exit(1)
-	}
-	if strings.TrimSpace(resp.Token.Secret) == "" {
-		fmt.Fprintln(os.Stderr, "login succeeded but token missing from response")
-		os.Exit(1)
-	}
-
-	serverName := opts.Server
-	if serverName == "" {
-		serverName = cfg.CurrentServer
-	}
-	if serverName == "" {
-		serverName = "default"
-	}
-	if cfg.Servers == nil {
-		cfg.Servers = map[string]cli.ServerConfig{}
-	}
-	server := cfg.Servers[serverName]
-	if server.Host == "" {
-		server.Host = client.BaseURL
-	}
-	server.Token = resp.Token.Secret
-	cfg.Servers[serverName] = server
-	if cfg.CurrentServer == "" {
-		cfg.CurrentServer = serverName
-	}
-	if err := cli.SaveConfig(cfg, cfgPath); err != nil {
-		fmt.Fprintln(os.Stderr, "failed to save config:", err)
-		os.Exit(1)
-	}
-
-	if opts.JSON {
-		fmt.Println(string(data))
-		return
-	}
-	fmt.Printf("login succeeded, token saved for %s\n", serverName)
-}
-
-func handleLogout(cfg *cli.Config, cfgPath string, opts globalOptions, args []string) {
-	_ = args
-	serverName := opts.Server
-	if serverName == "" {
-		serverName = cfg.CurrentServer
-	}
-	if serverName == "" {
-		serverName = "default"
-	}
-	server, ok := cfg.Servers[serverName]
-	if !ok {
-		fmt.Fprintln(os.Stderr, "server not found:", serverName)
-		os.Exit(1)
-	}
-	server.Token = ""
-	cfg.Servers[serverName] = server
-	if err := cli.SaveConfig(cfg, cfgPath); err != nil {
-		fmt.Fprintln(os.Stderr, "failed to save config:", err)
-		os.Exit(1)
-	}
-	fmt.Printf("token cleared for %s\n", serverName)
-}
-
-func promptInput(prompt string) (string, error) {
-	fmt.Fprint(os.Stderr, prompt)
-	reader := bufio.NewReader(os.Stdin)
-	value, err := reader.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(value), nil
-}
-
-func promptPassword(prompt string) (string, error) {
-	fmt.Fprint(os.Stderr, prompt)
-	value, err := terminal.ReadPassword(int(syscall.Stdin))
-	fmt.Fprintln(os.Stderr)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(value)), nil
-}
-
-func handleConfig(cfg *cli.Config, cfgPath string, args []string) {
-	if len(args) == 0 || args[0] == "show" {
-		out, _ := json.MarshalIndent(cfg, "", "  ")
-		fmt.Println(string(out))
-		return
-	}
-	switch args[0] {
-	case "set":
-		if len(args) < 3 {
-			fmt.Fprintln(os.Stderr, "usage: docklite config set <key> <value>")
-			os.Exit(1)
-		}
-		if err := setConfigValue(cfg, args[1], args[2]); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		if err := cli.SaveConfig(cfg, cfgPath); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-	case "get":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: docklite config get <key>")
-			os.Exit(1)
-		}
-		value, err := getConfigValue(cfg, args[1])
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		fmt.Println(value)
-	case "reset":
-		cfg = &cli.Config{
-			CurrentServer: "default",
-			Servers: map[string]cli.ServerConfig{
-				"default": {Host: cli.DefaultHost(), Token: ""},
-			},
-		}
-		if err := cli.SaveConfig(cfg, cfgPath); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-	default:
-		fmt.Fprintln(os.Stderr, "unknown config subcommand:", args[0])
-		os.Exit(1)
-	}
-}
-
-func setConfigValue(cfg *cli.Config, key string, value string) error {
-	switch key {
-	case "current_server":
-		cfg.CurrentServer = value
-		return nil
-	}
-	if strings.HasPrefix(key, "servers.") {
-		parts := strings.Split(key, ".")
-		if len(parts) != 3 {
-			return fmt.Errorf("invalid key: %s", key)
-		}
-		name := parts[1]
-		field := parts[2]
-		server := cfg.Servers[name]
-		switch field {
-		case "host":
-			server.Host = value
-		case "token":
-			server.Token = value
-		default:
-			return fmt.Errorf("unknown server field: %s", field)
-		}
-		if cfg.Servers == nil {
-			cfg.Servers = map[string]cli.ServerConfig{}
-		}
-		cfg.Servers[name] = server
-		return nil
-	}
-	return fmt.Errorf("unknown key: %s", key)
-}
-
-func getConfigValue(cfg *cli.Config, key string) (string, error) {
-	switch key {
-	case "current_server":
-		return cfg.CurrentServer, nil
-	}
-	if strings.HasPrefix(key, "servers.") {
-		parts := strings.Split(key, ".")
-		if len(parts) != 3 {
-			return "", fmt.Errorf("invalid key: %s", key)
-		}
-		name := parts[1]
-		field := parts[2]
-		server, ok := cfg.Servers[name]
-		if !ok {
-			return "", fmt.Errorf("server not found: %s", name)
-		}
-		switch field {
-		case "host":
-			return server.Host, nil
-		case "token":
-			return server.Token, nil
-		default:
-			return "", fmt.Errorf("unknown server field: %s", field)
-		}
-	}
-	return "", fmt.Errorf("unknown key: %s", key)
-}
-
-func printUsage() {
-	fmt.Print(`docklite <command> [flags]
-
-Commands:
-  help
-  version
-  login [--token-name <name>] [--expires-at <rfc3339>]
-  logout
-  status
-  info
-  list
-  tokens
-  token create <name>
-  token revoke <id>
-  config [show|get|set|reset]
-`)
-}
-
-const httpMethodGet = "GET"
-const httpMethodPost = "POST"

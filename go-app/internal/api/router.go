@@ -1,6 +1,7 @@
 package api
 
 import (
+	"docklite-agent/internal/demo"
 	"net/http"
 	"strings"
 
@@ -17,6 +18,10 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/containers", handlers.Auth(handlers.ListContainers))
 	mux.HandleFunc("/api/containers/all", handlers.Auth(handlers.ListAllContainers))
 	mux.HandleFunc("/api/containers/scan", handlers.Auth(hnd.CSRFMiddleware(handlers.ScanSites)))
+	mux.HandleFunc("/api/sites/layout", handlers.Auth(hnd.CSRFMiddleware(handlers.SiteLayout)))
+	mux.HandleFunc("/api/sites/folders", handlers.Auth(hnd.CSRFMiddleware(handlers.SiteFolders)))
+	mux.HandleFunc("/api/sites/folders/adopt", handlers.Auth(hnd.CSRFMiddleware(handlers.AdoptFolder)))
+	mux.HandleFunc("/api/sites/folders/trash", handlers.Auth(hnd.CSRFMiddleware(handlers.TrashFolder)))
 	mux.HandleFunc("/api/containers/onboard", handlers.Auth(hnd.CSRFMiddleware(handlers.OnboardSite)))
 	mux.HandleFunc("/api/containers/import", handlers.Auth(hnd.CSRFMiddleware(handlers.ImportSite)))
 	mux.HandleFunc("/api/containers/", handlers.Auth(hnd.CSRFMiddleware(handlers.Container)))
@@ -85,6 +90,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/users", handlers.Auth(hnd.CSRFMiddleware(handlers.Users)))
 	mux.HandleFunc("/api/users/password", handlers.Auth(hnd.CSRFMiddleware(handlers.UserPassword)))
 	mux.HandleFunc("/api/system/check-folders", handlers.Auth(handlers.SystemCheckFolders))
+	mux.HandleFunc("/api/system/shell-access", handlers.Auth(hnd.CSRFMiddleware(handlers.ShellAccess)))
 	mux.HandleFunc("/api/system/update/status", handlers.Auth(handlers.SystemUpdateStatus))
 	mux.HandleFunc("/api/system/update/run", handlers.Auth(hnd.CSRFMiddleware(handlers.SystemUpdateRun)))
 	mux.HandleFunc("/api/db/cleanup", handlers.Auth(hnd.CSRFMiddleware(handlers.DBCleanup)))
@@ -107,6 +113,12 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check if this is an agent-handled route
 		if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") {
+			if demo.On && demoBlocked(r.URL.Path) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"error":"not available in demo mode"}`))
+				return
+			}
 			mux.ServeHTTP(w, r)
 		} else if proxy != nil {
 			// Proxy everything else to Next.js
@@ -115,4 +127,21 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 			http.NotFound(w, r)
 		}
 	})
+}
+
+// demoBlockedPrefixes expose details of the real host (addresses, logs, services,
+// shell users, updates), so a demo instance refuses them.
+var demoBlockedPrefixes = []string{
+	"/api/server/overview", "/api/server/ports", "/api/server/updates", "/api/server/services",
+	"/api/server/storage", "/api/server/security", "/api/server/logs", "/api/server/diagnostics",
+	"/api/network/", "/api/system/shell-access", "/api/system/update", "/api/debug",
+}
+
+func demoBlocked(path string) bool {
+	for _, p := range demoBlockedPrefixes {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }

@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/volume"
@@ -26,7 +25,7 @@ func (h *Handlers) Summary(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Get containers
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := h.docker.VisibleContainers(ctx, true)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

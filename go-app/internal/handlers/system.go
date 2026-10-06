@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 )
 
-const sitesBasePath = "/var/www/sites"
-
 func (h *Handlers) SystemCheckFolders(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -121,7 +119,7 @@ func (h *Handlers) DBCleanup(w http.ResponseWriter, r *http.Request) {
 }
 
 func ensureUserHomeFolder(username string) error {
-	userPath := filepath.Join(sitesBasePath, username)
+	userPath := filepath.Join(siteBaseDir, username)
 	if err := os.MkdirAll(userPath, 0o775); err != nil {
 		return err
 	}

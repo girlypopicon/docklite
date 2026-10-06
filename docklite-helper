@@ -25,6 +25,21 @@ check_domain() {
         || die "invalid domain: $1"
 }
 
+# A person's login account on this server: a plain name, an existing user,
+# a real (non-system) uid, a real shell, and never docklite itself. Group
+# changes are refused for anything else — root, service accounts, nobody.
+check_os_user() {
+    local name="${1:-}" entry uid shell min
+    [[ "$name" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "invalid username: ${name}"
+    [[ "$name" != "docklite" && "$name" != "root" ]] || die "refusing to change the ${name} account"
+    entry=$(getent passwd "$name") || die "no such user on this server: ${name}"
+    uid=$(cut -d: -f3 <<<"$entry")
+    shell=$(cut -d: -f7 <<<"$entry")
+    min=$(awk '/^UID_MIN/{print $2}' /etc/login.defs 2>/dev/null || true)
+    [[ "${uid}" =~ ^[0-9]+$ && "${uid}" -ge "${min:-1000}" && "${uid}" -lt 65534 ]] || die "refusing to change a system account: ${name}"
+    [[ "$shell" != */nologin && "$shell" != */false && -n "$shell" ]] || die "${name} has no login shell, so shell access would do nothing"
+}
+
 check_email() {
     [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "invalid email: $1"
 }
@@ -52,6 +67,33 @@ case "$cmd" in
     site-remove)      # site-remove NAME   (removes enabled link and config)
         check_name "${1:-}"
         rm -f "${SITES_ENABLED}/$1" "${SITES_AVAILABLE}/$1"
+        ;;
+    nginx-survey)     # nginx-survey   (read-only: what nginx already serves)
+        # Lines: "enabled NAME", "default_server NAME" (declares default_server),
+        # and "stock_default yes|no" (is sites-enabled/default the untouched Debian page?).
+        shopt -s nullglob
+        for f in "${SITES_ENABLED}"/* /etc/nginx/conf.d/*.conf; do
+            n=$(basename "$f")
+            echo "enabled $n"
+            grep -qE 'listen[^;]*default_server' "$f" 2>/dev/null && echo "default_server $n"
+        done
+        if [[ -e "${SITES_ENABLED}/default" ]] && grep -q 'root /var/www/html' "${SITES_ENABLED}/default" 2>/dev/null \
+            && ! grep -q 'proxy_pass' "${SITES_ENABLED}/default" 2>/dev/null; then
+            echo "stock_default yes"
+        else
+            echo "stock_default no"
+        fi
+        ;;
+    group-list)       # group-list   (members of the docklite group, one per line)
+        getent group docklite | cut -d: -f4 | tr ',' '\n' | sed '/^$/d'
+        ;;
+    group-add)        # group-add USER   (admin shell access to DockLite)
+        check_os_user "${1:-}"
+        usermod -aG docklite "$1"
+        ;;
+    group-remove)     # group-remove USER
+        check_os_user "${1:-}"
+        gpasswd -d "$1" docklite
         ;;
     nginx-test)
         nginx -t

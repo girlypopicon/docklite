@@ -5,7 +5,7 @@ import {
   WarningCircle,
   House,
   Package,
-  Sparkle,
+  Archive,
   Database,
   DesktopTower,
   SmileyXEyes,
@@ -80,14 +80,14 @@ export default function NotFound() {
             </div>
           </Link>
           <Link
-            href="/"
+            href="/backups"
             className="card-vapor p-4 rounded-lg border border-purple-500/20 hover:border-pink-500/60 transition-all hover:scale-105"
           >
             <div className="flex justify-center mb-2">
-              <Sparkle size={28} weight="duotone" color="var(--neon-pink)" />
+              <Archive size={28} weight="duotone" color="var(--neon-pink)" />
             </div>
             <div className="text-xs font-bold" style={{ color: 'var(--neon-pink)' }}>
-              Containers
+              Backups
             </div>
           </Link>
           <Link

@@ -21,7 +21,15 @@ import (
 	"github.com/docker/go-connections/nat"
 )
 
-const siteBaseDir = "/var/www/sites"
+// siteBaseDir is where site folders live. DOCKLITE_SITES_DIR overrides it (used by demo mode).
+var siteBaseDir = envOr("DOCKLITE_SITES_DIR", "/var/www/sites")
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
 
 var dockliteUID, dockliteGID int
 
@@ -88,7 +96,11 @@ type createContainerRequest struct {
 
 func (h *Handlers) ListContainers(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
-		h.createContainer(w, r)
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		h.createContainer(rec, r)
+		if rec.status < 400 {
+			h.audit(r, "container.create", "", nil)
+		}
 		return
 	}
 	if r.Method != http.MethodGet {
@@ -287,6 +299,16 @@ func (h *Handlers) Container(w http.ResponseWriter, r *http.Request) {
 	action := ""
 	if len(parts) > 1 {
 		action = parts[1]
+	}
+
+	if r.Method != http.MethodGet && auditedContainerActions[action] {
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		w = rec
+		defer func() {
+			if rec.status < 400 {
+				h.audit(r, "container."+action, h.containerAuditName(r.Context(), id), map[string]any{"container": id})
+			}
+		}()
 	}
 
 	switch action {
@@ -604,6 +626,7 @@ func (h *Handlers) transferSiteToUser(w http.ResponseWriter, r *http.Request, co
 		writeError(w, http.StatusInternalServerError, "failed to update site record: "+err.Error())
 		return
 	}
+	h.audit(r, "site.transfer", site.Domain, map[string]any{"from": oldUsername, "to": newUser.Username})
 
 	container, inspErr := h.docker.InspectContainer(ctx, containerID)
 	if inspErr != nil {
@@ -651,6 +674,7 @@ func (h *Handlers) transferSiteToUser(w http.ResponseWriter, r *http.Request, co
 		}
 	}
 
+	RecordPreviousOwner(newPath, oldUsername, "transfer", actorName(h, r))
 	_ = WriteDKLManifest(newPath, site.Domain, templateType, newUser.Username, internalPort, includeWww, nil)
 
 	resp := map[string]any{
@@ -927,6 +951,10 @@ func (h *Handlers) resolveContainerOwner(container models.ContainerInfo, userCac
 	if user == nil {
 		return ownerID, "", nil
 	}
+	if site == nil && !labelOwnerPlausible(user, time.Unix(container.Created, 0)) {
+		// A leftover label from an older install whose user ids were reused.
+		return 0, "", nil
+	}
 	userCache[ownerID] = user.Username
 	return ownerID, user.Username, nil
 }
@@ -969,14 +997,38 @@ func (h *Handlers) authorizeContainerAccess(ctx context.Context, r *http.Request
 	if labelUserID == "" || labelUserID != fmt.Sprintf("%d", userID) {
 		return nil, errForbidden
 	}
+	if user, _ := h.store.GetUserByIDFull(userID); user != nil {
+		if c, err := h.docker.InspectContainer(ctx, containerID); err == nil {
+			if created, perr := time.Parse(time.RFC3339Nano, c.Created); perr == nil && !labelOwnerPlausible(user, created) {
+				return nil, errForbidden
+			}
+		}
+	}
 	return nil, nil
+}
+
+// labelOwnerPlausible rejects a docklite.user.id label that cannot be genuine:
+// a container can't belong to a user account created after the container
+// existed. This happens when an install is wiped and user ids are handed out
+// again, so an old container's label would otherwise name a stranger.
+func labelOwnerPlausible(user *store.UserRecord, containerCreated time.Time) bool {
+	created, err := time.Parse("2006-01-02 15:04:05", user.CreatedAt)
+	if err != nil {
+		return true
+	}
+	return !created.After(containerCreated.Add(time.Minute))
 }
 
 func containerInfo(container types.ContainerJSON) models.ContainerInfo {
 	createdAt, err := time.Parse(time.RFC3339Nano, container.Created)
 	uptime := "-"
-	if err == nil && container.State != nil && container.State.Running {
-		uptime = formatUptime(time.Since(createdAt))
+	if container.State != nil && container.State.Running {
+		// Uptime is time since the last start, not since the container was created.
+		if started, serr := time.Parse(time.RFC3339Nano, container.State.StartedAt); serr == nil && !started.IsZero() && started.Year() > 1 {
+			uptime = formatUptime(time.Since(started))
+		} else if err == nil {
+			uptime = formatUptime(time.Since(createdAt))
+		}
 	}
 	state := "stopped"
 	status := ""
@@ -1292,4 +1344,45 @@ const server = http.createServer((req, res) => {
 server.listen(port, hostname, () => {
   console.log(` + "`" + `Server running at http://${hostname}:${port}/` + "`" + `);
 });`
+}
+
+// auditedContainerActions are the container operations that change something.
+var auditedContainerActions = map[string]bool{
+	"start": true, "stop": true, "restart": true, "delete": true, "assign": true,
+	"claim": true, "transfer": true, "track": true, "untrack": true, "write-manifest": true,
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (s *statusRecorder) WriteHeader(code int) {
+	s.status = code
+	s.ResponseWriter.WriteHeader(code)
+}
+
+// Unwrap lets http.ResponseController reach the real writer. Only plain JSON
+// actions are wrapped; the terminal websocket is not.
+func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }
+
+// containerAuditName is the site's domain when known, else the container's name.
+func (h *Handlers) containerAuditName(ctx context.Context, id string) string {
+	if site, _ := h.store.GetSiteByContainerIDRecord(id); site != nil {
+		return site.Domain
+	}
+	if c, err := h.docker.InspectContainer(ctx, id); err == nil {
+		return strings.TrimPrefix(c.Name, "/")
+	}
+	return id
+}
+
+// actorName is the username of whoever made the request, or "" (e.g. the master token).
+func actorName(h *Handlers, r *http.Request) string {
+	if id, ok := readUserIDFromContext(r); ok {
+		if u, _ := h.store.GetUserByIDFull(id); u != nil {
+			return u.Username
+		}
+	}
+	return ""
 }

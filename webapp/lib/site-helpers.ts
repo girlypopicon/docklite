@@ -1,7 +1,7 @@
 import { getUserById } from './db';
 import fs from 'fs/promises';
 
-export const SITES_BASE_DIR = '/var/www/sites';
+export const SITES_BASE_DIR = process.env.DOCKLITE_SITES_DIR || '/var/www/sites';
 
 /**
  * Get the site directory path for a user and domain

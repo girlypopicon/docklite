@@ -1,309 +1,153 @@
-# DockLite Complete Distribution
+<h1 align="center">DockLite</h1>
 
-The complete DockLite stack - a minimal Docker management system with three modes of operation:
-1. **Headless** - Agent only (no GUI)
-2. **TUI** - Terminal UI client
-3. **Full Stack** - Web GUI + Agent + TUI
+<p align="center"><b>Turn a Linux server into a web host.</b><br>
+Sites, databases, HTTPS, backups and DNS, managed from one neon-lit dashboard, a command line, or a terminal UI.</p>
 
-## What's Included
+<p align="center">
+  <img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-ff6ad5">
+  <img alt="Latest release" src="https://img.shields.io/github/v/tag/girlypopicon/docklite?label=release&color=9ad0ff">
+  <img alt="Built with Go and Next.js" src="https://img.shields.io/badge/built%20with-Go%20%2B%20Next.js-b8f2a2">
+</p>
 
-- **`docklite-agent`** (17MB) - Go-based API server for Docker operations
-- **`docklite-tui`** (8.5MB) - Terminal UI client with remote access
-- **`webapp/`** - Next.js web interface with full dashboard
-- **Headless mode** - Run the agent without any GUI
-- **Full-stack mode** - Complete web interface + API + TUI
+<p align="center"><img src="docs/img/containers.jpg" alt="The DockLite dashboard showing site and database containers" width="900"></p>
 
-## Quick Start (3 Commands)
+DockLite runs your websites and databases in Docker containers, puts
+nginx in front, gets HTTPS certificates, and gives you a dashboard, a command line and a terminal UI to manage it
+all. It is built to be safe to run on a server that already hosts live sites.
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/sgauth0/docklite-new.git
-cd docklite-new
+- Create a **static, PHP or Node** site for a domain in a couple of clicks. Each one gets its own container,
+  nginx config and Let's Encrypt certificate (plain HTTP validation or a Cloudflare API token).
+- **Postgres databases** in containers, with an in-dashboard inspector and per-user permissions.
+- **Backups** of sites and databases with live progress and verification.
+- **DNS and SSL** controls for Cloudflare zones.
+- **Users and roles** (super admin, admin, user); each person sees only their own sites.
+- A **web terminal** into any container, plus server logs and service controls.
+- A **`docklite` command line** that does everything the dashboard does, with `--json` output and a built-in
+  guide that AI assistants can use too.
+- Nothing runs as root except one small, validated helper script.
 
-# 2. Run the installer (checks deps, builds binaries, installs npm packages)
-./install.sh
+> DockLite is young and moving fast. See the [roadmap](#roadmap) for what is still planned.
 
-# 3. Start everything
-./start-fullstack.sh
-```
+## A look around
 
-Then open http://localhost:3000 in your browser!
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/container-details.jpg" alt="Container details with live CPU and memory, HTTPS status and mounts"><br><sub><b>Container details</b>: live resources, HTTPS status, mounts, logs</sub></td>
+    <td width="50%"><img src="docs/img/databases.jpg" alt="PostgreSQL databases as glowing cards"><br><sub><b>Databases</b>: Postgres in a container, with an inspector</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/terminal.jpg" alt="A web terminal connected to a site container"><br><sub><b>Web terminal</b> into any container</sub></td>
+    <td><img src="docs/img/card-menu.jpg" alt="The container actions menu"><br><sub><b>One menu</b> for details, terminal, assign, move and delete</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/new-container.jpg" alt="The new site dialog"><br><sub><b>New site</b>: a domain and a template</sub></td>
+    <td><img src="docs/img/users.jpg" alt="User management with roles"><br><sub><b>Users and roles</b>: everyone sees only their own sites</sub></td>
+  </tr>
+</table>
 
-**For remote servers:** Access via your server's IP address:
-```
-http://YOUR_SERVER_IP:3000
-```
+## Make it yours
 
-**Default credentials:**
-- Username: `superadmin`
-- Password: generated on first start and saved to `data/initial-admin-password` (`sudo cat /opt/docklite/data/initial-admin-password`)
+Pick a look in **Settings → Appearance**, and rebuild the top bar by dragging items right on it. The sidebars are
+optional too.
 
-## System Requirements
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/theme-corpo.jpg" alt="The Corpo theme"><br><sub><b>Corpo</b>: clean greys with soft pink</sub></td>
+    <td width="50%"><img src="docs/img/theme-corpo-blue.jpg" alt="The Corpo Blue theme"><br><sub><b>Corpo Blue</b>: clean greys with cool blue</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/themes-picker.jpg" alt="The theme picker showing Neon, Corpo, Corpo Blue and Unicorn"><br><sub>Four themes: <b>Neon</b> (default), Corpo, Corpo Blue and Unicorn</sub></td>
+    <td><img src="docs/img/top-bar-editor.jpg" alt="Editing the top bar by dragging items"><br><sub><b>Top bar editor</b>: drag, reorder, remove, add back</sub></td>
+  </tr>
+</table>
 
-- **Docker** 20.10+ (required)
-- **Node.js** 18+ (for web GUI)
-- **Go** 1.22+ (only needed if building from source)
+<sub>All screenshots are from the built-in demo mode (`scripts/demo.sh up`), which uses fake data.</sub>
 
-## Installation Methods
+## Install
 
-### Method 1: Quick Install (Recommended)
-
-Run the included installer script which checks dependencies and builds binaries:
-
-```bash
-./install.sh              # Standard install
-./install.sh --full        # Full install with systemd services
-./install.sh --skip-build  # Use pre-built binaries
-./install.sh --help        # Show all options
-```
-
-### Method 2: Manual Install
-
-```bash
-# 1. Install Docker
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-
-# 2. Install Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# 3. Build binaries (requires Go)
-./build.sh    # Or use: make build-all
-
-# 4. Start
-./start-fullstack.sh
-```
-
-## Quick Start Options
-
-### Option 1: Full Stack (Web GUI + Agent + TUI)
-
-**One command to start everything:**
-```bash
-./start-fullstack.sh
-```
-
-Then open http://localhost:3000 in your browser (or http://YOUR_SERVER_IP:3000 for remote access)
-
-### Option 2: Headless Mode (Agent Only)
-
-**Start just the agent:**
-```bash
-./start-agent.sh
-```
-
-**Connect with TUI:**
-```bash
-./start-tui.sh
-```
-
-### Option 3: Development Mode
-
-**Terminal 1 - Agent:**
-```bash
-make run-agent
-```
-
-**Terminal 2 - GUI:**
-```bash
-make run-gui
-```
-
-**Terminal 3 - TUI:**
-```bash
-make run-tui
-```
-
-## System Requirements
-
-- **Docker** 20.10+ (required)
-- **Node.js** 18+ (for web GUI)
-- **Go** 1.22+ (only needed if building from source)
-
-## Installation Methods
-
-### Method 1: Quick Install (Recommended)
-
-Run the included installer script which checks dependencies and builds binaries:
+You need a fresh or existing Ubuntu/Debian server and a user with `sudo`.
 
 ```bash
-./install.sh              # Standard install
-./install.sh --full        # Full install with systemd services
-./install.sh --skip-build  # Use pre-built binaries
-./install.sh --help        # Show all options
+git clone https://github.com/girlypopicon/docklite.git
+cd docklite
+sudo bash install.sh
 ```
 
-### Method 2: Manual Install
+The installer sets up Docker, Node.js, nginx and PM2 if they are missing, builds DockLite into `/opt/docklite`,
+and walks you through ports, an optional dashboard domain with HTTPS, and the firewall. Running it again later
+upgrades DockLite and keeps your data and settings.
+
+When it finishes it prints where to find the dashboard. The first login is `superadmin`; the generated password
+is stored on the server:
 
 ```bash
-# 1. Install Docker
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-
-# 2. Install Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# 3. Build binaries (requires Go)
-./build.sh    # Or use: make build-all
-
-# 4. Start
-./start-fullstack.sh
+sudo cat /opt/docklite/data/initial-admin-password
 ```
 
-## Features
+More detail: [docs/INSTALL.md](docs/INSTALL.md).
 
-**Web GUI (Next.js):**
-- Full container dashboard with drag-and-drop organization
-- Database management (PostgreSQL, MySQL, MongoDB)
-- File browser and code editor
-- Real-time container stats and logs
-- Backup system with multiple destinations (S3, SFTP, local)
-- DNS management (Cloudflare integration)
-- SSL certificate status and management
-- User management with role-based access control
+## First site
 
-**TUI Client:**
-- Real-time container stats
-- Log viewer
-- File browser and editor
-- Container management (start/stop/restart/remove)
-- Remote access (connect to any agent)
-- Persistent config storage
+1. Point your domain's DNS A record at the server.
+2. In the dashboard, open **Containers → New**, enter the domain and pick a type.
+3. Open the site's details and issue an HTTPS certificate.
 
-**Agent:**
-- Direct Docker API integration
-- SQLite metadata storage
-- Token-based authentication
-- Headless operation (no GUI required)
-- Optional Next.js GUI proxy
-- Single binary deployment
-
-## Available Scripts
-
-| Script | Description |
-|--------|-------------|
-| `install.sh` | Quick installer - checks deps, builds binaries, installs npm packages |
-| `build.sh` | Build all binaries and prepare for distribution |
-| `start-fullstack.sh` | Start GUI + Agent together (recommended) |
-| `start-agent.sh` | Start agent in headless mode |
-| `start-tui.sh` | Start TUI client |
-| `stop-all.sh` | Stop all running services |
-
-## Documentation
-
-- **[INSTALL.md](INSTALL.md)** - Detailed Ubuntu/Debian installation guide
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Complete deployment guide with all modes
-- **[CLAUDE.md](CLAUDE.md)** - Developer documentation
-
-## Architecture
-
-**Full Stack Mode:**
-```
-Browser → Agent (port 3000) ──┬→ Next.js GUI (port 3001)
-                              │
-TUI Client → Agent ───────────┴→ Docker Daemon
-                              │
-                              ↓
-                          SQLite DB
-```
-
-**Headless Mode:**
-```
-TUI Client → Agent (port 3000) → Docker Daemon
-                                    ↓
-                                SQLite DB
-```
-
-## Deployment Modes
-
-### Full Stack (Recommended)
-```bash
-# One command starts everything
-./start-fullstack.sh
-
-# Access:
-# - Browser: http://localhost:3000
-# - TUI: Use token from startup output
-```
-
-### Headless (CLI/TUI Only)
-```bash
-# Server
-./start-agent.sh
-
-# Client (local or remote)
-./start-tui.sh
-```
-
-### Manual Control
-```bash
-# Start GUI on port 3001
-cd webapp && PORT=3001 npm start &
-
-# Start agent on port 3000 (proxies to GUI)
-NEXTJS_URL=http://localhost:3001 ./bin/docklite-agent &
-
-# Or headless (no GUI)
-NEXTJS_URL=disabled ./bin/docklite-agent
-```
-
-## Building from Source
-
-Requirements:
-- Go 1.22+ (Agent and TUI)
-- Node.js 18+ (GUI)
+Or from the terminal:
 
 ```bash
-make build-all     # Build everything (agent + TUI + GUI)
-make build-agent   # Build agent only
-make build-tui     # Build TUI only
-make build-gui     # Build Next.js GUI
-make install-gui   # Install GUI dependencies only
-make clean         # Remove all build artifacts
+docklite sites create example.com
+docklite ssl issue example.com --www --email you@example.com
 ```
 
-Development mode:
+## The command line
+
 ```bash
-make run-agent     # Run agent in dev mode
-make run-tui       # Run TUI in dev mode
-make run-gui       # Run GUI in dev mode (port 3000)
+docklite doctor                  # check DockLite, Docker, nginx and certificates
+docklite containers list         # what is running
+docklite containers restart example.com
+docklite backups list
+docklite docs                    # the full guide
 ```
 
-## Environment Variables
+Destructive commands ask first, and refuse to run from scripts without `--yes`. Every command accepts `--json`.
+The guide lives in [go-app/cmd/docklite/docs/CLI.md](go-app/cmd/docklite/docs/CLI.md).
 
-**Agent:**
-- `LISTEN_ADDR` - Port to listen on (default: `:3000`)
-- `DATABASE_PATH` - SQLite database path (default: `data/docklite.db`)
-- `DOCKER_SOCKET_PATH` - Docker socket (default: `unix:///var/run/docker.sock`)
-- `NEXTJS_URL` - Next.js proxy URL or `disabled` (default: `http://localhost:3001`)
-- `DOCKLITE_TOKEN` - Authentication token (recommended: 32+ chars)
+## Using DockLite on a server that already has sites
 
-**GUI (Next.js):**
-- `PORT` - Port to listen on (default: `3000`)
-- `DATABASE_PATH` - SQLite database path (default: `data/docklite.db`)
-- `AGENT_URL` - Agent API URL (default: `http://localhost:3000`)
-- `AGENT_TOKEN` - Agent authentication token
-- `SESSION_SECRET` - Session encryption key (32+ chars in production)
+DockLite will not take over what is already there. `inventory.sh` prints a read-only report of what is on the
+server, `docklite repair` checks health, and `docklite sites layout` shows (and, when you confirm, fixes) whether
+sites follow the standard layout `/var/www/sites/<user>/<domain>/`. Moves copy the files, keep the old folder, and
+roll back if the new container will not start.
 
-**TUI:**
-- `DOCKLITE_URL` - Agent URL (default: `http://localhost:3000`)
-- `DOCKLITE_TOKEN` - Authentication token
+## How it works
 
-## Security
-
-Generate secure tokens:
-```bash
-openssl rand -hex 32
+```
+Browser -> nginx -> DockLite agent (Go) -> Docker
+                         |-> Web dashboard (Next.js)
+                         '-> SQLite
 ```
 
-Use HTTPS in production (reverse proxy recommended):
-```bash
-# Example with Caddy
-caddy reverse-proxy --from docklite.example.com --to localhost:3000
-```
+- `go-app/` – the agent (API, Docker, nginx and certificates) and the `docklite` command line.
+- `webapp/` – the dashboard.
+- Runs as the unprivileged `docklite` user under PM2. Sites live in `/var/www/sites/<user>/<domain>/`.
+  Anything that needs root (nginx files, certificates) goes through `docklite-helper`, which accepts only a short
+  list of validated operations.
+
+For contributors: [CLAUDE.md](CLAUDE.md) has the architecture and API notes, and [docs/TESTING.md](docs/TESTING.md)
+covers the tests (`make test`).
+
+## Roadmap
+
+Planned, not built yet: a backup scheduler and one-click restore, portable `.dklpkg` packages (a site or server
+bundled to move elsewhere), adopting existing sites and cleaning up leftovers from the dashboard, an activity log
+viewer, more database types, and a refreshed terminal UI.
 
 ## License
 
-See main DockLite repository for license information.
+DockLite is free software under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-or-later). You
+can use, change and share it. If you run a modified version as a network service, you must offer its source
+code to the people using it.
+
+## Versions
+
+Version history is in [CHANGELOG.md](CHANGELOG.md). The release process is in [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha256"
+	"docklite-agent/internal/demo"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -86,6 +87,10 @@ func (h *Handlers) SystemUpdateRun(w http.ResponseWriter, r *http.Request) {
 	}
 	if !isSuperAdminRole(r) {
 		writeError(w, http.StatusForbidden, "super_admin required")
+		return
+	}
+	if demo.On {
+		writeError(w, http.StatusForbidden, "updates are disabled in demo mode")
 		return
 	}
 	if updateRunning.Swap(true) {

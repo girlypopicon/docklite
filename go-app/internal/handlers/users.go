@@ -60,6 +60,7 @@ func (h *Handlers) Users(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		h.audit(r, "user.create", body.Username, map[string]any{"role": role})
 		if err := ensureUserFolder(body.Username); err != nil {
 			// User was created but their directory couldn't be made.
 			// Return a warning alongside the created user rather than failing.
@@ -115,10 +116,23 @@ func (h *Handlers) Users(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "Invalid transfer user")
 			return
 		}
+		var ownedPaths []string
+		if sites, lerr := h.store.ListSites(); lerr == nil {
+			for _, st := range sites {
+				if st.UserID == targetID && st.CodePath != "" {
+					ownedPaths = append(ownedPaths, st.CodePath)
+				}
+			}
+		}
 		if err := h.store.DeleteUserWithTransfer(targetID, transferTo); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		by := actorName(h, r)
+		for _, path := range ownedPaths {
+			RecordPreviousOwner(path, targetUser.Username, "user-deleted", by)
+		}
+		h.audit(r, "user.delete", targetUser.Username, map[string]any{"userId": targetID, "sitesMovedTo": transferTo})
 		writeJSON(w, http.StatusOK, map[string]any{"success": true})
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -162,6 +176,7 @@ func (h *Handlers) UserPassword(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		h.audit(r, "user.password-reset", targetUser.Username, map[string]any{"userId": *body.UserID})
 		writeJSON(w, http.StatusOK, map[string]any{"success": true})
 		return
 	}
@@ -196,7 +211,7 @@ func ensureUserFolder(username string) error {
 	if username == "" {
 		return nil
 	}
-	path := filepath.Join("/var/www/sites", username)
+	path := filepath.Join(siteBaseDir, username)
 	if err := os.MkdirAll(path, 0o775); err != nil {
 		return err
 	}

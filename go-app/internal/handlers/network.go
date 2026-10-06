@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 )
 
 type networkAddress struct {
@@ -229,7 +228,7 @@ func (h *Handlers) NetworkIngress(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := dockerContext(r.Context())
 	defer cancel()
 
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := h.docker.VisibleContainers(ctx, true)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -686,7 +685,7 @@ func loadDockerExposures(h *Handlers) []dockerExposure {
 	ctx, cancel := dockerContext(context.Background())
 	defer cancel()
 
-	containers, err := h.docker.Client.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := h.docker.VisibleContainers(ctx, true)
 	if err != nil {
 		return nil
 	}

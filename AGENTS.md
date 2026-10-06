@@ -29,6 +29,13 @@ DockLite is a minimal Docker management system that provides a complete stack fo
    SQLite Database (metadata)
 ```
 
+
+**Operating a DockLite server (as opposed to changing this code):** run `docklite docs` and `docklite doctor`
+first. The CLI (`go-app/cmd/docklite`, installed as `docklite`) covers containers, sites, SSL, nginx, DNS, users,
+backups and server health, always supports `--json`, and refuses destructive actions without `--yes` — only pass
+`--yes` when the person you're working for asked for that exact action. The guide's source is
+`go-app/cmd/docklite/docs/CLI.md`; update it whenever commands change.
+
 ## Technology Stack
 
 ### Backend (Agent)
@@ -338,7 +345,7 @@ Key endpoint groups:
 
 ## Deployment Notes
 
-See detailed deployment guide in `DEPLOYMENT.md`.
+See detailed deployment guide in `docs/INSTALL.md`.
 
 Quick production checklist:
 - [ ] Set `DOCKLITE_TOKEN` to secure random string

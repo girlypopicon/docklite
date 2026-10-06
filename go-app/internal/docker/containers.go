@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"docklite-agent/internal/demo"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,8 +26,24 @@ const (
 	nodeImageName       = "node:20-alpine"
 )
 
+// VisibleContainers lists containers this DockLite instance should see. A demo instance
+// sees only demo containers and a real one never sees them; every listing goes through here.
+func (c *Client) VisibleContainers(ctx context.Context, all bool) ([]types.Container, error) {
+	list, err := c.Client.ContainerList(ctx, container.ListOptions{All: all})
+	if err != nil {
+		return nil, err
+	}
+	out := list[:0:0]
+	for _, item := range list {
+		if (item.Labels[demo.Label] == "1") == demo.On {
+			out = append(out, item)
+		}
+	}
+	return out, nil
+}
+
 func (c *Client) ListContainers(ctx context.Context, all bool) ([]models.ContainerInfo, error) {
-	containers, err := c.Client.ContainerList(ctx, container.ListOptions{All: all})
+	containers, err := c.VisibleContainers(ctx, all)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +55,14 @@ func (c *Client) ListContainers(ctx context.Context, all bool) ([]models.Contain
 		}
 		uptime := "-"
 		if item.State == "running" && item.Created > 0 {
-			uptime = formatUptime(time.Since(time.Unix(item.Created, 0)))
+			// Time since the last start (not creation), falling back to creation.
+			since := time.Unix(item.Created, 0)
+			if info, err := c.Client.ContainerInspect(ctx, item.ID); err == nil && info.State != nil {
+				if started, err := time.Parse(time.RFC3339Nano, info.State.StartedAt); err == nil && started.Year() > 1 {
+					since = started
+				}
+			}
+			uptime = formatUptime(time.Since(since))
 		}
 		results = append(results, models.ContainerInfo{
 			ID:      item.ID,
@@ -360,7 +384,7 @@ func buildSiteLabels(domain string, includeWww bool, templateType string, intern
 	if folderID != nil {
 		folderValue = fmt.Sprintf("%d", *folderID)
 	}
-	return map[string]string{
+	labels := map[string]string{
 		"docklite.managed":       "true",
 		"docklite.site.id":       fmt.Sprintf("%d", siteID),
 		"docklite.domain":        domain,
@@ -370,6 +394,10 @@ func buildSiteLabels(domain string, includeWww bool, templateType string, intern
 		"docklite.include_www":   boolToLabel(includeWww),
 		"docklite.internal_port": fmt.Sprintf("%d", internalPort),
 	}
+	if demo.On {
+		labels[demo.Label] = "1"
+	}
+	return labels
 }
 
 func boolToLabel(value bool) string {

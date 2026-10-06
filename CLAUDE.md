@@ -11,6 +11,21 @@ Three components:
 2. **Next.js Web GUI** — Dashboard for all operations (sites, containers, databases, backups, DNS, SSL, users)
 3. **Terminal UI (TUI)** — Standalone Bubble Tea client for remote agent management
 
+
+**Operating a DockLite server (as opposed to changing this code):** run `docklite docs` and `docklite doctor`
+first. The CLI (`go-app/cmd/docklite`, installed as `docklite`) covers containers, sites, SSL, nginx, DNS, users,
+backups and server health, always supports `--json`, and refuses destructive actions without `--yes` — only pass
+`--yes` when the person you're working for asked for that exact action. The guide's source is
+`go-app/cmd/docklite/docs/CLI.md`; update it whenever commands change.
+
+## Versioning (do this every session)
+
+The owner relies on Claude Code to maintain versions. After any user-visible change, add a bullet under
+`## Unreleased` in `CHANGELOG.md`. Run `make version` when finishing work; it flags drift between `VERSION`,
+`webapp/package.json`, the latest git tag and the changelog. To release, use `scripts/release.sh patch|minor|major`
+(add `--dry-run` first); it commits and tags locally and never pushes. Remind the owner to push and tag from `main`
+after they merge. See `CONTRIBUTING.md`.
+
 ## Build & Run Commands
 
 ```bash

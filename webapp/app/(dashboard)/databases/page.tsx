@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Database as DatabaseType } from '@/types';
 import DbViewer from './DbViewer';
-import SkeletonLoader from '../components/SkeletonLoader';
+import { DatabasesPageSkeleton } from '../components/PageSkeletons';
 import {
   Database,
   DotsThree,
@@ -337,21 +337,7 @@ export default function DatabasesPage() {
   };
 
   if (loading) {
-    return (
-      <div className="max-w-[1400px] mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
-            <Database size={24} weight="duotone" />
-            Databases
-          </h1>
-          <p className="text-xs font-mono flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-            <SpinnerGap size={14} weight="duotone" className="animate-spin" />
-            Loading...
-          </p>
-        </div>
-        <SkeletonLoader type="database" count={4} />
-      </div>
-    );
+    return <DatabasesPageSkeleton />;
   }
 
   return (
@@ -906,7 +892,7 @@ export default function DatabasesPage() {
 
       {/* Edit Database Modal */}
       {editingDb && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
           <div className="card-vapor max-w-lg w-full p-8">
             <div className="mb-6">
               <h2 className="text-2xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
@@ -1008,7 +994,7 @@ export default function DatabasesPage() {
 
       {/* Delete Database Modal */}
       {deleteDb && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
           <div className="card-vapor max-w-lg w-full p-8 border-2" style={{ borderColor: 'var(--status-error)' }}>
             <div className="mb-6 text-center">
               <div className="flex justify-center mb-4">
@@ -1089,7 +1075,7 @@ export default function DatabasesPage() {
 
       {/* Enter Edit Mode Modal */}
       {editModeDb && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
           <div className="card-vapor max-w-lg w-full p-8 border-2" style={{ borderColor: 'var(--neon-purple)' }}>
             <div className="mb-6 text-center">
               <div className="flex justify-center mb-4">
@@ -1176,7 +1162,7 @@ export default function DatabasesPage() {
 
       {/* Download Database Modal */}
       {downloadDb && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
           <div className="card-vapor max-w-lg w-full p-8 border-2" style={{ borderColor: 'var(--neon-green)' }}>
             <div className="mb-6 text-center">
               <div className="flex justify-center mb-4">

@@ -223,7 +223,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
       style={{ background: 'var(--modal-backdrop)' }}
     >
       <div
