@@ -76,7 +76,7 @@ pm2_status() {
             fi
             ;;
         docklite-gui)
-            if pgrep -f 'next-server\|next.*start' >/dev/null 2>&1; then
+            if pgrep -f 'next-server|next.* start' >/dev/null 2>&1; then
                 if curl -sf -m 2 "http://127.0.0.1:${GUI_PORT}/" >/dev/null 2>&1; then
                     echo "online"
                 else

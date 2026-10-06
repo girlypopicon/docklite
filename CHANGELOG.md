@@ -29,6 +29,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- `docklite status` always said the web GUI was "Not started" (and install printed "GUI may still be starting"), even when it
+  was running: the process check used a pattern that can never match. It now detects the GUI correctly.
 - `docklite` no longer needs a log out and in after install: if you were just added to the docklite group, it restarts
   itself inside the group. If an interrupted install left `/opt/docklite` read-only for the group, it repairs that itself
   (new root-helper command `fix-install-perms`).
