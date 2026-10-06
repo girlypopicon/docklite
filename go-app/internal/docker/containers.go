@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"docklite-agent/internal/demo"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,6 +33,10 @@ func (c *Client) ListContainers(ctx context.Context, all bool) ([]models.Contain
 	}
 	results := make([]models.ContainerInfo, 0, len(containers))
 	for _, item := range containers {
+		// A demo instance shows only demo containers; a real one never shows them.
+		if (item.Labels[demo.Label] == "1") != demo.On {
+			continue
+		}
 		name := ""
 		if len(item.Names) > 0 {
 			name = strings.TrimPrefix(item.Names[0], "/")
@@ -367,7 +372,7 @@ func buildSiteLabels(domain string, includeWww bool, templateType string, intern
 	if folderID != nil {
 		folderValue = fmt.Sprintf("%d", *folderID)
 	}
-	return map[string]string{
+	labels := map[string]string{
 		"docklite.managed":       "true",
 		"docklite.site.id":       fmt.Sprintf("%d", siteID),
 		"docklite.domain":        domain,
@@ -377,6 +382,10 @@ func buildSiteLabels(domain string, includeWww bool, templateType string, intern
 		"docklite.include_www":   boolToLabel(includeWww),
 		"docklite.internal_port": fmt.Sprintf("%d", internalPort),
 	}
+	if demo.On {
+		labels[demo.Label] = "1"
+	}
+	return labels
 }
 
 func boolToLabel(value bool) string {

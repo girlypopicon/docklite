@@ -21,7 +21,15 @@ import (
 	"github.com/docker/go-connections/nat"
 )
 
-var siteBaseDir = "/var/www/sites"
+// siteBaseDir is where site folders live. DOCKLITE_SITES_DIR overrides it (used by demo mode).
+var siteBaseDir = envOr("DOCKLITE_SITES_DIR", "/var/www/sites")
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
 
 var dockliteUID, dockliteGID int
 

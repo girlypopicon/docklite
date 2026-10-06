@@ -1,6 +1,7 @@
 package api
 
 import (
+	"docklite-agent/internal/demo"
 	"net/http"
 	"strings"
 
@@ -112,6 +113,12 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check if this is an agent-handled route
 		if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") {
+			if demo.On && demoBlocked(r.URL.Path) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"error":"not available in demo mode"}`))
+				return
+			}
 			mux.ServeHTTP(w, r)
 		} else if proxy != nil {
 			// Proxy everything else to Next.js
@@ -120,4 +127,21 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 			http.NotFound(w, r)
 		}
 	})
+}
+
+// demoBlockedPrefixes expose details of the real host (addresses, logs, services,
+// shell users, updates), so a demo instance refuses them.
+var demoBlockedPrefixes = []string{
+	"/api/server/overview", "/api/server/ports", "/api/server/updates", "/api/server/services",
+	"/api/server/storage", "/api/server/security", "/api/server/logs", "/api/server/diagnostics",
+	"/api/network/", "/api/system/shell-access", "/api/system/update", "/api/debug",
+}
+
+func demoBlocked(path string) bool {
+	for _, p := range demoBlockedPrefixes {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }

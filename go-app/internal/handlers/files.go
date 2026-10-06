@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	filesBaseDir   = "/var/www/sites"
 	maxEditSize    = 256 * 1024
 	maxListEntries = 5000
 )
@@ -319,7 +318,7 @@ func (h *Handlers) saveFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // authorizeFilePath enforces that non-admin users can only access their own
-// subdirectory under filesBaseDir. All OS-level ownership belongs to the
+// subdirectory under siteBaseDir. All OS-level ownership belongs to the
 // 'docklite' system user; this function implements DockLite's application-
 // layer access control.
 func (h *Handlers) authorizeFilePath(r *http.Request, resolvedPath string) error {
@@ -334,7 +333,7 @@ func (h *Handlers) authorizeFilePath(r *http.Request, resolvedPath string) error
 	if err != nil || user == nil {
 		return errForbidden
 	}
-	if !isWithin(filepath.Join(filesBaseDir, user.Username), resolvedPath) {
+	if !isWithin(filepath.Join(siteBaseDir, user.Username), resolvedPath) {
 		return errForbidden
 	}
 	return nil
@@ -371,7 +370,7 @@ func realPath(p string) string {
 func resolveFilesPath(pathParam string) (string, error) {
 	cleaned := filepath.Clean(strings.TrimSpace(pathParam))
 	if cleaned == "." || cleaned == "" || cleaned == "/" {
-		return filesBaseDir, nil
+		return siteBaseDir, nil
 	}
 	if strings.HasPrefix(cleaned, "..") {
 		return "", errors.New("invalid path")
@@ -382,7 +381,7 @@ func resolveFilesPath(pathParam string) (string, error) {
 		}
 		return cleaned, nil
 	}
-	joined := filepath.Join(filesBaseDir, cleaned)
+	joined := filepath.Join(siteBaseDir, cleaned)
 	if err := ensureWithinBase(joined); err != nil {
 		return "", err
 	}
@@ -390,7 +389,7 @@ func resolveFilesPath(pathParam string) (string, error) {
 }
 
 func ensureWithinBase(path string) error {
-	if !isWithin(filesBaseDir, path) {
+	if !isWithin(siteBaseDir, path) {
 		return errors.New("path outside base directory")
 	}
 	return nil

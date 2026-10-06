@@ -49,7 +49,7 @@ func (h *Handlers) ServerStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hostname, _ := os.Hostname()
+	hostname := hostName()
 	totalMemory, freeMemory := readMemory()
 	uptime := readUptime()
 	cpuUsage := sampleCPUUsage()

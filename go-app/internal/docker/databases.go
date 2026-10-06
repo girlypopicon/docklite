@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"docklite-agent/internal/demo"
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -52,6 +53,9 @@ func (c *Client) CreateDatabaseContainer(ctx context.Context, name string, usern
 	}
 	if port > 0 {
 		labels["docklite.db.port"] = strconv.Itoa(port)
+	}
+	if demo.On {
+		labels[demo.Label] = "1"
 	}
 
 	portKey := nat.Port("5432/tcp")

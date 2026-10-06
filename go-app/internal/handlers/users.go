@@ -211,7 +211,7 @@ func ensureUserFolder(username string) error {
 	if username == "" {
 		return nil
 	}
-	path := filepath.Join("/var/www/sites", username)
+	path := filepath.Join(siteBaseDir, username)
 	if err := os.MkdirAll(path, 0o775); err != nil {
 		return err
 	}

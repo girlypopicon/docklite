@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"docklite-agent/internal/demo"
 	"fmt"
 	"io"
 	"os/exec"
@@ -55,6 +56,9 @@ func nginxVhostConfig(domain string, includeWww bool, upstreamPort int) string {
 const rootHelper = "/usr/local/sbin/docklite-helper"
 
 func runRootHelper(stdin io.Reader, args ...string) ([]byte, error) {
+	if demo.On {
+		return demoRootHelper(stdin, args...)
+	}
 	cmd := exec.Command("sudo", append([]string{"-n", rootHelper}, args...)...)
 	cmd.Stdin = stdin
 	return cmd.CombinedOutput()

@@ -14,6 +14,14 @@ Keep changes small and focused, add a test where there is logic, and update
 
 By contributing you agree your work is released under the project's AGPL-3.0-or-later license.
 
+## Demo mode
+
+`scripts/demo.sh up` starts a throwaway DockLite (agent on :3100, dashboard on :3102) in `~/docklite-demo`, seeded
+with fake users, `example.*` sites and databases. `scripts/demo.sh login` prints the demo login, `status` shows
+whether it is running, and `down --wipe` removes it. Use it for screenshots and testing without touching a real
+server: root actions are simulated in memory and pages that reveal the host (network, server logs/services) are
+refused. Demo containers carry the label `docklite.demo=1`.
+
 ## Versioning
 
 Add a line under **Unreleased** in `CHANGELOG.md` for every user-visible change as you make it.

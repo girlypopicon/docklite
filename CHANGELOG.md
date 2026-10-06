@@ -6,6 +6,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## Unreleased
 
 ### Added
+- Demo mode (`scripts/demo.sh up`): a separate DockLite instance with fake users, example.* sites and databases for
+  screenshots, testing and demos. It simulates nginx/certificate actions, hides real containers and host details, and
+  real DockLites never list its containers.
 - `sudo bash install.sh --dry-run`: reports what is already on the server (nginx sites, older DockLite, containers,
   site folders) and what the installer will and won't touch, changing nothing. An older install in `/opt/docklite`
   is backed up to `/var/backups/docklite/` before files are replaced.

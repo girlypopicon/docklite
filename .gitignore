@@ -79,3 +79,4 @@ temp/
 # Local backup of git directory
 .git.bak
 .gitignore.root.bak
+.next-demo/

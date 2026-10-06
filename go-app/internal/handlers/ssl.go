@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/x509"
+	"docklite-agent/internal/demo"
 	"encoding/pem"
 	"fmt"
 	"net/http"
@@ -15,13 +16,13 @@ import (
 const letsencryptLiveDir = "/etc/letsencrypt/live"
 
 type sslCertInfo struct {
-	Domain          string  `json:"domain"`
+	Domain          string   `json:"domain"`
 	Domains         []string `json:"domains"`
-	HasSSL          bool    `json:"hasSSL"`
-	ExpiryDate      *string `json:"expiryDate"`
-	DaysUntilExpiry *int    `json:"daysUntilExpiry"`
-	Status          string  `json:"status"`
-	CertPath        string  `json:"certPath,omitempty"`
+	HasSSL          bool     `json:"hasSSL"`
+	ExpiryDate      *string  `json:"expiryDate"`
+	DaysUntilExpiry *int     `json:"daysUntilExpiry"`
+	Status          string   `json:"status"`
+	CertPath        string   `json:"certPath,omitempty"`
 }
 
 func (h *Handlers) SSLStatus(w http.ResponseWriter, r *http.Request) {
@@ -223,6 +224,9 @@ func (h *Handlers) SSLRepair(w http.ResponseWriter, r *http.Request) {
 }
 
 func readCertbotCertificates() []sslCertInfo {
+	if demo.On {
+		return nil // never list the real host's certificates in demo mode
+	}
 	entries, err := os.ReadDir(letsencryptLiveDir)
 	if err != nil {
 		output, cmdErr := runRootHelper(nil, "cert-list")
