@@ -29,6 +29,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- On a server that already has a default nginx site, the dashboard's nginx entry referred to a variable that was only defined in
+  a file DockLite deliberately does not write there, so nginx rejected it (and could have refused to start at its next
+  restart). The entry is now self-contained, and any nginx config nginx rejects is removed again instead of left behind.
 - `docklite status` always said the web GUI was "Not started" (and install printed "GUI may still be starting"), even when it
   was running: the process check used a pattern that can never match. It now detects the GUI correctly.
 - `docklite` no longer needs a log out and in after install: if you were just added to the docklite group, it restarts
