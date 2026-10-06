@@ -27,6 +27,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- The dashboard footer and Settings showed a hard-coded "v1.0"; they now show the real version.
+- The 404 page listed Containers twice; the second link now goes to Backups.
 - Installing on a server that already hosts sites: DockLite no longer disables the `default` and `docklite-sites` nginx
   configs, never adds a second `default_server`, and undoes its own nginx change if the config test fails.
 - Container uptime now counts from the last start, not from creation.

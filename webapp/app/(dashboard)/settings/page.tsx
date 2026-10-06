@@ -22,7 +22,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold neon-text" style={{ color: 'var(--neon-cyan)' }}>
-              v1.0
+              v{process.env.NEXT_PUBLIC_DOCKLITE_VERSION}
             </div>
             <div className="text-xs font-mono opacity-70">Version</div>
           </div>
