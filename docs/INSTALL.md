@@ -9,7 +9,7 @@
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | bash
 ```
 
 That downloads DockLite to `/usr/local/src/docklite` and starts the installer, which asks its questions at your
@@ -44,7 +44,7 @@ Run the same install command again. It fetches the new code and upgrades in plac
 and configuration:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | bash
 ```
 
 ## After installing
@@ -68,7 +68,7 @@ It asks before removing services, configuration, and (separately) your data.
 First look, without changing anything:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | bash -s -- --dry-run
 bash /usr/local/src/docklite/inventory.sh   # a fuller read-only report of nginx sites, ports and containers
 ```
 

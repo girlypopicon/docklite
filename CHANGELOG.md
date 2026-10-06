@@ -6,7 +6,7 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## Unreleased
 
 ### Added
-- One-line install: `curl -fsSL .../get.sh | sudo bash` downloads DockLite and starts the installer (add `-s -- --dry-run`
+- One-line install: `curl -fsSL .../get.sh | bash` downloads DockLite and starts the installer (add `-s -- --dry-run`
   to only look). Running it again upgrades in place.
 - Demo mode (`scripts/demo.sh up`): a separate DockLite instance with fake users, example.* sites and databases for
   screenshots, testing and demos. It simulates nginx/certificate actions, hides real containers and host details, and

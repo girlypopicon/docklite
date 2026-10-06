@@ -65,10 +65,11 @@ optional too.
 
 ## Install
 
-You need an Ubuntu or Debian server and a user with `sudo`. One command does it:
+You need an Ubuntu or Debian server and a user with `sudo`. One command does it. Run it as yourself, not with
+`sudo` in front: it asks for your sudo password when it needs it.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | bash
 ```
 
 It downloads DockLite, then the installer asks a few questions (ports, an optional dashboard domain with HTTPS,
@@ -77,7 +78,7 @@ the firewall). Run the same command again any time to upgrade; your data and set
 Want to look before you leap? This only reports what is on your server and changes nothing:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | bash -s -- --dry-run
 ```
 
 Prefer to read the code first? Clone it and run the installer yourself:
