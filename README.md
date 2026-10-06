@@ -65,17 +65,29 @@ optional too.
 
 ## Install
 
-You need a fresh or existing Ubuntu/Debian server and a user with `sudo`.
+You need an Ubuntu or Debian server and a user with `sudo`. One command does it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash
+```
+
+It downloads DockLite, then the installer asks a few questions (ports, an optional dashboard domain with HTTPS,
+the firewall). Run the same command again any time to upgrade; your data and settings are kept.
+
+Want to look before you leap? This only reports what is on your server and changes nothing:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash -s -- --dry-run
+```
+
+Prefer to read the code first? Clone it and run the installer yourself:
 
 ```bash
 git clone https://github.com/girlypopicon/docklite.git
-cd docklite
-sudo bash install.sh
+sudo bash docklite/install.sh
 ```
 
-The installer sets up Docker, Node.js, nginx and PM2 if they are missing, builds DockLite into `/opt/docklite`,
-and walks you through ports, an optional dashboard domain with HTTPS, and the firewall. Running it again later
-upgrades DockLite and keeps your data and settings.
+The installer sets up Docker, Node.js, nginx and PM2 if they are missing and builds DockLite into `/opt/docklite`.
 
 When it finishes it prints where to find the dashboard. The first login is `superadmin`; the generated password
 is stored on the server:

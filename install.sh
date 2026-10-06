@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # DockLite Installer — interactive setup wizard
-# Usage: sudo bash install.sh   (or: curl -fsSL .../install.sh | sudo bash)
+# Usage: sudo bash install.sh [--dry-run]   (one-line install for users: see get.sh)
 set -euo pipefail
 
 # ══════════════════════════════════════════════════════════════════════════════

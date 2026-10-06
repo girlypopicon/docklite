@@ -9,10 +9,12 @@
 ## Install
 
 ```bash
-git clone https://github.com/girlypopicon/docklite.git
-cd docklite
-sudo bash install.sh
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash
 ```
+
+That downloads DockLite to `/usr/local/src/docklite` and starts the installer, which asks its questions at your
+keyboard. To choose a version instead of `main`, add `--ref v1.1.0` after `bash -s --`. If you would rather read the
+code first, clone the repository and run `sudo bash install.sh` yourself.
 
 The installer, in order: installs missing packages, creates the `docklite` system user and `/opt/docklite`,
 builds the agent, the `docklite` command line and the dashboard, copies everything to `/opt/docklite`, installs
@@ -38,11 +40,11 @@ Change it from the dashboard after logging in.
 
 ## Upgrading
 
-Pull the new code and run the installer again. It keeps your database, logs and configuration:
+Run the same install command again. It fetches the new code and upgrades in place, keeping your database, logs
+and configuration:
 
 ```bash
-cd docklite && git pull
-sudo bash install.sh
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash
 ```
 
 ## After installing
@@ -66,8 +68,8 @@ It asks before removing services, configuration, and (separately) your data.
 First look, without changing anything:
 
 ```bash
-sudo bash install.sh --dry-run     # what is here, and what the installer will and won't touch
-bash inventory.sh                  # a fuller read-only report of nginx sites, ports and containers
+curl -fsSL https://raw.githubusercontent.com/girlypopicon/docklite/main/get.sh | sudo bash -s -- --dry-run
+bash /usr/local/src/docklite/inventory.sh   # a fuller read-only report of nginx sites, ports and containers
 ```
 
 On a server with existing sites the installer:
