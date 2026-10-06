@@ -29,6 +29,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- `docklite` no longer needs a log out and in after install: if you were just added to the docklite group, it restarts
+  itself inside the group. If an interrupted install left `/opt/docklite` read-only for the group, it repairs that itself
+  (new root-helper command `fix-install-perms`).
 - The one-line install left `/opt/docklite` read-only for the docklite group, so the setup wizard could not write its
   settings ("Permission denied"). The installer now sets the folder group-writable itself.
 - The dashboard-domain question in setup now explains how to type it (just the hostname), that DNS must point at the server

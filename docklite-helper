@@ -84,6 +84,15 @@ case "$cmd" in
             echo "stock_default no"
         fi
         ;;
+    fix-install-perms) # fix-install-perms   (make /opt/docklite usable by the docklite group again)
+        d=/opt/docklite
+        [[ -d "$d" ]] || die "no DockLite install at $d"
+        chown docklite:docklite "$d"
+        chmod 775 "$d"
+        for f in .docklite.conf ecosystem.config.js; do
+            [[ -f "$d/$f" ]] && { chown docklite:docklite "$d/$f"; chmod 660 "$d/$f"; }
+        done
+        ;;
     group-list)       # group-list   (members of the docklite group, one per line)
         getent group docklite | cut -d: -f4 | tr ',' '\n' | sed '/^$/d'
         ;;
