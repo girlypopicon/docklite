@@ -80,3 +80,5 @@ temp/
 .git.bak
 .gitignore.root.bak
 .next-demo*/
+out/
+dist/

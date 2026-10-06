@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { DEMO } from '@/lib/demo/flag';
 import { useRouter } from 'next/navigation';
 import {
   Lightning,
@@ -20,6 +21,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // The public demo has no login: everyone goes straight in.
+  useEffect(() => {
+    if (DEMO) window.location.replace('/');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Globe,
@@ -148,7 +148,7 @@ const tabs: Array<{ key: NetworkTab; label: string; icon: JSX.Element }> = [
   { key: 'diagnostics', label: 'Diagnostics', icon: <Pulse size={18} weight="duotone" /> },
 ];
 
-export default function NetworkPage() {
+function NetworkPageInner() {
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get('tab') as NetworkTab | null;
   const [activeTab, setActiveTab] = useState<NetworkTab>('identity');
@@ -857,5 +857,14 @@ export default function NetworkPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// useSearchParams needs a Suspense boundary so the page can also be pre-rendered (public demo export).
+export default function NetworkPage() {
+  return (
+    <Suspense fallback={null}>
+      <NetworkPageInner />
+    </Suspense>
   );
 }
