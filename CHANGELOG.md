@@ -29,6 +29,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- The dashboard-domain question in setup now explains how to type it (just the hostname), that DNS must point at the server
+  first, that ports 80/443 must be open, and that the dashboard is then reached only at that address. A pasted URL is
+  trimmed to the hostname, and it shows what DNS currently says for the name.
 - Installing over an older DockLite that runs as systemd services (`docklite-agent`, `docklite-web`): the installer now asks
   to stop and disable them first, because they run from the folder being replaced. Sites keep running (nginx and Docker
   serve them). If the backup fails, the services are started again.

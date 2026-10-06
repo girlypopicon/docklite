@@ -468,10 +468,18 @@ $(panel_proxy_location 'https')
 # Ask for (or change) the panel domain, then set it up.
 prompt_panel_domain() {
     echo ""
-    echo -e "  ${DIM}Optional: a domain for the dashboard (e.g. db.example.com) gets free${NC}"
-    echo -e "  ${DIM}HTTPS from Let's Encrypt. Point its DNS A record at this server first.${NC}"
-    echo -e "  ${DIM}Enter '-' to remove the current one.${NC}"
-    echo -en "  ${BLUE}Panel domain${NC} ${YELLOW}[${PANEL_DOMAIN:-none}]${NC}: "
+    echo -e "  ${BOLD}${CYAN}Dashboard domain${NC} ${DIM}(recommended)${NC}"
+    echo -e "  ${DIM}This is the address you will open DockLite at, with free HTTPS from Let's Encrypt.${NC}"
+    echo -e "  ${DIM}Example:  panel.example.com${NC}"
+    echo ""
+    echo -e "    ${MINT}•${NC} Type just the name: no ${BOLD}https://${NC}, no slashes, no port."
+    echo -e "    ${MINT}•${NC} ${BOLD}Set up DNS first:${NC} create an A record for it pointing at this server's IP address"
+    echo -e "      (or a Cloudflare record). Without that, the certificate step cannot work."
+    echo -e "    ${MINT}•${NC} Ports ${BOLD}80 and 443${NC} must be open to the internet."
+    echo -e "    ${MINT}•${NC} Once set, DockLite is reached ${BOLD}only at that address${NC}, not at the server's IP or a port number."
+    echo -e "    ${MINT}•${NC} http:// then forwards to https:// automatically after the certificate is issued."
+    echo -e "  ${DIM}Leave it blank to skip. Enter '-' to remove the current one.${NC}"
+    echo -en "  ${BLUE}Dashboard domain${NC} ${YELLOW}[${PANEL_DOMAIN:-none}]${NC}: "
     local answer
     read -r answer
     answer="${answer,,}"
@@ -482,6 +490,29 @@ prompt_panel_domain() {
         root_helper nginx-reload >/dev/null 2>&1 || true
         ok "Panel domain removed"
         return 0
+    fi
+    # Be forgiving about how it was typed: strip a pasted URL down to the hostname.
+    answer="${answer#http://}"; answer="${answer#https://}"
+    answer="${answer%%/*}"; answer="${answer%%:*}"; answer="${answer%.}"
+    if [[ -n "$answer" ]]; then
+        local dns_ips local_ips
+        dns_ips="$(getent ahostsv4 "$answer" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')"
+        local_ips="$(ip -4 -o addr show 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | tr '\n' ' ')"
+        if [[ -z "$dns_ips" ]]; then
+            warn "${answer} has no DNS record yet. Create the A record first, or the certificate step will fail."
+            echo -en "  ${BLUE}Continue anyway?${NC} ${YELLOW}(y/N)${NC}: "
+            local go; read -r go
+            [[ "${go,,}" == "y" ]] || { info "Skipped. Run this again from: docklite  →  Reconfigure  →  Panel domain"; return 0; }
+        else
+            local ip match=0
+            for ip in $dns_ips; do [[ " $local_ips " == *" $ip "* ]] && match=1; done
+            if [[ $match -eq 1 ]]; then
+                ok "DNS: ${answer} → ${dns_ips}(this server)"
+            else
+                info "DNS: ${answer} → ${dns_ips}"
+                info "That is not one of this server's addresses. Fine if you use Cloudflare's proxy; otherwise fix the A record."
+            fi
+        fi
     fi
     [[ -n "$answer" ]] && PANEL_DOMAIN="$answer"
     setup_panel_domain || true
