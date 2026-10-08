@@ -35,7 +35,7 @@ rainbow_line() {
 }
 
 banner() {
-    clear
+    clear 2>/dev/null || true
     echo ""
     echo -e "${PINK}     ____             __   __    _ __       ${NC}"
     echo -e "${CORAL}    / __ \\____  _____/ /__/ /   (_) /_____ ${NC}"
@@ -83,13 +83,21 @@ spin() {
 
 ask() {
     local var="$1" prompt="$2" default="$3"
+    if [[ "${ASSUME_YES:-0}" -eq 1 ]]; then printf -v "$var" '%s' "$default"; return; fi
     echo -en "  ${BLUE}${prompt}${NC} ${YELLOW}[${default}]${NC}: "
     local input; read -r input
     printf -v "$var" '%s' "${input:-$default}"
 }
 
+ASSUME_YES=0   # --yes: take the default answer to every question (used by the dashboard's Update button)
+
 ask_yn() {
     local prompt="$1" default="${2:-Y}"
+    if [[ "$ASSUME_YES" -eq 1 ]]; then
+        echo -e "  ${BLUE}${prompt}${NC} ${DIM}-> ${default} (--yes)${NC}"
+        [[ "${default^^}" == "Y" ]]
+        return
+    fi
     echo -en "  ${BLUE}${prompt}${NC} ${YELLOW}(${default}/$([ "$default" = Y ] && echo n || echo y))${NC}: "
     local input; read -r input
     input="${input:-$default}"
@@ -593,8 +601,10 @@ main() {
     for arg in "$@"; do
         case "$arg" in
             --dry-run) DRY_RUN=1 ;;
+            -y|--yes) ASSUME_YES=1 ;;
             -h|--help)
-                echo "Usage: sudo bash install.sh [--dry-run]"
+                echo "Usage: sudo bash install.sh [--dry-run] [--yes]"
+                echo "  --yes       don't ask questions; take the default answers (used for unattended upgrades)"
                 echo "  --dry-run   look at this server and say what would happen; changes nothing"
                 exit 0 ;;
         esac
@@ -696,9 +706,14 @@ main() {
     # An existing config means this is an update: apply it without the
     # wizard, which would pick new ports and regenerate the token, session
     # secret and panel domain.
-    local target_user="${SUDO_USER:-$USER}"
+    local target_user="${SUDO_USER:-${USER:-root}}"
     local action="setup"
     [[ -f "${INSTALL_DIR}/.docklite.conf" ]] && action="upgrade"
+    if [[ "$action" == "setup" && "$ASSUME_YES" -eq 1 ]]; then
+        # The setup wizard needs a person. An unattended run on a fresh install stops here.
+        ok "DockLite is installed. Finish setup by running:  docklite setup"
+        exit 0
+    fi
     if [[ "$target_user" != "root" ]]; then
         exec sudo -u "$target_user" "${INSTALL_DIR}/docklite" "$action"
     else

@@ -3,52 +3,221 @@ package handlers
 import (
 	"bufio"
 	"context"
-	"crypto/sha256"
-	"docklite-agent/internal/demo"
-	"encoding/hex"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
-	"os/user"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
-	"sync/atomic"
-	"syscall"
+	"sync"
 	"time"
+
+	"docklite-agent/internal/demo"
 )
+
+// Self-update, built on GitHub releases.
+//
+//   - "Is there a newer version?" asks GitHub for the repository's latest release (or, if there are no
+//     releases, its newest vX.Y.Z tag) and compares it with the VERSION file of this install.
+//   - "Update" asks the root helper to run the update. The helper accepts only a release tag like
+//     v1.2.0, runs as a separate systemd job (so it survives DockLite restarting itself), backs up the
+//     data first, installs that exact tag, checks DockLite came back, and rolls back if it didn't.
+//   - Progress is a log file plus a small state file, both read here without needing root.
 
 const (
-	updateLogFile      = "/var/log/docklite/update.log"
-	updateAuditLogFile = "/var/log/docklite/update-audit.log"
-	updatePIDFile      = "/tmp/docklite-update.pid"
-	updateLogTail      = 80
-	updateCmdTimeout   = 30 * time.Minute // 30 minute timeout for update script
+	updateLogFile    = "/var/log/docklite/update.log"
+	updateStateFile  = "/var/lib/docklite/update-state"
+	updateLogTail    = 150
+	updateStaleAfter = 45 * time.Minute
+	defaultRepoSlug  = "girlypopicon/docklite"
 )
 
-var updateRunning atomic.Bool
+// githubAPI is a variable so tests (and the demo, loopback only) can use a fake.
+const defaultGithubAPI = "https://api.github.com"
 
-func installDir() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return "/opt/docklite"
+var githubAPI = defaultGithubAPI
+
+func init() {
+	if v := os.Getenv("DOCKLITE_GITHUB_API"); strings.HasPrefix(v, "http://127.0.0.1:") || strings.HasPrefix(v, "http://localhost:") {
+		githubAPI = strings.TrimRight(v, "/")
 	}
-	// binary lives at <INSTALL_DIR>/bin/docklite-agent
-	return filepath.Dir(filepath.Dir(exe))
+}
+
+// startUpdateJob asks the root helper to start the update. A variable so tests never start a real one.
+var startUpdateJob = func(tag string) ([]byte, error) { return runRootHelper(nil, "update-start", tag) }
+
+var releaseTagRE = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
+
+type semver [3]int
+
+func parseSemver(tag string) (semver, bool) {
+	m := releaseTagRE.FindStringSubmatch(tag)
+	if m == nil {
+		return semver{}, false
+	}
+	var v semver
+	for i := 0; i < 3; i++ {
+		n, err := strconv.Atoi(m[i+1])
+		if err != nil {
+			return semver{}, false
+		}
+		v[i] = n
+	}
+	return v, true
+}
+
+// compareSemver returns -1, 0 or 1.
+func compareSemver(a, b semver) int {
+	for i := 0; i < 3; i++ {
+		if a[i] < b[i] {
+			return -1
+		}
+		if a[i] > b[i] {
+			return 1
+		}
+	}
+	return 0
+}
+
+type releaseInfo struct {
+	Tag         string `json:"tag"`
+	Version     string `json:"version"`
+	Notes       string `json:"notes"`
+	URL         string `json:"url"`
+	PublishedAt string `json:"publishedAt"`
+}
+
+var releaseCache struct {
+	sync.Mutex
+	at   time.Time
+	info *releaseInfo
+	err  string
+}
+
+func repoSlug() string {
+	if v := strings.TrimSpace(os.Getenv("DOCKLITE_REPO_SLUG")); v != "" {
+		return v
+	}
+	return defaultRepoSlug
+}
+
+func githubGet(ctx context.Context, path string, into any) (int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubAPI+path, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "docklite-update-check")
+	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+	if resp.StatusCode != http.StatusOK {
+		return resp.StatusCode, fmt.Errorf("GitHub answered HTTP %d", resp.StatusCode)
+	}
+	return resp.StatusCode, json.Unmarshal(body, into)
+}
+
+// fetchLatestRelease finds the newest version on GitHub. Results are cached for 10 minutes
+// (GitHub allows only 60 unauthenticated requests an hour per address); force skips the cache
+// but never asks more than once every 30 seconds.
+func fetchLatestRelease(ctx context.Context, force bool) (*releaseInfo, error) {
+	releaseCache.Lock()
+	defer releaseCache.Unlock()
+	age := time.Since(releaseCache.at)
+	if !releaseCache.at.IsZero() && ((!force && age < 10*time.Minute) || age < 30*time.Second) {
+		if releaseCache.info != nil {
+			return releaseCache.info, nil
+		}
+		return nil, fmt.Errorf("%s", releaseCache.err)
+	}
+	info, err := lookupLatest(ctx)
+	releaseCache.at = time.Now()
+	releaseCache.info = info
+	if err != nil {
+		releaseCache.err = err.Error()
+	}
+	return info, err
+}
+
+func lookupLatest(ctx context.Context) (*releaseInfo, error) {
+	slug := repoSlug()
+	var rel struct {
+		TagName     string `json:"tag_name"`
+		Body        string `json:"body"`
+		HTMLURL     string `json:"html_url"`
+		PublishedAt string `json:"published_at"`
+		Prerelease  bool   `json:"prerelease"`
+		Draft       bool   `json:"draft"`
+	}
+	if code, err := githubGet(ctx, "/repos/"+slug+"/releases/latest", &rel); err == nil {
+		if _, ok := parseSemver(rel.TagName); ok && !rel.Draft && !rel.Prerelease {
+			return &releaseInfo{Tag: rel.TagName, Version: strings.TrimPrefix(rel.TagName, "v"), Notes: rel.Body, URL: rel.HTMLURL, PublishedAt: rel.PublishedAt}, nil
+		}
+	} else if code != http.StatusNotFound && code != 0 {
+		return nil, err
+	} else if code == 0 {
+		return nil, fmt.Errorf("couldn't reach GitHub: %v", err)
+	}
+
+	// No usable release: fall back to the newest vX.Y.Z tag.
+	var tags []struct {
+		Name string `json:"name"`
+	}
+	if _, err := githubGet(ctx, "/repos/"+slug+"/tags?per_page=100", &tags); err != nil {
+		return nil, err
+	}
+	var best semver
+	bestTag := ""
+	for _, t := range tags {
+		if v, ok := parseSemver(t.Name); ok && (bestTag == "" || compareSemver(v, best) > 0) {
+			best, bestTag = v, t.Name
+		}
+	}
+	if bestTag == "" {
+		return nil, fmt.Errorf("no releases found on GitHub yet")
+	}
+	return &releaseInfo{Tag: bestTag, Version: strings.TrimPrefix(bestTag, "v"), URL: "https://github.com/" + slug + "/releases/tag/" + bestTag}, nil
 }
 
 type updateStatusResponse struct {
 	Version         string   `json:"version"`
-	GitHash         string   `json:"gitHash"`
-	Branch          string   `json:"branch"`
-	CommitsBehind   int      `json:"commitsBehind"`
+	LatestVersion   string   `json:"latestVersion"`
+	LatestTag       string   `json:"latestTag"`
 	UpdateAvailable bool     `json:"updateAvailable"`
+	Notes           string   `json:"notes"`
+	ReleaseURL      string   `json:"releaseUrl"`
+	CheckError      string   `json:"checkError,omitempty"`
 	UpdateRunning   bool     `json:"updateRunning"`
-	LastUpdated     string   `json:"lastUpdated"`
+	State           string   `json:"state"` // idle | running | success | failed | rolled-back
+	StateTag        string   `json:"stateTag,omitempty"`
+	StateMessage    string   `json:"stateMessage,omitempty"`
 	Log             []string `json:"log"`
+	LastUpdated     string   `json:"lastUpdated"`
+}
+
+// readUpdateState parses the state file the helper writes: "<state> <tag> <unix time> [message...]".
+func readUpdateState(path string) (state, tag string, at time.Time, msg string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "idle", "", time.Time{}, ""
+	}
+	f := strings.Fields(strings.TrimSpace(string(data)))
+	if len(f) < 3 {
+		return "idle", "", time.Time{}, ""
+	}
+	if n, err := strconv.ParseInt(f[2], 10, 64); err == nil {
+		at = time.Unix(n, 0)
+	}
+	if len(f) > 3 {
+		msg = strings.Join(f[3:], " ")
+	}
+	return f[0], f[1], at, msg
 }
 
 func (h *Handlers) SystemUpdateStatus(w http.ResponseWriter, r *http.Request) {
@@ -56,30 +225,42 @@ func (h *Handlers) SystemUpdateStatus(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
-
-	dir := installDir()
-	resp := updateStatusResponse{
-		Version:       readVersion(dir),
-		GitHash:       runGit(dir, "rev-parse", "--short", "HEAD"),
-		Branch:        runGit(dir, "rev-parse", "--abbrev-ref", "HEAD"),
-		UpdateRunning: updateRunning.Load() || pidFileRunning(),
-		Log:           tailLog(updateLogFile, updateLogTail),
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "admin access required")
+		return
 	}
+	resp := updateStatusResponse{Version: readVersion(installDir()), State: "idle", Log: tailLog(updateLogFile, updateLogTail)}
 
-	// non-blocking update check with timeout
-	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
-	defer cancel()
-	behind, err := commitsBeindOrigin(ctx, dir, resp.Branch)
-	if err == nil {
-		resp.CommitsBehind = behind
-		resp.UpdateAvailable = behind > 0
+	state, tag, at, msg := readUpdateState(updateStateFile)
+	if state == "running" && time.Since(at) > updateStaleAfter {
+		state = "failed"
+		msg = "the update seems to have stopped without finishing"
 	}
-
+	resp.State, resp.StateTag, resp.StateMessage = state, tag, msg
+	resp.UpdateRunning = state == "running"
 	resp.LastUpdated = lastModified(updateLogFile)
 
+	if demo.On && githubAPI == defaultGithubAPI {
+		// A demo never calls the real GitHub; it just says it's up to date (unless a pretend GitHub is set up).
+		resp.LatestVersion, resp.LatestTag = resp.Version, "v"+resp.Version
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+	defer cancel()
+	latest, err := fetchLatestRelease(ctx, r.URL.Query().Get("refresh") == "1")
+	if err != nil {
+		resp.CheckError = err.Error()
+	} else {
+		resp.LatestVersion, resp.LatestTag, resp.Notes, resp.ReleaseURL = latest.Version, latest.Tag, latest.Notes, latest.URL
+		cur, curOK := parseSemver("v" + strings.TrimPrefix(resp.Version, "v"))
+		lat, latOK := parseSemver(latest.Tag)
+		resp.UpdateAvailable = curOK && latOK && compareSemver(lat, cur) > 0
+	}
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// SystemUpdateRun starts an update to the newest release (or a named older/newer tag). Super admin only.
 func (h *Handlers) SystemUpdateRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -93,93 +274,58 @@ func (h *Handlers) SystemUpdateRun(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "updates are disabled in demo mode")
 		return
 	}
-	if updateRunning.Swap(true) {
-		writeError(w, http.StatusConflict, "update already in progress")
-		return
+	var body struct {
+		Version string `json:"version"`
+		Force   bool   `json:"force"`
 	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
 
-	dir := installDir()
-	scriptPath := filepath.Join(dir, "scripts", "update.sh")
-
-	// Get user info for audit logging
-	var userID *int64
-	var role string
-	if uid, ok := readUserIDFromContext(r); ok {
-		userID = &uid
-	}
-	if r, ok := readUserRoleFromContext(r); ok {
-		role = r
-	}
-
-	// Validate script permissions and ownership
-	if err := validateUpdateScript(scriptPath); err != nil {
-		updateRunning.Store(false)
-		auditLogUpdate(userID, role, "update_run", "permission_denied", err.Error())
-		writeError(w, http.StatusInternalServerError, "script validation failed: "+err.Error())
-		return
-	}
-
-	// Compute and log script hash for integrity tracking
-	scriptHash, err := hashFile(scriptPath)
-	if err != nil {
-		updateRunning.Store(false)
-		auditLogUpdate(userID, role, "update_run", "hash_failed", err.Error())
-		writeError(w, http.StatusInternalServerError, "script hash computation failed")
-		return
-	}
-	if err := validateScriptHashAllowlist(scriptHash); err != nil {
-		updateRunning.Store(false)
-		auditLogUpdate(userID, role, "update_run", "hash_mismatch", err.Error())
-		writeError(w, http.StatusForbidden, "update script integrity check failed")
-		return
-	}
-
-	// Log audit entry for update start
-	auditLogUpdate(userID, role, "update_run", "started", fmt.Sprintf("script_hash=%s", scriptHash))
-
-	writeJSON(w, http.StatusAccepted, map[string]string{"status": "started"})
-
-	go func() {
-		defer updateRunning.Store(false)
-
-		// Rotate log
-		_ = os.MkdirAll(filepath.Dir(updateLogFile), 0o755)
-		logF, err := os.OpenFile(updateLogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	tag := strings.TrimSpace(body.Version)
+	if tag == "" {
+		ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+		defer cancel()
+		latest, err := fetchLatestRelease(ctx, true)
 		if err != nil {
-			auditLogUpdate(userID, role, "update_run", "failed", "could not open log file")
+			writeError(w, http.StatusBadGateway, "couldn't find the newest version: "+err.Error())
 			return
 		}
-		defer logF.Close()
+		tag = latest.Tag
+	} else if !strings.HasPrefix(tag, "v") {
+		tag = "v" + tag
+	}
+	target, ok := parseSemver(tag)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "version must look like 1.2.0")
+		return
+	}
+	if cur, curOK := parseSemver("v" + strings.TrimPrefix(readVersion(installDir()), "v")); curOK && !body.Force && compareSemver(target, cur) <= 0 {
+		writeError(w, http.StatusConflict, "you already have "+tag+" or newer")
+		return
+	}
 
-		// Create context with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), updateCmdTimeout)
-		defer cancel()
-
-		cmd := exec.CommandContext(ctx, "bash", scriptPath)
-		cmd.Env = append(os.Environ(),
-			"INSTALL_DIR="+dir,
-			"LOG_FILE="+updateLogFile,
-			"PID_FILE="+updatePIDFile,
-		)
-		cmd.Stdout = logF
-		cmd.Stderr = logF
-		// New session so we're not killed by the agent's cgroup stop signal
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-
-		err = cmd.Run()
-		if err != nil {
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				auditLogUpdate(userID, role, "update_run", "failed_timeout", "update command exceeded timeout")
-				return
-			}
-			auditLogUpdate(userID, role, "update_run", "failed", err.Error())
-		} else {
-			auditLogUpdate(userID, role, "update_run", "completed", "success")
+	out, err := startUpdateJob(tag)
+	h.audit(r, "system.update", tag, map[string]any{"from": readVersion(installDir()), "ok": err == nil})
+	if err != nil {
+		msg := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(out)), "docklite-helper:"))
+		if msg == "" {
+			msg = err.Error()
 		}
-	}()
+		writeError(w, http.StatusInternalServerError, msg)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "started", "version": strings.TrimPrefix(tag, "v")})
 }
 
-// helpers
+// --- helpers ---
+
+func installDir() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return "/opt/docklite"
+	}
+	// the binary lives at <INSTALL_DIR>/bin/docklite-agent
+	return filepath.Dir(filepath.Dir(exe))
+}
 
 func readVersion(dir string) string {
 	data, err := os.ReadFile(filepath.Join(dir, "VERSION"))
@@ -189,42 +335,15 @@ func readVersion(dir string) string {
 	return strings.TrimSpace(string(data))
 }
 
-func runGit(dir string, args ...string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	out, err := exec.CommandContext(ctx, "git", append([]string{"-C", dir}, args...)...).Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
-}
-
-func commitsBeindOrigin(ctx context.Context, dir, branch string) (int, error) {
-	// fetch first (with timeout)
-	fetch := exec.CommandContext(ctx, "git", "-C", dir, "fetch", "origin", "--quiet")
-	_ = fetch.Run()
-
-	out, err := exec.CommandContext(ctx, "git", "-C", dir,
-		"rev-list", "HEAD..origin/"+branch, "--count").Output()
-	if err != nil {
-		return 0, err
-	}
-	n, err := strconv.Atoi(strings.TrimSpace(string(out)))
-	if err != nil {
-		return 0, err
-	}
-	return n, nil
-}
-
 func tailLog(path string, n int) []string {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil
 	}
 	defer f.Close()
-
 	var lines []string
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 64*1024), 1<<20)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
@@ -240,120 +359,4 @@ func lastModified(path string) string {
 		return ""
 	}
 	return info.ModTime().UTC().Format(time.RFC3339)
-}
-
-func pidFileRunning() bool {
-	data, err := os.ReadFile(updatePIDFile)
-	if err != nil {
-		return false
-	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil {
-		return false
-	}
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return proc.Signal(syscall.Signal(0)) == nil
-}
-
-// validateUpdateScript checks script ownership, permissions, and integrity
-func validateUpdateScript(scriptPath string) error {
-	fileInfo, err := os.Lstat(scriptPath)
-	if err != nil {
-		return fmt.Errorf("script not found: %w", err)
-	}
-	if fileInfo.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("script must not be a symlink")
-	}
-
-	// Check if file exists
-	fileInfo, err = os.Stat(scriptPath)
-	if err != nil {
-		return fmt.Errorf("script not found: %w", err)
-	}
-
-	// Check if it's a regular file (not a symlink or directory)
-	if !fileInfo.Mode().IsRegular() {
-		return fmt.Errorf("script is not a regular file")
-	}
-
-	// Check permissions (should not be world-writable)
-	permissions := fileInfo.Mode().Perm()
-	if permissions&0o002 != 0 {
-		return fmt.Errorf("script is world-writable (permissions: %o)", permissions)
-	}
-	if permissions&0o111 == 0 {
-		return fmt.Errorf("script is not executable (permissions: %o)", permissions)
-	}
-
-	// Check ownership (should be root or docklite user if possible)
-	stat := fileInfo.Sys().(*syscall.Stat_t)
-	currentUser, err := user.Current()
-	if err == nil {
-		currentUID, _ := strconv.ParseUint(currentUser.Uid, 10, 32)
-		// Allow if owned by root (0) or current user
-		if stat.Uid != 0 && stat.Uid != uint32(currentUID) {
-			return fmt.Errorf("script not owned by root or current user (owner UID: %d)", stat.Uid)
-		}
-	}
-
-	return nil
-}
-
-func validateScriptHashAllowlist(scriptHash string) error {
-	allowlist := strings.TrimSpace(os.Getenv("DOCKLITE_UPDATE_SCRIPT_SHA256"))
-	if allowlist == "" {
-		return nil
-	}
-	for _, item := range strings.Split(allowlist, ",") {
-		if strings.EqualFold(strings.TrimSpace(item), scriptHash) {
-			return nil
-		}
-	}
-	return fmt.Errorf("script hash %s does not match allowlist", scriptHash)
-}
-
-// hashFile computes SHA256 hash of a file
-func hashFile(filePath string) (string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
-// auditLogUpdate records security-relevant update operations
-func auditLogUpdate(userID *int64, role string, action string, status string, details string) error {
-	// Create audit log directory
-	logDir := filepath.Dir(updateAuditLogFile)
-	_ = os.MkdirAll(logDir, 0o755)
-
-	// Open or create audit log file
-	file, err := os.OpenFile(updateAuditLogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Build audit log entry
-	timestamp := time.Now().UTC().Format(time.RFC3339)
-	userStr := "unknown"
-	if userID != nil {
-		userStr = fmt.Sprintf("uid:%d", *userID)
-	}
-
-	auditEntry := fmt.Sprintf("[%s] user=%s role=%s action=%s status=%s details=%s\n",
-		timestamp, userStr, role, action, status, details)
-
-	_, err = file.WriteString(auditEntry)
-	return err
 }

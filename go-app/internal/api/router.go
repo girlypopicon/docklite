@@ -135,7 +135,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 var demoBlockedPrefixes = []string{
 	"/api/server/overview", "/api/server/ports", "/api/server/updates", "/api/server/services",
 	"/api/server/storage", "/api/server/security", "/api/server/logs", "/api/server/diagnostics",
-	"/api/network/", "/api/system/shell-access", "/api/system/update", "/api/debug",
+	"/api/network/", "/api/system/shell-access", "/api/system/update/run", "/api/debug",
 }
 
 func demoBlocked(path string) bool {

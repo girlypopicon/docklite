@@ -40,6 +40,11 @@ Change it from the dashboard after logging in.
 
 ## Upgrading
 
+The easiest way: **Settings → System → DockLite Updates**. It shows the newest release and what's new, and updates with one
+click: it backs up your data first, and goes back to the previous version by itself if the new one doesn't start.
+
+From a terminal instead:
+
 Run the same install command again. It fetches the new code and upgrades in place, keeping your database, logs
 and configuration:
 

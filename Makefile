@@ -79,3 +79,7 @@ install-test-deps:
 .PHONY: version
 version:
 	@scripts/release.sh status
+
+.PHONY: test-update
+test-update:
+	@bash scripts/test-update-helper.sh

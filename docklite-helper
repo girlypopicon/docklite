@@ -44,6 +44,130 @@ check_email() {
     [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "invalid email: $1"
 }
 
+# ── self-update ─────────────────────────────────────────────────────────────
+# The dashboard's Update button calls `update-start vX.Y.Z`. Only a release tag of that exact shape is accepted;
+# nothing else the caller sends ever reaches a shell. The work runs as its own systemd job so it survives
+# DockLite restarting itself.
+UPDATE_STATE=/var/lib/docklite/update-state
+UPDATE_LOG=/var/log/docklite/update.log
+UPDATE_SRC=/usr/local/src/docklite
+UPDATE_REPO=https://github.com/girlypopicon/docklite.git
+INSTALL_DIR=/opt/docklite
+
+check_release_tag() {
+    [[ "${1:-}" =~ ^v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$ ]] || die "invalid release tag: ${1:-}"
+}
+
+# <state> <tag> [message]  (read back, without root, by the dashboard)
+set_update_state() {
+    mkdir -p /var/lib/docklite; chmod 755 /var/lib/docklite
+    printf '%s %s %s %s\n' "$1" "$2" "$(date +%s)" "${3:-}" > "${UPDATE_STATE}.tmp"
+    chmod 644 "${UPDATE_STATE}.tmp"
+    mv -f "${UPDATE_STATE}.tmp" "$UPDATE_STATE"
+}
+
+# Make /opt/docklite usable by the docklite group again (the installer may run as root).
+fix_install_perms() {
+    local d="$INSTALL_DIR" f
+    [[ -d "$d" ]] || return 0
+    chown docklite:docklite "$d"
+    chmod 775 "$d"
+    for f in .docklite.conf ecosystem.config.js; do
+        [[ -f "$d/$f" ]] && { chown docklite:docklite "$d/$f"; chmod 660 "$d/$f"; }
+    done
+    return 0
+}
+
+# Is DockLite answering? Any HTTP reply from the agent counts; the GUI must serve its login page.
+docklite_healthy() {
+    local port code
+    port="$(grep -E '^AGENT_PORT=' "$INSTALL_DIR/.docklite.conf" 2>/dev/null | head -1 | cut -d= -f2 | tr -d "\"'")"
+    [[ "$port" =~ ^[0-9]+$ ]] || return 1
+    code="$(curl -s -o /dev/null -m 4 -w '%{http_code}' "http://127.0.0.1:${port}/api/health" 2>/dev/null || true)"
+    [[ "$code" =~ ^[2-4][0-9][0-9]$ ]] || return 1
+    code="$(curl -s -o /dev/null -m 4 -w '%{http_code}' "http://127.0.0.1:${port}/login" 2>/dev/null || true)"
+    [[ "$code" == "200" ]]
+}
+
+wait_healthy() {
+    local waited=0
+    while (( waited < ${1:-150} )); do
+        docklite_healthy && return 0
+        sleep 5; waited=$((waited + 5))
+    done
+    return 1
+}
+
+# Check out exactly one release tag in the source copy and install it without asking questions.
+install_release() {
+    local tag="$1" want
+    git -C "$UPDATE_SRC" fetch --quiet --depth 1 origin "refs/tags/${tag}:refs/tags/${tag}" || return 10
+    git -C "$UPDATE_SRC" checkout --quiet --force "$tag" || return 11
+    want="$(tr -d '[:space:]' < "$UPDATE_SRC/VERSION" 2>/dev/null || true)"
+    [[ "v${want}" == "$tag" ]] || { echo "release ${tag} contains version '${want}', which doesn't match its name"; return 12; }
+    ( cd "$UPDATE_SRC" && bash install.sh --yes ) || return 13
+    fix_install_perms
+    return 0
+}
+
+run_update_job() {
+    # Globals on purpose: the EXIT trap reads them after the function has unwound.
+    tag="$1"; UPD_TAG="$1"; UPD_DONE=0
+    local prev prev_tag backup rc=0
+    export TERM=dumb
+    exec >>"$UPDATE_LOG" 2>&1
+    ulog() { echo "[$(date '+%H:%M:%S')] $*"; }
+    finish() { UPD_DONE=1; set_update_state "$1" "$UPD_TAG" "${2:-}"; }
+    trap 'code=$?; if [[ $UPD_DONE -eq 0 && $code -ne 0 ]]; then set_update_state failed "$UPD_TAG" "stopped unexpectedly (exit $code); see the update log"; fi; [[ -n "${DOCKLITE_UPDATE_COPY:-}" ]] && rm -f "$DOCKLITE_UPDATE_COPY"' EXIT
+
+    mkdir -p /var/lock
+    exec 9>/var/lock/docklite-update.lock
+    flock -n 9 || { ulog "Another update is already running."; finish failed "another update is already running"; exit 1; }
+
+    prev="$(tr -d '[:space:]' < "$INSTALL_DIR/VERSION" 2>/dev/null || echo unknown)"
+    prev_tag="v${prev}"
+    ulog "Updating DockLite ${prev} -> ${tag#v}"
+
+    command -v git >/dev/null 2>&1 || { ulog "git is not installed."; finish failed "git is not installed"; exit 1; }
+    if [[ -d "$UPDATE_SRC/.git" ]]; then
+        git -C "$UPDATE_SRC" remote set-url origin "$UPDATE_REPO"
+    else
+        mkdir -p "$(dirname "$UPDATE_SRC")"; git init -q "$UPDATE_SRC"; git -C "$UPDATE_SRC" remote add origin "$UPDATE_REPO"
+    fi
+
+    # Safety copy of the settings and data (small), before anything changes. Keep the last five.
+    mkdir -p /var/backups/docklite
+    backup="/var/backups/docklite/pre-update-${prev}-to-${tag#v}-$(date +%Y%m%d-%H%M%S).tgz"
+    if tar czf "$backup" -C "$INSTALL_DIR" data .docklite.conf 2>/dev/null; then
+        chmod 600 "$backup"; ulog "Backed up your data to $backup"
+        ls -1t /var/backups/docklite/pre-update-*.tgz 2>/dev/null | tail -n +6 | xargs -r rm -f
+    else
+        ulog "Could not make the safety backup; stopping before changing anything."
+        finish failed "could not back up your data first, so nothing was changed"; exit 1
+    fi
+
+    ulog "Downloading and installing ${tag} (building takes a few minutes)..."
+    if install_release "$tag"; then rc=0; else rc=$?; fi
+    if [[ $rc -eq 0 ]] && wait_healthy 150; then
+        ulog "DockLite ${tag#v} is up and answering. Update complete."
+        finish success "now running ${tag#v}"; exit 0
+    fi
+
+    # Something went wrong. Put the previous release back if we can.
+    if [[ $rc -eq 10 || $rc -eq 11 ]]; then
+        ulog "Could not download ${tag} (rc=$rc). Nothing was installed."
+        finish failed "could not download ${tag} from GitHub; nothing was changed"; exit 1
+    fi
+    ulog "The new version didn't come up cleanly (step result $rc). Trying to restore ${prev_tag}..."
+    if [[ "$prev" != unknown ]] && install_release "$prev_tag" && wait_healthy 150; then
+        ulog "Restored ${prev}. Your data backup is at $backup"
+        finish rolled-back "update to ${tag#v} failed; went back to ${prev}"; exit 1
+    fi
+    ulog "Could not restore automatically. Your data backup is at $backup"
+    finish failed "update to ${tag#v} failed and automatic restore did not work; data backup: $backup"
+    exit 1
+}
+
 cmd="${1:-}"
 shift || true
 
@@ -84,14 +208,37 @@ case "$cmd" in
             echo "stock_default no"
         fi
         ;;
+    update-start)     # update-start vX.Y.Z   (runs the update as a detached systemd job)
+        check_release_tag "${1:-}"
+        mkdir -p /var/log/docklite /var/lib/docklite; chmod 755 /var/log/docklite /var/lib/docklite
+        if [[ -f "$UPDATE_STATE" ]]; then
+            read -r st _t at _rest < "$UPDATE_STATE" || true
+            if [[ "${st:-}" == running && "${at:-0}" =~ ^[0-9]+$ ]] && (( $(date +%s) - at < 2700 )); then
+                die "an update is already running"
+            fi
+        fi
+        set_update_state running "$1" "starting"
+        : > "$UPDATE_LOG"; chmod 644 "$UPDATE_LOG"
+        if command -v systemd-run >/dev/null 2>&1; then
+            systemd-run --quiet --no-block --collect --unit "docklite-update-$(date +%s)" --setenv=TERM=dumb \
+                /usr/local/sbin/docklite-helper update-job "$1" || die "could not start the update job"
+        else
+            TERM=dumb setsid nohup /usr/local/sbin/docklite-helper update-job "$1" >/dev/null 2>&1 </dev/null &
+        fi
+        ;;
+    update-job)       # update-job vX.Y.Z   (internal: the detached worker; same validation)
+        check_release_tag "${1:-}"
+        # The install step replaces this very script. Run from a private copy so that can't disturb us.
+        if [[ -z "${DOCKLITE_UPDATE_COPY:-}" ]]; then
+            copy="$(mktemp /tmp/docklite-update-job.XXXXXX)"
+            cp "$0" "$copy"
+            DOCKLITE_UPDATE_COPY="$copy" exec bash "$copy" update-job "$1"
+        fi
+        run_update_job "$1"
+        ;;
     fix-install-perms) # fix-install-perms   (make /opt/docklite usable by the docklite group again)
-        d=/opt/docklite
-        [[ -d "$d" ]] || die "no DockLite install at $d"
-        chown docklite:docklite "$d"
-        chmod 775 "$d"
-        for f in .docklite.conf ecosystem.config.js; do
-            [[ -f "$d/$f" ]] && { chown docklite:docklite "$d/$f"; chmod 660 "$d/$f"; }
-        done
+        [[ -d "$INSTALL_DIR" ]] || die "no DockLite install at $INSTALL_DIR"
+        fix_install_perms
         ;;
     group-list)       # group-list   (members of the docklite group, one per line)
         getent group docklite | cut -d: -f4 | tr ',' '\n' | sed '/^$/d'

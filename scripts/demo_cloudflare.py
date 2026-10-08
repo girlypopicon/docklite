@@ -26,12 +26,20 @@ class H(BaseHTTPRequestHandler):
         self.send_response(code); self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
 
+    def reply_raw(self, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(200); self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body)
+
     def body(self):
         n = int(self.headers.get("Content-Length") or 0)
         return json.loads(self.rfile.read(n) or b"{}") if n else {}
 
     def route(self, method):
         path = self.path.split("?")[0]
+        if path.endswith("/releases/latest"):  # a pretend GitHub release, so the Update card has something to show
+            return self.reply_raw({"tag_name": "v9.0.0", "html_url": "https://example.com/releases/v9.0.0", "published_at": "2026-10-08T12:00:00Z",
+                                   "body": "## What's new\n- A much improved dashboard\n- Cloudflare DNS for new sites\n- One-click updates\n\n## Fixed\n- Several small things"})
         if path == "/user/tokens/verify":
             return self.reply({"id": "demo", "status": "active"})
         if path == "/zones" and method == "GET":

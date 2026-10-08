@@ -6,6 +6,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## Unreleased
 
 ### Added
+- A working Update button (Settings → System). It checks GitHub for the newest release, shows what's new, and updates with one
+  click: it backs up your data first, installs exactly that release, checks DockLite came back, and goes back to the previous
+  version by itself if it didn't. Your sites keep running throughout. `install.sh --yes` runs the installer without questions.
 - Settings → Cloudflare: connect your Cloudflare account, import your domains and set each domain's SSL mode from Settings
   (it was only under Network → DNS). The New Site form shows exactly which DNS records will be created, and a site's details
   show whether its DNS exists in Cloudflare, with buttons to create it and to change the zone's SSL mode.
@@ -36,6 +39,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- The old Update button could never work (it looked for git history that installs don't have, and for a script that didn't
+  exist). It's been replaced.
 - The neon glow slider (Settings → Appearance) did nothing for container and database cards, and containers had lost their glow
   entirely (their shadows used an invalid color notation). Cards now glow by default; the slider adds a bigger halo, a thicker
   tube and, near Max, a white-hot core like real neon. Off is the standard look (it was 100% before; the default is now Off).

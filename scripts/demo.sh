@@ -30,6 +30,7 @@ up() {
     local token session pass
     token="$(secret .token)"; session="$(secret .session 48)"; pass="$(secret .demo-password 12)"
 
+    cp "$REPO/VERSION" "$DIR/VERSION"   # a real install has VERSION next to bin/; the demo's agent runs from here
     echo "Building the agent..."
     (cd "$REPO/go-app" && go build -o "$DIR/bin/docklite-agent" ./cmd/docklite-agent)
     # The demo has its own build folder, so it never touches (or needs write access to) an installed build.
@@ -59,7 +60,7 @@ up() {
         sleep 1
     fi
     if ! alive "$DIR/agent.pid"; then
-        ( exec env DOCKLITE_CLOUDFLARE_API="http://127.0.0.1:3199" DOCKLITE_PUBLIC_IP="203.0.113.10" LISTEN_ADDR="127.0.0.1:${AGENT_PORT}" DATABASE_PATH="$DIR/data/docklite.db" DOCKLITE_TOKEN="$token" \
+        ( exec env DOCKLITE_CLOUDFLARE_API="http://127.0.0.1:3199" DOCKLITE_GITHUB_API="http://127.0.0.1:3199" DOCKLITE_PUBLIC_IP="203.0.113.10" LISTEN_ADDR="127.0.0.1:${AGENT_PORT}" DATABASE_PATH="$DIR/data/docklite.db" DOCKLITE_TOKEN="$token" \
             NEXTJS_URL="http://127.0.0.1:${GUI_PORT}" DOCKLITE_DEMO=1 DOCKLITE_SITES_DIR="$SITES" \
             BACKUP_BASE_DIR="$DIR/backups" "$DIR/bin/docklite-agent" ) >"$DIR/logs/agent.log" 2>&1 </dev/null &
         echo $! > "$DIR/agent.pid"
