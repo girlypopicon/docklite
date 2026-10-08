@@ -31,6 +31,10 @@ background:linear-gradient(135deg,{color},#1b1030);color:#fff;text-align:center}
 <div><h1>{domain}</h1><p>{blurb}</p></div>"""
 
 
+# connect the pretend Cloudflare and import its example.* domains
+call("POST", "/api/dns/config", {"api_token": "demo-token", "enabled": True})
+call("POST", "/api/dns/zones/import")
+
 # demo users (passwords are random and never shown; log in as the demo admin instead)
 _, listing = call("GET", "/api/users")
 users = {u["username"]: u["id"] for u in listing.get("users", [])}

@@ -5,6 +5,14 @@ import { useToast } from '@/lib/hooks/useToast';
 
 type TemplateType = 'static' | 'php' | 'node';
 
+interface DnsPreview {
+  status: 'not-configured' | 'no-zone' | 'no-ip' | 'ready' | 'done' | 'conflict' | 'error';
+  zone?: string;
+  ip?: string;
+  message?: string;
+  records?: { name: string; type: string; content: string; proxied: boolean; action: string; existing?: string }[];
+}
+
 interface AddContainerModalProps {
   onClose: () => void;
   onCreated: () => void;
@@ -18,7 +26,37 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
   const [portTouched, setPortTouched] = useState(false);
   const [includeWww, setIncludeWww] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [cfDns, setCfDns] = useState(true);
+  const [cfProxied, setCfProxied] = useState(true);
+  const [dnsPreview, setDnsPreview] = useState<DnsPreview | null>(null); // null: not an admin / not checked yet
   const toast = useToast();
+
+  // Ask what Cloudflare would do for this domain (admins only; a 403 just hides the section).
+  useEffect(() => {
+    const name = domain.trim().toLowerCase();
+    if (!name.includes('.')) {
+      setDnsPreview(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/dns/site?domain=${encodeURIComponent(name)}&www=${includeWww ? 1 : 0}&proxied=${cfProxied ? 1 : 0}`);
+        if (!res.ok) {
+          if (!cancelled) setDnsPreview(null);
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) setDnsPreview(data);
+      } catch {
+        if (!cancelled) setDnsPreview(null);
+      }
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [domain, includeWww, cfProxied]);
 
   useEffect(() => {
     if (templateType !== 'node' || portTouched) return;
@@ -53,6 +91,8 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
           code_path: codePath.trim() || undefined,
           port: templateType === 'node' ? Number(port) || 3000 : undefined,
           include_www: includeWww,
+          cloudflare_dns: dnsPreview && (dnsPreview.status === 'ready' || dnsPreview.status === 'conflict') ? cfDns : false,
+          cloudflare_proxied: cfProxied,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -60,7 +100,14 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
         throw new Error(data.error || 'Failed to create container');
       }
       const warning = data.warning;
-      if (warning) {
+      const dns = data.dns as DnsPreview | undefined;
+      if (dns && dns.status === 'done') {
+        toast.success(`Site created, and its DNS records were added in Cloudflare (${dns.zone}).`);
+      } else if (dns && dns.status === 'conflict') {
+        toast.error(`Site created, but DNS was left alone: ${dns.message || 'a record already points somewhere else.'}`);
+      } else if (dns && (dns.status === 'error' || dns.status === 'no-ip')) {
+        toast.error(`Site created, but Cloudflare DNS wasn’t set up: ${dns.message || dns.status}`);
+      } else if (warning) {
         toast.success(`Container created. Note: ${warning}`);
       } else {
         toast.success('Container created with nginx proxy configured');
@@ -146,6 +193,55 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
                               <label htmlFor="include-www" className="text-sm text-neon-purple">              Request SSL for <code>www.{domain || 'example.com'}</code> too
             </label>
           </div>
+
+          {dnsPreview && (
+            <div className="rounded-lg p-3 text-sm space-y-2" style={{ border: '1px solid rgba(var(--neon-purple-rgb), 0.35)' }}>
+              <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>Cloudflare DNS</div>
+              {dnsPreview.status === 'not-configured' && (
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  Cloudflare isn’t connected, so you’ll point this domain’s DNS at the server yourself. Connect it under Settings → Cloudflare and DockLite can do this step for you.
+                </p>
+              )}
+              {dnsPreview.status === 'no-zone' && (
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  This domain isn’t in your Cloudflare account yet, or you haven’t imported it. Import your domains under Settings → Cloudflare.
+                </p>
+              )}
+              {(dnsPreview.status === 'no-ip' || dnsPreview.status === 'error') && (
+                <p className="text-xs" style={{ color: 'var(--status-warning)' }}>{dnsPreview.message}</p>
+              )}
+              {(dnsPreview.status === 'ready' || dnsPreview.status === 'conflict') && (
+                <>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="w-4 h-4 accent-cyan-400" checked={cfDns} onChange={(e) => setCfDns(e.target.checked)} />
+                    <span>Set up its DNS in Cloudflare for me</span>
+                  </label>
+                  {cfDns && (
+                    <>
+                      <ul className="text-xs font-mono space-y-1" style={{ color: 'var(--text-secondary)' }}>
+                        {dnsPreview.records?.map((r) => (
+                          <li key={r.type + r.name}>
+                            {r.action === 'exists' && <span style={{ color: 'var(--neon-green)' }}>✓ already set: </span>}
+                            {r.action === 'create' && <span style={{ color: 'var(--neon-cyan)' }}>+ will add: </span>}
+                            {r.action === 'conflict' && <span style={{ color: 'var(--status-warning)' }}>! left alone: </span>}
+                            {r.type} {r.name} → {r.content}
+                            {r.action === 'conflict' && r.existing ? ` (there is already ${r.existing})` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+                        <input type="checkbox" className="w-4 h-4 accent-cyan-400" checked={cfProxied} onChange={(e) => setCfProxied(e.target.checked)} />
+                        <span>Proxy through Cloudflare (orange cloud: hides your server’s IP, adds HTTPS and caching)</span>
+                      </label>
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        Existing records are never changed. If one already points somewhere else, it’s left alone and you’ll be told.
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <button

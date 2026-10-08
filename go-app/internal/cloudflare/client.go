@@ -6,11 +6,21 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 )
 
 // baseURL is a variable so tests can point the client at a fake API.
 var baseURL = "https://api.cloudflare.com/client/v4"
+
+func init() {
+	// The demo (scripts/demo.sh) talks to a pretend Cloudflare. Only loopback addresses are accepted, so this
+	// can never send a real API token anywhere else.
+	if v := os.Getenv("DOCKLITE_CLOUDFLARE_API"); strings.HasPrefix(v, "http://127.0.0.1:") || strings.HasPrefix(v, "http://localhost:") {
+		baseURL = strings.TrimRight(v, "/")
+	}
+}
 
 // SetBaseURL points the client at a fake API (for tests in other packages) and returns a function that restores it.
 func SetBaseURL(u string) (restore func()) {

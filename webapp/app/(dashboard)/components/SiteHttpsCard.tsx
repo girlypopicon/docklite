@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Lock, LockOpen, WarningCircle } from '@phosphor-icons/react';
+import ZoneSslControls from '../network/ZoneSslControls';
+import { useToast } from '@/lib/hooks/useToast';
 
 interface CertInfo {
   domain: string;
@@ -12,7 +14,22 @@ interface CertInfo {
   status: string;
 }
 
+interface DnsRecordPreview {
+  name: string;
+  type: string;
+  content: string;
+  action: string;
+  existing?: string;
+}
+
+interface DnsPreview {
+  status: string;
+  message?: string;
+  records?: DnsRecordPreview[];
+}
+
 interface CloudflareInfo {
+  zoneId: number;
   zoneDomain: string;
   ssl: string;
   alwaysUseHttps: boolean;
@@ -36,6 +53,39 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
   const [cert, setCert] = useState<CertInfo | null>(null);
   const [cloudflare, setCloudflare] = useState<CloudflareInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dns, setDns] = useState<DnsPreview | null>(null);
+  const [dnsBusy, setDnsBusy] = useState(false);
+  const [showSsl, setShowSsl] = useState(false);
+  const toast = useToast();
+
+  const loadDns = async () => {
+    try {
+      const res = await fetch(`/api/dns/site?domain=${encodeURIComponent(domain)}&www=1`);
+      if (res.ok) setDns(await res.json());
+    } catch {
+      /* optional */
+    }
+  };
+
+  const setUpDns = async (overwrite: boolean) => {
+    setDnsBusy(true);
+    try {
+      const res = await fetch('/api/dns/site', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, include_www: true, overwrite }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not set up DNS');
+      if (data.status === 'done') toast.success('DNS records added in Cloudflare.');
+      else toast.error(data.message || 'Cloudflare DNS was not changed.');
+      await loadDns();
+    } catch (err: any) {
+      toast.error(err.message || 'Could not set up DNS');
+    } finally {
+      setDnsBusy(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +114,8 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
             const sslRes = await fetch(`/api/dns/zones/ssl?id=${zone.id}`);
             if (sslRes.ok) {
               const ssl = await sslRes.json();
-              if (!cancelled) setCloudflare({ zoneDomain: zone.domain, ssl: ssl.ssl, alwaysUseHttps: ssl.alwaysUseHttps });
+              if (!cancelled) setCloudflare({ zoneId: zone.id, zoneDomain: zone.domain, ssl: ssl.ssl, alwaysUseHttps: ssl.alwaysUseHttps });
+              if (!cancelled) loadDns();
             }
           }
         }
@@ -120,7 +171,48 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
               <span className="font-bold" style={{ color: 'var(--text-primary)' }}>Cloudflare ({cloudflare.zoneDomain}): </span>
               {CF_MODE_TEXT[cloudflare.ssl] || cloudflare.ssl}
               {cloudflare.alwaysUseHttps ? ' http:// visitors are sent to https://.' : ''}
-              <div className="mt-1">Change it under Network → DNS → Domains → SSL settings.</div>
+              <div className="mt-2">
+                <button type="button" className="underline" style={{ color: 'var(--neon-cyan)' }} onClick={() => setShowSsl((v) => !v)}>
+                  {showSsl ? 'Hide SSL settings' : 'Change Cloudflare SSL settings'}
+                </button>
+              </div>
+              {showSsl && <div className="mt-3"><ZoneSslControls zoneId={cloudflare.zoneId} /></div>}
+            </div>
+          )}
+          {cloudflare && dns && dns.records && (
+            <div className="text-xs border-t border-neon-purple/20 pt-3 space-y-2" style={{ color: 'var(--text-secondary)' }}>
+              <span className="font-bold" style={{ color: 'var(--text-primary)' }}>DNS in Cloudflare: </span>
+              {dns.records.every((r) => r.action === 'exists') ? (
+                <span style={{ color: 'var(--neon-green)' }}>✓ this site’s records are set up.</span>
+              ) : (
+                <>
+                  <ul className="font-mono space-y-1 mt-1">
+                    {dns.records.map((r) => (
+                      <li key={r.type + r.name}>
+                        {r.action === 'exists' ? '✓' : r.action === 'conflict' ? '!' : '+'} {r.type} {r.name} → {r.content}
+                        {r.action === 'conflict' && r.existing ? ` (currently ${r.existing})` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex gap-2 flex-wrap">
+                    {dns.records.some((r) => r.action === 'create') && (
+                      <button type="button" disabled={dnsBusy} onClick={() => setUpDns(false)} className="btn-neon px-3 py-1 text-xs font-bold">
+                        {dnsBusy ? 'Working…' : 'Create the missing records'}
+                      </button>
+                    )}
+                    {dns.records.some((r) => r.action === 'conflict') && (
+                      <button
+                        type="button"
+                        disabled={dnsBusy}
+                        onClick={() => { if (window.confirm('Change the existing record so it points at this server? Visitors will go to this server after it spreads.')) setUpDns(true); }}
+                        className="btn-neon px-3 py-1 text-xs font-bold"
+                      >
+                        Point it at this server
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </>

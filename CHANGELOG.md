@@ -6,6 +6,10 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## Unreleased
 
 ### Added
+- Settings → Cloudflare: connect your Cloudflare account, import your domains and set each domain's SSL mode from Settings
+  (it was only under Network → DNS). The New Site form shows exactly which DNS records will be created, and a site's details
+  show whether its DNS exists in Cloudflare, with buttons to create it and to change the zone's SSL mode.
+- Demo mode includes a pretend Cloudflare (example.* zones), so these screens work without a real account.
 - Cloudflare DNS for new sites: adding a website now creates its DNS records in Cloudflare (an A record for the site, and `www` if
   requested), proxied by default. It only creates what is missing and never overwrites an existing record unless asked.
   New endpoint `/api/dns/site` previews or applies it. Admins only.

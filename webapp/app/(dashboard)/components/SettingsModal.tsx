@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Gear, Lock, Palette, Rows, SidebarSimple, UsersThree, Wrench, X } from '@phosphor-icons/react';
+import { Cloud, Gear, Lock, Palette, Rows, SidebarSimple, UsersThree, Wrench, X } from '@phosphor-icons/react';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import {
   InSettingsModalContext,
@@ -12,6 +12,7 @@ import GeneralSettings from '../settings/page';
 import PasswordSettings from '../settings/password/page';
 import UsersSettings from '../settings/users/page';
 import SystemSettings from '../settings/system/page';
+import CloudflareSettings from '../settings/cloudflare/page';
 import AppearanceSettings from '../settings/appearance/page';
 import SidebarSettings from './SidebarSettings';
 import TopBarSettings from './TopBarSettings';
@@ -31,6 +32,7 @@ const TABS: TabDef[] = [
   { id: 'topbar', label: 'Top bar', icon: <Rows size={18} weight="duotone" />, render: () => <TopBarSettings /> },
   { id: 'security', label: 'Security', icon: <Lock size={18} weight="duotone" />, render: () => <PasswordSettings /> },
   { id: 'users', label: 'Users', icon: <UsersThree size={18} weight="duotone" />, adminOnly: true, render: () => <UsersSettings /> },
+  { id: 'cloudflare', label: 'Cloudflare', icon: <Cloud size={18} weight="duotone" />, adminOnly: true, render: () => <CloudflareSettings /> },
   { id: 'system', label: 'System', icon: <Wrench size={18} weight="duotone" />, adminOnly: true, render: () => <SystemSettings /> },
 ];
 

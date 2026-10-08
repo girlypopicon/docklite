@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react';
 
-export type SettingsTab = 'general' | 'appearance' | 'sidebars' | 'topbar' | 'security' | 'users' | 'system';
+export type SettingsTab = 'general' | 'appearance' | 'sidebars' | 'topbar' | 'security' | 'users' | 'cloudflare' | 'system';
 
 interface SettingsControl {
   /** Open the Settings modal over the current page, optionally on a tab. */

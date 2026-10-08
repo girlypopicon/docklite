@@ -8,6 +8,7 @@ const tabs = [
   { id: 'general', label: 'General', href: '/settings' },
   { id: 'password', label: 'Security', href: '/settings/password' },
   { id: 'users', label: 'Users', href: '/settings/users' },
+  { id: 'cloudflare', label: 'Cloudflare', href: '/settings/cloudflare' },
   { id: 'system', label: 'System', href: '/settings/system' },
   { id: 'appearance', label: 'Appearance', href: '/settings/appearance' },
   { id: 'sidebars', label: 'Sidebars', href: '/settings/sidebars' },
