@@ -12,6 +12,13 @@ import (
 // baseURL is a variable so tests can point the client at a fake API.
 var baseURL = "https://api.cloudflare.com/client/v4"
 
+// SetBaseURL points the client at a fake API (for tests in other packages) and returns a function that restores it.
+func SetBaseURL(u string) (restore func()) {
+	old := baseURL
+	baseURL = u
+	return func() { baseURL = old }
+}
+
 // The default http.Client has no timeout; a stalled Cloudflare call would
 // hang the request that triggered it.
 var httpClient = &http.Client{Timeout: 20 * time.Second}

@@ -6,6 +6,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## Unreleased
 
 ### Added
+- Cloudflare DNS for new sites: adding a website now creates its DNS records in Cloudflare (an A record for the site, and `www` if
+  requested), proxied by default. It only creates what is missing and never overwrites an existing record unless asked.
+  New endpoint `/api/dns/site` previews or applies it. Admins only.
 - One-line install: `curl -fsSL .../get.sh | bash` downloads DockLite and starts the installer (add `-s -- --dry-run`
   to only look). Running it again upgrades in place.
 - Demo mode (`scripts/demo.sh up`): a separate DockLite instance with fake users, example.* sites and databases for
@@ -29,6 +32,10 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- The neon glow slider (Settings → Appearance) did nothing for container and database cards, and containers had lost their glow
+  entirely (their shadows used an invalid color notation). Cards now glow by default; the slider adds a bigger halo, a thicker
+  tube and, near Max, a white-hot core like real neon. Off is the standard look (it was 100% before; the default is now Off).
+- Settings → Appearance preview now shows a narrow site card next to a wide database card, like the real pages.
 - On a server that already has a default nginx site, the dashboard's nginx entry referred to a variable that was only defined in
   a file DockLite deliberately does not write there, so nginx rejected it (and could have refused to start at its next
   restart). The entry is now self-contained, and any nginx config nginx rejects is removed again instead of left behind.

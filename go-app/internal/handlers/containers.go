@@ -92,6 +92,9 @@ type createContainerRequest struct {
 	UserID       *int64 `json:"user_id"`
 	CodePath     string `json:"code_path"`
 	FolderID     *int64 `json:"folder_id"`
+	// CloudflareDNS: also create the site's DNS records in Cloudflare (admins only; default on when Cloudflare is connected).
+	CloudflareDNS     *bool `json:"cloudflare_dns"`
+	CloudflareProxied *bool `json:"cloudflare_proxied"`
 }
 
 func (h *Handlers) ListContainers(w http.ResponseWriter, r *http.Request) {
@@ -902,6 +905,13 @@ func (h *Handlers) createContainer(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{"success": true, "site_id": site.ID}
 	if nginxWarning != "" {
 		resp["warning"] = nginxWarning
+	}
+	// Cloudflare DNS: best effort. A DNS problem never fails site creation; the result is reported alongside.
+	if isAdmin && boolOr(req.CloudflareDNS, true) {
+		if dns := h.siteDNS(domain, includeWww, boolOr(req.CloudflareProxied, true), true, false); dns.Status != "not-configured" {
+			resp["dns"] = dns
+			h.audit(r, "dns.site", domain, map[string]any{"status": dns.Status, "zone": dns.Zone, "via": "site-create"})
+		}
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

@@ -70,6 +70,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/dns/sync", handlers.Auth(hnd.CSRFMiddleware(handlers.DNSSync)))
 	mux.HandleFunc("/api/dns/cloudflare/check", handlers.Auth(hnd.CSRFMiddleware(handlers.CloudflareCheck)))
 	mux.HandleFunc("/api/dns/zones/import", handlers.Auth(hnd.CSRFMiddleware(handlers.CloudflareImportZones)))
+	mux.HandleFunc("/api/dns/site", handlers.Auth(hnd.CSRFMiddleware(handlers.SiteDNS)))
 	mux.HandleFunc("/api/dns/zones/ssl", handlers.Auth(hnd.CSRFMiddleware(handlers.CloudflareZoneSSL)))
 	mux.HandleFunc("/api/nginx/sites", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxSites)))
 	mux.HandleFunc("/api/nginx/sites/", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxSites)))
