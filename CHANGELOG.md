@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.2.0 (2026-10-08)
+
 ### Added
 - A working Update button (Settings → System). It checks GitHub for the newest release, shows what's new, and updates with one
   click: it backs up your data first, installs exactly that release, checks DockLite came back, and goes back to the previous
