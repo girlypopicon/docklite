@@ -631,20 +631,10 @@ export default function DatabasesPage() {
             {databases.map((db) => (
               <div
                 key={db.id}
-                className="p-6 rounded-xl transition-all hover:scale-[1.02] relative"
+                className="docklite-neon docklite-neon-green p-6 rounded-xl transition-all hover:scale-[1.02] relative"
                 style={{
                   background: 'var(--surface-dim)',
                   backdropFilter: 'blur(12px)',
-                  border: '2px solid var(--neon-green)',
-                  boxShadow: `
-                    0 0 3px rgba(var(--neon-green-rgb), 1),
-                    0 0 6px rgba(var(--neon-green-rgb), 0.7),
-                    0 0 12px rgba(var(--neon-green-rgb), 0.5),
-                    0 0 18px rgba(var(--neon-green-rgb), 0.35),
-                    inset 0 0 2px rgba(var(--neon-green-rgb), 0.9),
-                    inset 0 0 4px rgba(var(--neon-green-rgb), 0.6),
-                    inset 0 0 8px rgba(var(--neon-green-rgb), 0.4)
-                  `,
                 }}
               >
                 {/* 3-dot menu */}

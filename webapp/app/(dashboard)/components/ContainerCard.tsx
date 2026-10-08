@@ -57,12 +57,14 @@ export default function ContainerCard({
     ? 'var(--neon-green)'
     : 'var(--neon-cyan)';
 
-  // Get actual hex color for shadows (CSS vars don't always work in box-shadow)
+  // The card's color. Glow comes from the .docklite-neon classes, which take an "r, g, b" so alpha works.
   const shadowColor = isSite
     ? 'var(--neon-pink)'
     : isDatabase
     ? 'var(--neon-green)'
     : 'var(--neon-cyan)';
+  const neonClass = isSite ? 'docklite-neon-pink' : isDatabase ? 'docklite-neon-green' : 'docklite-neon-cyan';
+  const rgbVar = isSite ? 'var(--neon-pink-rgb)' : isDatabase ? 'var(--neon-green-rgb)' : 'var(--neon-cyan-rgb)';
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -94,20 +96,10 @@ export default function ContainerCard({
 
   return (
     <div
-      className="docklite-container-card p-4 rounded-xl transition-all hover:scale-[1.02] group relative h-[340px] flex flex-col"
+      className={`docklite-container-card docklite-neon ${neonClass} p-4 rounded-xl transition-all hover:scale-[1.02] group relative h-[340px] flex flex-col`}
       style={{
         background: 'var(--surface-dim)',
         backdropFilter: 'blur(12px)',
-        border: `2px solid ${shadowColor}`,
-        boxShadow: `
-          0 0 3px ${shadowColor},
-          0 0 6px ${shadowColor}B3,
-          0 0 12px ${shadowColor}80,
-          0 0 18px ${shadowColor}60,
-          inset 0 0 2px ${shadowColor},
-          inset 0 0 4px ${shadowColor}99,
-          inset 0 0 8px ${shadowColor}70
-        `,
         overflow: 'visible',
       }}
     >
@@ -133,9 +125,9 @@ export default function ContainerCard({
             border: `2px solid ${shadowColor}`,
             color: shadowColor,
             boxShadow: `
-              0 0 5px ${shadowColor},
-              0 0 10px ${shadowColor}60,
-              inset 0 0 5px ${shadowColor}40
+              0 0 5px rgba(${rgbVar}, 0.85),
+              0 0 10px rgba(${rgbVar}, 0.38),
+              inset 0 0 5px rgba(${rgbVar}, 0.25)
             `
           }}
           title="More options"
@@ -412,9 +404,9 @@ export default function ContainerCard({
               border: `2px solid ${shadowColor}`,
               color: shadowColor,
               boxShadow: `
-                0 0 3px ${shadowColor},
-                0 0 6px ${shadowColor}40,
-                inset 0 0 3px ${shadowColor}30
+                0 0 3px rgba(${rgbVar}, 0.85),
+                0 0 6px rgba(${rgbVar}, 0.25),
+                inset 0 0 3px rgba(${rgbVar}, 0.19)
               `
             }}
             title="Start container"
@@ -436,9 +428,9 @@ export default function ContainerCard({
                 border: `2px solid ${shadowColor}`,
                 color: shadowColor,
                 boxShadow: `
-                  0 0 3px ${shadowColor},
-                  0 0 6px ${shadowColor}40,
-                  inset 0 0 3px ${shadowColor}30
+                  0 0 3px rgba(${rgbVar}, 0.85),
+                  0 0 6px rgba(${rgbVar}, 0.25),
+                  inset 0 0 3px rgba(${rgbVar}, 0.19)
                 `
               }}
               title="Restart container"
@@ -457,9 +449,9 @@ export default function ContainerCard({
                 border: `2px solid ${shadowColor}`,
                 color: shadowColor,
                 boxShadow: `
-                  0 0 3px ${shadowColor},
-                  0 0 6px ${shadowColor}40,
-                  inset 0 0 3px ${shadowColor}30
+                  0 0 3px rgba(${rgbVar}, 0.85),
+                  0 0 6px rgba(${rgbVar}, 0.25),
+                  inset 0 0 3px rgba(${rgbVar}, 0.19)
                 `
               }}
               title="Stop container"
@@ -480,9 +472,9 @@ export default function ContainerCard({
             border: `2px solid ${shadowColor}`,
             color: shadowColor,
             boxShadow: `
-              0 0 3px ${shadowColor},
-              0 0 6px ${shadowColor}40,
-              inset 0 0 3px ${shadowColor}30
+              0 0 3px rgba(${rgbVar}, 0.85),
+              0 0 6px rgba(${rgbVar}, 0.25),
+              inset 0 0 3px rgba(${rgbVar}, 0.19)
             `
           }}
           title="View container details"

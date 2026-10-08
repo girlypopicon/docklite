@@ -11,6 +11,8 @@
     color-scheme: dark;
     /* Neon glow strength, 0–2, set by Settings → Appearance. */
     --glow: 1;
+    /* 0–1: how much extra halo the cards get. Set by Settings → Appearance → Neon glow (0 = default look). */
+    --glow-boost: 0;
     --bg-dark: #0a0a1e;
     --bg-darker: #050510;
     --bg-card: #1a0a2e;
@@ -1165,6 +1167,55 @@
         0 0 calc(30px * var(--glow)) rgba(var(--neon-purple-rgb), 0.3),
         inset 0 0 calc(10px * var(--glow)) rgba(var(--neon-purple-rgb), 0.3);
     }
+  }
+
+
+  /* Neon cards (containers, databases). Border + a base glow always; the slider adds the big halo of the
+     original DockLite look on top (Off = base only, Max = the docklite.net screenshots).
+     --c is the card's color as "r, g, b", so alpha can be applied (a hex + alpha suffix breaks with theme variables). */
+  .docklite-neon {
+    --c: var(--neon-cyan-rgb);
+    /* The tube gets thicker as the glow goes up: 2px at Off, 3.5px at Max. */
+    --neon-t: calc(2px + 1.5px * var(--glow-boost));
+    border: var(--neon-t) solid rgb(var(--c));
+    box-shadow:
+      0 0 3px rgba(var(--c), 1),
+      0 0 6px rgba(var(--c), 0.7),
+      0 0 12px rgba(var(--c), 0.5),
+      0 0 18px rgba(var(--c), 0.35),
+      inset 0 0 2px rgba(var(--c), 0.9),
+      inset 0 0 4px rgba(var(--c), 0.6),
+      inset 0 0 8px rgba(var(--c), 0.4),
+      0 0 calc(12px * var(--glow-boost)) rgba(var(--c), calc(0.95 * var(--glow-boost))),
+      0 0 calc(30px * var(--glow-boost)) rgba(var(--c), calc(0.8 * var(--glow-boost))),
+      0 0 calc(64px * var(--glow-boost)) rgba(var(--c), calc(0.55 * var(--glow-boost))),
+      inset 0 0 calc(18px * var(--glow-boost)) rgba(var(--c), calc(0.5 * var(--glow-boost)));
+  }
+  /* A white-hot core down the middle of the tube, like real neon signs. Invisible until the glow is about
+     40% of the way up, then fades in to full white at Max. */
+  .docklite-neon::before {
+    content: '';
+    position: absolute;
+    inset: calc(var(--neon-t) / -2 - 0.5px);
+    border-radius: inherit;
+    border: 1px solid rgba(255, 255, 255, clamp(0, calc((var(--glow-boost) - 0.4) * 1.7), 1));
+    box-shadow: 0 0 calc(3px * var(--glow-boost)) rgba(255, 255, 255, clamp(0, calc((var(--glow-boost) - 0.4) * 1.2), 0.7));
+    pointer-events: none;
+  }
+  .docklite-neon-pink { --c: var(--neon-pink-rgb); }
+  .docklite-neon-green { --c: var(--neon-green-rgb); }
+  .docklite-neon-cyan { --c: var(--neon-cyan-rgb); }
+
+  /* The small round menu button on each card. */
+  .docklite-neon-btn {
+    border: 2px solid rgb(var(--c));
+    color: rgb(var(--c));
+    background: transparent;
+    box-shadow:
+      0 0 5px rgba(var(--c), 0.85),
+      0 0 10px rgba(var(--c), 0.4),
+      inset 0 0 5px rgba(var(--c), 0.3),
+      0 0 calc(12px * var(--glow-boost)) rgba(var(--c), calc(0.5 * var(--glow-boost)));
   }
 
   .card-vapor {
