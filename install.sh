@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # DockLite Installer — interactive setup wizard
 # Usage: sudo bash install.sh [--dry-run]   (one-line install for users: see get.sh)
-set -euo pipefail
+set -Eeuo pipefail
+# If the installer ever stops unexpectedly, say where, instead of just disappearing.
+# (Only the installer's own shell reports: harmless misses inside sub-commands stay quiet.)
+on_unexpected_stop() {
+    [[ "$BASHPID" -eq "$$" ]] || return 0
+    echo -e "\n  \033[0;31m✗\033[0m The installer stopped unexpectedly at line $2 (exit $1): $3" >&2
+}
+trap 'on_unexpected_stop $? $LINENO "$BASH_COMMAND"' ERR
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Colors & Brand
@@ -323,7 +330,7 @@ preflight() {
             n="$(basename "$f")"
             [[ "$n" == docklite-default.conf ]] && continue
             nginx_files+=("$n")
-        done < <($R sh -c 'ls -1d /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf 2>/dev/null')
+        done < <($R sh -c 'ls -1d /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf 2>/dev/null || true')
     fi
     if [[ "$nginx_readable" -eq 0 ]]; then
         warn "Could not read /etc/nginx as this user, so existing sites were not checked. Re-run with: sudo bash install.sh --dry-run"
@@ -333,7 +340,8 @@ preflight() {
             info "  'docklite-sites' belongs to an older DockLite and holds site blocks — it stays enabled."
         fi
         local ds
-        ds="$($R grep -rls 'default_server' /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | grep -v docklite-default.conf | tr '\n' ' ')"
+        # `|| true`: "no default_server anywhere" is a normal answer (grep exits 1), not a failure that should stop the installer.
+        ds="$({ $R grep -rls 'default_server' /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null || true; } | { grep -v docklite-default.conf || true; } | tr '\n' ' ')"
         if [[ -n "$ds" ]]; then
             info "  A default_server already exists (${ds}); DockLite will not add another."
         fi

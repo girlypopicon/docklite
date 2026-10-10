@@ -5,6 +5,12 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.2.2 (2026-10-10)
+
+### Fixed
+- **The installer quit silently on servers that have websites but no default nginx site**, so upgrades never ran (the version stayed
+  the same). It now finishes, and if it ever stops unexpectedly it says at which line instead of just disappearing.
+
 ## 1.2.1 (2026-10-10)
 
 ### Added
