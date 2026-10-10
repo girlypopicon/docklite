@@ -83,3 +83,7 @@ version:
 .PHONY: test-update
 test-update:
 	@bash scripts/test-update-helper.sh
+
+.PHONY: test-nginx
+test-nginx:
+	@bash scripts/test-nginx-helper.sh

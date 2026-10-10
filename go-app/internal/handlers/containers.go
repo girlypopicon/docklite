@@ -380,23 +380,24 @@ func (h *Handlers) handleLifecycle(w http.ResponseWriter, r *http.Request, id st
 		}
 		_ = h.store.UpdateSiteStatus(site.ID, status)
 	}
-	// After a start or restart, the container may have received a new random
-	// host port (Docker re-draws from the ephemeral range each time).
-	// Re-detect the port and rewrite the nginx upstream so the site stays live.
+	// After a start or restart the container may be on a different port than nginx expects (older sites get a new
+	// random one each time). Fix every stale upstream now, and give a site that has no nginx entry at all a fresh one.
 	if !isStopping {
-		if info, inspErr := h.docker.InspectContainer(ctx, id); inspErr == nil {
+		_, missing, _ := h.SyncUpstreams(ctx)
+		if info, inspErr := h.docker.InspectContainer(ctx, id); inspErr == nil && info.Config != nil {
 			labels := info.Config.Labels
-			if labels["docklite.managed"] == "true" {
-				domain := labels["docklite.domain"]
-				includeWww := labels["docklite.include_www"] == "true"
-				internalPortStr := labels["docklite.internal_port"]
-				internalPort := 80
-				if p, err := strconv.Atoi(internalPortStr); err == nil && p > 0 {
-					internalPort = p
-				}
-				if domain != "" {
+			domain := strings.ToLower(labels["docklite.domain"])
+			if labels["docklite.managed"] == "true" && domain != "" {
+				for _, m := range missing {
+					if m != domain {
+						continue
+					}
+					internalPort := 80
+					if p, err := strconv.Atoi(labels["docklite.internal_port"]); err == nil && p > 0 {
+						internalPort = p
+					}
 					if hostPort, portErr := h.getContainerHostPort(ctx, id, internalPort); portErr == nil && hostPort > 0 {
-						_ = setupNginxForDomain(domain, includeWww, hostPort)
+						_ = setupNginxForDomain(domain, labels["docklite.include_www"] == "true", hostPort)
 					}
 				}
 			}

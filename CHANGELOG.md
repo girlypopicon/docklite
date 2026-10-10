@@ -41,6 +41,12 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- **Sites showed 502 after a restart or reboot.** Site containers were given a random port that changed every time they
+  started, while nginx had the old number written in. DockLite now keeps nginx in step by itself: when the agent starts,
+  whenever Docker starts a managed container, and once a minute it finds each site's real port and fixes the matching
+  `proxy_pass` (in `sites-available`, `conf.d` and multi-site files, including aliases of a site), reloading nginx only if
+  `nginx -t` accepts it. New sites get a fixed port from 20000-29999 (`DOCKLITE_PORT_RANGE`), so their port never changes.
+  Per-server workarounds like a port-sync script and timer are no longer needed.
 - The old Update button could never work (it looked for git history that installs don't have, and for a script that didn't
   exist). It's been replaced.
 - The neon glow slider (Settings → Appearance) did nothing for container and database cards, and containers had lost their glow

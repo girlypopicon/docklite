@@ -44,6 +44,78 @@ check_email() {
     [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "invalid email: $1"
 }
 
+# ── nginx upstream ports ────────────────────────────────────────────────────
+# DockLite publishes each site on 127.0.0.1:<port>, and nginx's proxy_pass names that port. If the port ever differs
+# from the container's real one the site shows 502. These two commands let the agent find and fix that, for
+# every nginx file (sites-available, conf.d and old multi-site files), one `server { }` block at a time.
+
+nginx_path_ok() {
+    case "$1" in
+        /etc/nginx/sites-available/*|/etc/nginx/conf.d/*|/etc/nginx/sites-enabled/*) return 0 ;;
+    esac
+    return 1
+}
+
+# One line per server block: FILE <TAB> server names <TAB> proxy_pass ports (local upstreams only)
+nginx_upstream_scan() {
+    awk -v FILE="$1" '
+    function strip(s) { sub(/#.*/, "", s); return s }
+    BEGIN { depth = 0; inserver = 0 }
+    {
+        line = strip($0)
+        n_open = gsub(/\{/, "{", line); n_close = gsub(/\}/, "}", line)
+        if (!inserver && match(line, /(^|[ \t;])server[ \t]*\{/)) { inserver = 1; sdepth = depth; names = ""; ports = "" }
+        if (inserver) {
+            if (match(line, /server_name[ \t]+[^;]+;/)) {
+                t = substr(line, RSTART, RLENGTH); sub(/server_name[ \t]+/, "", t); sub(/;.*/, "", t); names = names " " t
+            }
+            rest = line
+            while (match(rest, /proxy_pass[ \t]+https?:\/\/(127\.0\.0\.1|localhost):[0-9]+/)) {
+                t = substr(rest, RSTART, RLENGTH); sub(/.*:/, "", t); ports = ports " " t
+                rest = substr(rest, RSTART + RLENGTH)
+            }
+        }
+        depth += n_open - n_close
+        if (inserver && depth <= sdepth) { print FILE "\t" names "\t" ports; inserver = 0 }
+    }' "$1"
+}
+
+# Print the file with OLD replaced by NEW in the local proxy_pass lines of the server block(s) that name DOMAIN.
+nginx_fix_port_stream() {
+    awk -v DOM="$2" -v OLD="$3" -v NEW="$4" '
+    function strip(s) { sub(/#.*/, "", s); return s }
+    { lines[NR] = $0 }
+    END {
+        depth = 0; inserver = 0; want = tolower(DOM)
+        for (i = 1; i <= NR; i++) {
+            line = strip(lines[i])
+            n_open = gsub(/\{/, "{", line); n_close = gsub(/\}/, "}", line)
+            if (!inserver && match(line, /(^|[ \t;])server[ \t]*\{/)) { inserver = 1; sdepth = depth; bstart = i; names = "" }
+            if (inserver && match(line, /server_name[ \t]+[^;]+;/)) {
+                t = substr(line, RSTART, RLENGTH); sub(/server_name[ \t]+/, "", t); sub(/;.*/, "", t); names = names " " t
+            }
+            depth += n_open - n_close
+            if (inserver && depth <= sdepth) {
+                hit = 0; n = split(names, arr, " ")
+                for (k = 1; k <= n; k++) { a = tolower(arr[k]); if (a == want || a == "www." want) hit = 1 }
+                if (hit) {
+                    for (j = bstart; j <= i; j++) {
+                        if (match(lines[j], "proxy_pass[ \t]+https?://(127\\.0\\.0\\.1|localhost):" OLD)) {
+                            nxt = substr(lines[j], RSTART + RLENGTH, 1)
+                            if (nxt !~ /[0-9]/) {
+                                pre = substr(lines[j], 1, RSTART - 1); m = substr(lines[j], RSTART, RLENGTH); post = substr(lines[j], RSTART + RLENGTH)
+                                sub(/[0-9]+$/, NEW, m); lines[j] = pre m post
+                            }
+                        }
+                    }
+                }
+                inserver = 0
+            }
+        }
+        for (i = 1; i <= NR; i++) print lines[i]
+    }' "$1"
+}
+
 # ── self-update ─────────────────────────────────────────────────────────────
 # The dashboard's Update button calls `update-start vX.Y.Z`. Only a release tag of that exact shape is accepted;
 # nothing else the caller sends ever reaches a shell. The work runs as its own systemd job so it survives
@@ -206,6 +278,41 @@ case "$cmd" in
             echo "stock_default yes"
         else
             echo "stock_default no"
+        fi
+        ;;
+    nginx-upstreams)  # nginx-upstreams   (read-only: every server block's names and local proxy ports)
+        shopt -s nullglob
+        declare -A _seen=()
+        for f in /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf; do
+            r="$(readlink -f "$f" 2>/dev/null || true)"
+            [[ -n "$r" && -f "$r" ]] || continue
+            nginx_path_ok "$r" || continue
+            [[ -n "${_seen[$r]:-}" ]] && continue
+            _seen[$r]=1
+            nginx_upstream_scan "$r"
+        done
+        ;;
+    nginx-fix-port)   # nginx-fix-port FILE DOMAIN OLDPORT NEWPORT
+        file="$(readlink -f "${1:-/nonexistent}" 2>/dev/null || true)"
+        nginx_path_ok "$file" && [[ -f "$file" ]] || die "not an nginx config file: ${1:-}"
+        check_domain "${2:-}"
+        [[ "${3:-}" =~ ^[0-9]{1,5}$ && "${4:-}" =~ ^[0-9]{1,5}$ ]] || die "ports must be numbers"
+        (( ${3} >= 1 && ${3} <= 65535 && ${4} >= 1024 && ${4} <= 65535 )) || die "port out of range"
+        tmp="$(mktemp "${file}.docklite-tmp.XXXXXX")"
+        nginx_fix_port_stream "$file" "$2" "$3" "$4" > "$tmp"
+        if cmp -s "$file" "$tmp"; then rm -f "$tmp"; die "nothing to change in $(basename "$file") for $2"; fi
+        mkdir -p /var/backups/docklite
+        bak="/var/backups/docklite/nginx-$(basename "$file")-$(date +%Y%m%d-%H%M%S).bak"
+        cp -p "$file" "$bak"
+        chmod --reference="$file" "$tmp"; chown --reference="$file" "$tmp"
+        mv -f "$tmp" "$file"
+        if nginx -t >/dev/null 2>&1; then
+            nginx -s reload
+            ls -1t /var/backups/docklite/nginx-*.bak 2>/dev/null | tail -n +41 | xargs -r rm -f
+            echo "ok: $2 port $3 -> $4 in $(basename "$file")"
+        else
+            cp -p "$bak" "$file"
+            die "nginx rejected the change, so it was undone"
         fi
         ;;
     update-start)     # update-start vX.Y.Z   (runs the update as a detached systemd job)

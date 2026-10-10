@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -229,13 +230,20 @@ func (c *Client) CreateSiteContainer(ctx context.Context, domain string, templat
 		WorkingDir:   workingDir,
 		User:         containerUser,
 	}
+	portAllocMu.Lock()
+	defer portAllocMu.Unlock()
+	hostPortValue := "0"
+	if p, perr := c.allocateHostPort(ctx); perr == nil {
+		hostPortValue = strconv.Itoa(p)
+	}
 	hostConfig := &container.HostConfig{
 		Binds: []string{
 			fmt.Sprintf("%s:%s:%s", sitePath, bindTarget, bindMode),
 		},
 		PortBindings: nat.PortMap{
-			// Loopback only: sites are reached through nginx, never directly.
-			portKey: []nat.PortBinding{{HostIP: "127.0.0.1", HostPort: "0"}},
+			// Loopback only: sites are reached through nginx, never directly. A fixed port (see ports.go) so nginx
+			// never goes stale; "0" (random) is only the fallback if no port in the range is free.
+			portKey: []nat.PortBinding{{HostIP: "127.0.0.1", HostPort: hostPortValue}},
 		},
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
 		NetworkMode:   container.NetworkMode(dockliteNetworkName),

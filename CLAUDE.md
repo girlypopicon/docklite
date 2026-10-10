@@ -114,6 +114,10 @@ Per-site vhost configs are generated automatically during site onboarding (`hand
 
 API endpoints: `GET/PUT /api/nginx/sites/{domain}`, `POST /api/nginx/test`, `POST /api/nginx/reload`. UI: `webapp/app/(dashboard)/network/NginxPanel.tsx`.
 
+**Keeping nginx pointed at the right port:** site containers publish on `127.0.0.1:<port>` and nginx's `proxy_pass` names it. New
+sites get a fixed port (`docker/ports.go`); `handlers/upstream_sync.go` fixes any stale `proxy_pass` (agent start, Docker start
+events, every minute) through the root helper's `nginx-upstreams` / `nginx-fix-port`. Tests: `make test-nginx`, `make test-update`.
+
 ## File Management API
 
 All site files live under `/var/www/sites/{username}/{domain}/` and are owned by `docklite:docklite`. **Do not write to these directories directly** — use the agent API, which runs as the `docklite` user.
