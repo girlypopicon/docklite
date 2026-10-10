@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.2.1 (2026-10-10)
+
 ### Added
 - A written roadmap (`docs/ROADMAP.md`): what 1.2.x, 1.3, 1.4 and 1.5 are for.
 
