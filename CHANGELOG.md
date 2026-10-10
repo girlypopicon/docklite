@@ -8,6 +8,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## 1.2.1 (2026-10-10)
 
 ### Added
+- `docklite update`: check for a newer DockLite (`--check`) and install it (`--yes`) from the command line. It follows the update
+  through the restart and exits non-zero if it failed or rolled back. Needs no sudo password, so a person or an assistant logged in
+  to the server can run it.
 - A written roadmap (`docs/ROADMAP.md`): what 1.2.x, 1.3, 1.4 and 1.5 are for.
 
 ### Fixed

@@ -84,6 +84,8 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | See all backups | `docklite backups list` |
 | Check sites follow `/var/www/sites/<user>/<domain>` | `docklite sites layout` (report only) |
 | Move sites into that layout | `docklite sites layout --apply --yes` (copies; old folders are kept) |
+| See if a newer DockLite exists | `docklite update --check` |
+| Update DockLite (sites keep running) | `docklite update --yes` (waits until it's running; rolls back by itself if it fails) |
 | Stop an unused service | `docklite server service traefik stop --yes` |
 
 ## Concepts
