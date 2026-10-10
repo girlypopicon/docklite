@@ -165,7 +165,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
         </button>
 
         <div className="mb-6">
-          <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
             <ClockCounterClockwise size={32} weight="duotone" color="var(--status-success)" />
             {mode === 'edit' ? 'Edit Schedule' : 'Create Schedule'}
           </h2>
@@ -189,7 +189,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Backup Destination
             </label>
             <select
@@ -214,7 +214,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
           </div>
 
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               What to Backup
             </label>
             <select
@@ -237,7 +237,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
 
           {targetType === 'site' && (
             <div>
-              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                 Select Site
               </label>
               <select
@@ -263,7 +263,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
 
           {targetType === 'database' && (
             <div>
-              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                 Select Database
               </label>
               <select
@@ -289,7 +289,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                 Frequency
               </label>
               <select
@@ -308,7 +308,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
             </div>
 
             <div>
-              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                 Keep Backups For
               </label>
               <select
@@ -338,7 +338,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
               className="w-4 h-4"
               disabled={loading}
             />
-            <label htmlFor="enabled" className="text-sm font-bold" style={{ color: 'var(--neon-green)' }}>
+            <label htmlFor="enabled" className="text-sm font-bold" style={{ color: 'var(--text-green)' }}>
               Enable this backup job
             </label>
           </div>

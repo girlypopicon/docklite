@@ -82,12 +82,12 @@ export default function ZoneSslControls({ zoneId }: { zoneId: number }) {
     }
   };
 
-  if (loading) return <p className="text-xs text-gray-500">Loading SSL settings…</p>;
+  if (loading) return <p className="text-xs text-ink-muted">Loading SSL settings…</p>;
   if (error && mode === null) return <p className="text-xs text-status-error">{error}</p>;
 
   return (
     <div className="space-y-3">
-      <div className="text-xs font-bold text-neon-cyan">Cloudflare SSL mode — how traffic is encrypted</div>
+      <div className="text-xs font-bold text-accent-cyan">Cloudflare SSL mode — how traffic is encrypted</div>
       <div className="space-y-2">
         {MODES.map((m) => (
           <label
@@ -106,9 +106,9 @@ export default function ZoneSslControls({ zoneId }: { zoneId: number }) {
             />
             <span>
               <span className="text-sm font-bold text-gray-200">{m.label}</span>
-              {m.recommended && <span className="ml-2 text-[10px] font-bold text-neon-green">RECOMMENDED</span>}
+              {m.recommended && <span className="ml-2 text-[10px] font-bold text-accent-green">RECOMMENDED</span>}
               {m.warn && <span className="ml-2 text-[10px] font-bold text-status-warning">NOT RECOMMENDED</span>}
-              <span className="block text-xs text-gray-400">{m.help}</span>
+              <span className="block text-xs text-ink-muted">{m.help}</span>
             </span>
           </label>
         ))}
@@ -124,7 +124,7 @@ export default function ZoneSslControls({ zoneId }: { zoneId: number }) {
         />
         <span>
           <span className="text-sm font-bold text-gray-200">Always use HTTPS</span>
-          <span className="block text-xs text-gray-400">
+          <span className="block text-xs text-ink-muted">
             Cloudflare sends anyone who types http:// to https://. Leave this off if the server gets its certificates
             from certbot over plain HTTP — the redirect can stop those certificates from renewing.
           </span>

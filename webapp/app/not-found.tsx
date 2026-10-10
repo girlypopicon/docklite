@@ -26,7 +26,7 @@ export default function NotFound() {
         <div className="mb-8">
           <h1
             className="text-9xl font-bold neon-text mb-4 animate-pulse glitch"
-            style={{ color: 'var(--neon-pink)' }}
+            style={{ color: 'var(--text-pink)' }}
           >
             404
           </h1>
@@ -37,7 +37,7 @@ export default function NotFound() {
 
         {/* Error Message */}
         <div className="card-vapor p-8 rounded-xl border-2 border-pink-500/30 mb-6">
-          <h2 className="text-3xl font-bold neon-text mb-4 flex items-center justify-center gap-3" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-3xl font-bold neon-text mb-4 flex items-center justify-center gap-3" style={{ color: 'var(--text-cyan)' }}>
             <WarningCircle size={28} weight="duotone" />
             Page Not Found
           </h2>
@@ -54,7 +54,7 @@ export default function NotFound() {
               className="px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105 border"
               style={{
                 borderColor: 'rgba(var(--neon-cyan-rgb), 0.5)',
-                color: 'var(--neon-cyan)',
+                color: 'var(--text-cyan)',
                 background: 'rgba(var(--neon-cyan-rgb), 0.1)'
               }}
             >
@@ -75,7 +75,7 @@ export default function NotFound() {
             <div className="flex justify-center mb-2">
               <Package size={28} weight="duotone" color="var(--neon-cyan)" />
             </div>
-            <div className="text-xs font-bold" style={{ color: 'var(--neon-cyan)' }}>
+            <div className="text-xs font-bold" style={{ color: 'var(--text-cyan)' }}>
               Containers
             </div>
           </Link>
@@ -86,7 +86,7 @@ export default function NotFound() {
             <div className="flex justify-center mb-2">
               <Archive size={28} weight="duotone" color="var(--neon-pink)" />
             </div>
-            <div className="text-xs font-bold" style={{ color: 'var(--neon-pink)' }}>
+            <div className="text-xs font-bold" style={{ color: 'var(--text-pink)' }}>
               Backups
             </div>
           </Link>
@@ -97,7 +97,7 @@ export default function NotFound() {
             <div className="flex justify-center mb-2">
               <Database size={28} weight="duotone" color="var(--neon-purple)" />
             </div>
-            <div className="text-xs font-bold" style={{ color: 'var(--neon-purple)' }}>
+            <div className="text-xs font-bold" style={{ color: 'var(--text-purple)' }}>
               Databases
             </div>
           </Link>
@@ -108,7 +108,7 @@ export default function NotFound() {
             <div className="flex justify-center mb-2">
               <DesktopTower size={28} weight="duotone" color="var(--neon-green)" />
             </div>
-            <div className="text-xs font-bold" style={{ color: 'var(--neon-green)' }}>
+            <div className="text-xs font-bold" style={{ color: 'var(--text-green)' }}>
               Server
             </div>
           </Link>

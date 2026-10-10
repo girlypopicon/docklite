@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"docklite-agent/internal/store"
 )
 
 // Site layout normalisation: every site lives in /var/www/sites/<user>/<domain>.
@@ -196,33 +198,56 @@ func (h *Handlers) SiteLayout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// applyLayoutMove copies one site into place and re-points its container. The old
-// folder is never deleted. If the container can't be recreated on the new path the
-// old one is restored, so a failed move leaves the site as it was.
+// applyLayoutMove normalizes one site's folder (same owner, new location).
 func (h *Handlers) applyLayoutMove(parent context.Context, it *layoutItem) error {
 	site, err := h.store.GetSiteByID(it.SiteID)
 	if err != nil || site == nil {
 		return fmt.Errorf("site record not found")
 	}
-	if err := ensureSiteDirectory(it.Owner, it.Domain); err != nil {
-		return err
+	return h.relocateSite(site, site.UserID, it.Owner, it.From, it.To)
+}
+
+// relocateSite moves a site's files to `to` (a folder under newUsername) and re-points its container, nginx and record,
+// optionally under a different owner. It works copy-then-switch: the old folder is never touched, and the old container
+// is only given up once the new one is running; any failure puts the old container back. It never deletes anything: the
+// caller decides what to do with the old folder.
+func (h *Handlers) relocateSite(site *store.SiteRecord, newUserID int64, newUsername, from, to string) error {
+	samePath := filepath.Clean(from) == filepath.Clean(to)
+	if !samePath {
+		if !isWithinBase(to) {
+			return fmt.Errorf("refusing to move a site outside %s", siteBaseDir)
+		}
+		if err := ensureSiteDirectory(newUsername, site.Domain); err != nil {
+			return err
+		}
+		if dirHasEntries(to) {
+			return fmt.Errorf("the target folder %s already has files; not overwriting them", to)
+		}
+		// --no-preserve=ownership: we run as the docklite user and just want a faithful copy (links, modes, empty folders).
+		if out, err := exec.Command("cp", "-a", "--no-preserve=ownership", from+"/.", to+"/").CombinedOutput(); err != nil {
+			clearFolderContents(to) // it was empty before, so everything in it is our partial copy
+			return fmt.Errorf("copy failed: %s", strings.TrimSpace(string(out)))
+		}
+		chownDocklite(to)
 	}
-	// --no-preserve=ownership: we run as the docklite user and just want a faithful copy.
-	if out, err := exec.Command("cp", "-a", "--no-preserve=ownership", it.From+"/.", it.To+"/").CombinedOutput(); err != nil {
-		return fmt.Errorf("copy failed: %s", strings.TrimSpace(string(out)))
+
+	finish := func(ctx context.Context, containerID string, internalPort int, includeWww bool) error {
+		if err := h.store.TransferSite(site.ID, newUserID, to); err != nil {
+			return err
+		}
+		_ = WriteDKLManifest(to, site.Domain, site.TemplateType, newUsername, internalPort, includeWww, nil)
+		return nil
 	}
-	chownDocklite(it.To)
 
 	if site.ContainerID == nil || *site.ContainerID == "" {
-		return h.store.TransferSite(site.ID, site.UserID, it.To)
+		return finish(context.Background(), "", 80, true)
 	}
-
 	ctx, cancel := ctxWithLongTimeout()
 	defer cancel()
 	old, err := h.docker.InspectContainer(ctx, *site.ContainerID)
-	if err != nil {
+	if err != nil || old.Config == nil {
 		// No live container to disturb; just record the new location.
-		return h.store.TransferSite(site.ID, site.UserID, it.To)
+		return finish(ctx, "", 80, true)
 	}
 	includeWww := old.Config.Labels["docklite.include_www"] == "true"
 	internalPort := 80
@@ -231,28 +256,44 @@ func (h *Handlers) applyLayoutMove(parent context.Context, it *layoutItem) error
 	}
 	wasRunning := old.State != nil && old.State.Running
 
+	// Put the old container back (serving from the old folder) if anything below fails.
+	restoreOld := func(reason error) error {
+		if backID, backErr := h.docker.CreateSiteContainer(ctx, site.Domain, site.TemplateType, includeWww, from, internalPort, site.ID, site.UserID, site.FolderID); backErr == nil {
+			_ = h.store.UpdateSiteContainerID(site.ID, &backID)
+			h.repointNginx(ctx, site.Domain, backID, internalPort, includeWww)
+			return fmt.Errorf("%v (restored the old one)", reason)
+		}
+		return fmt.Errorf("%v, and the old container could not be restored automatically", reason)
+	}
+
 	if err := h.docker.RemoveContainer(ctx, *site.ContainerID); err != nil {
 		return fmt.Errorf("could not stop the old container: %w", err)
 	}
-	newID, err := h.docker.CreateSiteContainer(ctx, site.Domain, site.TemplateType, includeWww, it.To, internalPort, site.ID, site.UserID, site.FolderID)
+	newID, err := h.docker.CreateSiteContainer(ctx, site.Domain, site.TemplateType, includeWww, to, internalPort, site.ID, newUserID, site.FolderID)
 	if err != nil {
-		// Roll back so the site keeps serving from where it was.
-		if backID, backErr := h.docker.CreateSiteContainer(ctx, site.Domain, site.TemplateType, includeWww, it.From, internalPort, site.ID, site.UserID, site.FolderID); backErr == nil {
-			_ = h.store.UpdateSiteContainerID(site.ID, &backID)
-			h.repointNginx(ctx, site.Domain, backID, internalPort, includeWww)
-		}
-		return fmt.Errorf("could not start the site from the new folder (restored the old one): %w", err)
+		return restoreOld(fmt.Errorf("could not start the site from the new folder: %w", err))
 	}
 	_ = h.store.UpdateSiteContainerID(site.ID, &newID)
 	if wasRunning {
 		_ = h.store.UpdateSiteStatus(site.ID, "running")
 	}
 	h.repointNginx(ctx, site.Domain, newID, internalPort, includeWww)
-	if err := h.store.TransferSite(site.ID, site.UserID, it.To); err != nil {
-		return err
+	if err := finish(ctx, newID, internalPort, includeWww); err != nil {
+		_ = h.docker.RemoveContainer(ctx, newID)
+		return restoreOld(fmt.Errorf("could not save the change: %w", err))
 	}
-	_ = WriteDKLManifest(it.To, site.Domain, site.TemplateType, it.Owner, internalPort, includeWww, nil)
 	return nil
+}
+
+// clearFolderContents empties a folder (used only on a folder we just created empty).
+func clearFolderContents(dir string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil || !isWithinBase(dir) {
+		return
+	}
+	for _, e := range entries {
+		_ = os.RemoveAll(filepath.Join(dir, e.Name()))
+	}
 }
 
 func (h *Handlers) repointNginx(ctx context.Context, domain, containerID string, internalPort int, includeWww bool) {

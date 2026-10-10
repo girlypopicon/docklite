@@ -114,7 +114,7 @@ export default function SchemaBrowser() {
 
   if (loading) {
     return (
-      <div className="p-4 text-xs font-mono" style={{ color: 'var(--neon-cyan)' }}>
+      <div className="p-4 text-xs font-mono" style={{ color: 'var(--text-cyan)' }}>
         ⟳ Loading schema...
       </div>
     );
@@ -130,7 +130,7 @@ export default function SchemaBrowser() {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="text-sm font-bold" style={{ color: 'var(--neon-cyan)' }}>
+      <div className="text-sm font-bold" style={{ color: 'var(--text-cyan)' }}>
         🧬 Schema Browser
       </div>
       <div
@@ -141,7 +141,7 @@ export default function SchemaBrowser() {
           border: '1px solid rgba(var(--neon-cyan-rgb), 0.2)',
         }}
       >
-        Database: <span style={{ color: 'var(--neon-cyan)' }}>{dbName || `#${dbId}`}</span>
+        Database: <span style={{ color: 'var(--text-cyan)' }}>{dbName || `#${dbId}`}</span>
       </div>
       {tables.length === 0 ? (
         <div className="text-xs font-mono opacity-70" style={{ color: 'var(--text-secondary)' }}>
@@ -171,7 +171,7 @@ export default function SchemaBrowser() {
                     );
                   }}
                 >
-                  <span className="text-xs" style={{ color: 'var(--neon-cyan)' }}>
+                  <span className="text-xs" style={{ color: 'var(--text-cyan)' }}>
                     {isExpanded ? '▼' : '▶'}
                   </span>
                   <span className="font-bold truncate">{table.name}</span>
@@ -197,8 +197,8 @@ export default function SchemaBrowser() {
                         <span className="mr-2" style={{ color: 'var(--text-secondary)' }}>
                           ├─
                         </span>
-                        <span style={{ color: 'var(--neon-cyan)' }}>{column.name}</span>{' '}
-                        <span style={{ color: 'var(--neon-purple)' }}>({column.type})</span>
+                        <span style={{ color: 'var(--text-cyan)' }}>{column.name}</span>{' '}
+                        <span style={{ color: 'var(--text-purple)' }}>({column.type})</span>
                       </button>
                     ))}
                   </div>

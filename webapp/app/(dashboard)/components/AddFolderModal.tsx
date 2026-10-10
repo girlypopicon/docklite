@@ -53,7 +53,7 @@ export default function AddFolderModal({ onClose, onSuccess, parentFolderId, par
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-neon-cyan transition-colors"
+            className="text-ink-muted hover:text-accent-cyan transition-colors"
           >
             <X size={24} weight="bold" />
           </button>
@@ -61,7 +61,7 @@ export default function AddFolderModal({ onClose, onSuccess, parentFolderId, par
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-bold mb-2 text-neon-cyan">
+            <label className="block text-sm font-bold mb-2 text-accent-cyan">
               Folder Name
             </label>
             <input
@@ -74,7 +74,7 @@ export default function AddFolderModal({ onClose, onSuccess, parentFolderId, par
               required
             />
             {parentFolderId && (
-              <p className="text-xs text-gray-400 mt-2">
+              <p className="text-xs text-ink-muted mt-2">
                 This folder will be created inside &quot;{parentFolderName}&quot;
               </p>
             )}
@@ -90,7 +90,7 @@ export default function AddFolderModal({ onClose, onSuccess, parentFolderId, par
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 rounded-lg font-bold border-2 border-gray-600 text-gray-300 hover:border-gray-500 transition-colors"
+              className="flex-1 px-4 py-2 rounded-lg font-bold border-2 border-gray-600 text-ink-secondary hover:border-gray-500 transition-colors"
               disabled={loading}
             >
               Cancel

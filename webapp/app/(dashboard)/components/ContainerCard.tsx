@@ -64,6 +64,7 @@ export default function ContainerCard({
     ? 'var(--neon-green)'
     : 'var(--neon-cyan)';
   const neonClass = isSite ? 'docklite-neon-pink' : isDatabase ? 'docklite-neon-green' : 'docklite-neon-cyan';
+  const textColor = isSite ? 'var(--text-pink)' : isDatabase ? 'var(--text-green)' : 'var(--text-cyan)';
   const rgbVar = isSite ? 'var(--neon-pink-rgb)' : isDatabase ? 'var(--neon-green-rgb)' : 'var(--neon-cyan-rgb)';
 
   // Close menu when clicking outside
@@ -123,7 +124,7 @@ export default function ContainerCard({
           style={{
             background: 'transparent',
             border: `2px solid ${shadowColor}`,
-            color: shadowColor,
+            color: textColor,
             boxShadow: `
               0 0 5px rgba(${rgbVar}, 0.85),
               0 0 10px rgba(${rgbVar}, 0.38),
@@ -173,7 +174,7 @@ export default function ContainerCard({
                   }}
                   onPointerDown={stopDnd}
                   className="w-full px-4 py-3 text-left text-sm font-bold transition-all hover:bg-white/5 flex items-center gap-3"
-                  style={{ color: 'var(--neon-cyan)' }}
+                  style={{ color: 'var(--text-cyan)' }}
                 >
                   <Eye size={16} weight="duotone" />
                   View Details
@@ -193,7 +194,7 @@ export default function ContainerCard({
                 }}
                 onPointerDown={stopDnd}
                 className="w-full px-4 py-3 text-left text-sm font-bold transition-all hover:bg-white/5 flex items-center gap-3"
-                style={{ color: 'var(--neon-green)' }}
+                style={{ color: 'var(--text-green)' }}
               >
                 <TerminalWindow size={16} weight="duotone" />
                 Open in Terminal
@@ -233,7 +234,7 @@ export default function ContainerCard({
                 }}
                 onPointerDown={stopDnd}
                 className="w-full px-4 py-3 text-left text-sm font-bold transition-all hover:bg-white/5 flex items-center gap-3"
-                style={{ color: 'var(--neon-purple)' }}
+                style={{ color: 'var(--text-purple)' }}
               >
                 <Copy size={16} weight="duotone" />
                 Copy name
@@ -248,7 +249,7 @@ export default function ContainerCard({
                   }}
                   onPointerDown={stopDnd}
                   className="w-full px-4 py-3 text-left text-sm font-bold transition-all flex items-center gap-3"
-                  style={{ color: 'var(--neon-green)' }}
+                  style={{ color: 'var(--text-green)' }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-dim)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
@@ -266,7 +267,7 @@ export default function ContainerCard({
                   }}
                   onPointerDown={stopDnd}
                   className="w-full px-4 py-3 text-left text-sm font-bold transition-all flex items-center gap-3"
-                  style={{ color: 'var(--neon-cyan)' }}
+                  style={{ color: 'var(--text-cyan)' }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-dim)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
@@ -284,7 +285,7 @@ export default function ContainerCard({
                   }}
                   onPointerDown={stopDnd}
                   className="w-full px-4 py-3 text-left text-sm font-bold transition-all flex items-center gap-3"
-                  style={{ color: isTracked ? 'var(--status-error)' : 'var(--neon-green)' }}
+                  style={{ color: isTracked ? 'var(--status-error)' : 'var(--text-green)' }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-dim)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
@@ -327,7 +328,7 @@ export default function ContainerCard({
             size={48}
             weight="duotone"
             style={{
-              color: isRunning ? 'var(--neon-cyan)' : 'var(--text-muted)',
+              color: isRunning ? 'var(--text-cyan)' : 'var(--text-muted)',
               filter: isRunning
                 ? 'drop-shadow(0 0 8px var(--neon-cyan)) drop-shadow(0 0 12px var(--neon-cyan)) drop-shadow(0 0 16px var(--neon-cyan)80)'
                 : 'drop-shadow(0 0 2px var(--text-muted)40)',
@@ -341,7 +342,7 @@ export default function ContainerCard({
         <h3
           className="docklite-container-name font-bold text-lg neon-text mb-1 leading-tight line-clamp-3"
           style={{
-            color: 'var(--neon-cyan)',
+            color: 'var(--text-cyan)',
             height: '4.5rem',
             background: 'transparent',
             border: 'none',
@@ -361,7 +362,7 @@ export default function ContainerCard({
       {/* Container Info - Better organized */}
       <div className="space-y-1 mb-2">
         {container.owner_username && (
-          <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--neon-green)' }}>
+          <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--text-green)' }}>
             <UserCircle size={16} weight="duotone" />
             <span className="truncate">Owner: {container.owner_username}</span>
           </div>
@@ -376,7 +377,7 @@ export default function ContainerCard({
 
         {/* Ports */}
         {container.ports && (
-          <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--neon-purple)' }}>
+          <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--text-purple)' }}>
             <Plug size={16} weight="duotone" />
             <span className="truncate">{container.ports}</span>
           </div>
@@ -402,7 +403,7 @@ export default function ContainerCard({
             style={{
               background: 'transparent',
               border: `2px solid ${shadowColor}`,
-              color: shadowColor,
+              color: textColor,
               boxShadow: `
                 0 0 3px rgba(${rgbVar}, 0.85),
                 0 0 6px rgba(${rgbVar}, 0.25),
@@ -426,7 +427,7 @@ export default function ContainerCard({
               style={{
                 background: 'transparent',
                 border: `2px solid ${shadowColor}`,
-                color: shadowColor,
+                color: textColor,
                 boxShadow: `
                   0 0 3px rgba(${rgbVar}, 0.85),
                   0 0 6px rgba(${rgbVar}, 0.25),
@@ -447,7 +448,7 @@ export default function ContainerCard({
               style={{
                 background: 'transparent',
                 border: `2px solid ${shadowColor}`,
-                color: shadowColor,
+                color: textColor,
                 boxShadow: `
                   0 0 3px rgba(${rgbVar}, 0.85),
                   0 0 6px rgba(${rgbVar}, 0.25),
@@ -470,7 +471,7 @@ export default function ContainerCard({
           style={{
             background: 'transparent',
             border: `2px solid ${shadowColor}`,
-            color: shadowColor,
+            color: textColor,
             boxShadow: `
               0 0 3px rgba(${rgbVar}, 0.85),
               0 0 6px rgba(${rgbVar}, 0.25),

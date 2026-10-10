@@ -21,7 +21,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   return (
     <div className="max-w-[1400px] mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold neon-text mb-2 flex items-center gap-3" style={{ color: 'var(--neon-cyan)' }}>
+        <h1 className="text-3xl font-bold neon-text mb-2 flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
           <Gear size={24} weight="duotone" />
           Settings
         </h1>
@@ -43,8 +43,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               href={tab.href}
               className={`px-4 py-2 font-bold transition-colors ${
                 isActive
-                  ? 'border-b-2 border-neon-pink text-neon-pink'
-                  : 'text-gray-400 hover:text-neon-cyan'
+                  ? 'border-b-2 border-neon-pink text-accent-pink'
+                  : 'text-ink-muted hover:text-accent-cyan'
               }`}
             >
               {tab.label}

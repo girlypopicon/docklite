@@ -92,7 +92,7 @@ export default function DebugPage() {
       case 'not_authenticated':
         return 'text-status-warning';
       default:
-        return 'text-gray-400';
+        return 'text-ink-muted';
     }
   };
 
@@ -109,7 +109,7 @@ export default function DebugPage() {
               <SpinnerGap size={22} weight="duotone" className="animate-spin" />
               Loading debug information...
             </div>
-            <div className="text-gray-400">This may take a few seconds</div>
+            <div className="text-ink-muted">This may take a few seconds</div>
           </div>
         </div>
       </div>
@@ -150,7 +150,7 @@ export default function DebugPage() {
             <MagnifyingGlass size={28} weight="duotone" />
             DockLite Debug Dashboard
           </h1>
-          <div className="text-center text-gray-400">
+          <div className="text-center text-ink-muted">
             No debug data available
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function DebugPage() {
                 {getStatusIcon(data.status)}
                 System Status: {data.status.toUpperCase()}
               </h2>
-              <p className="text-gray-300">
+              <p className="text-ink-secondary">
                 Last updated: {new Date(data.debug.timestamp).toLocaleString()}
               </p>
             </div>
@@ -216,7 +216,7 @@ export default function DebugPage() {
                 <p><strong>Tables:</strong></p>
                 <ul className="list-disc list-inside ml-4">
                   {data.debug.database.details.tables?.map((table: any, index: number) => (
-                    <li key={index} className="text-gray-300">{table.name}</li>
+                    <li key={index} className="text-ink-secondary">{table.name}</li>
                   ))}
                 </ul>
               </div>
@@ -250,7 +250,7 @@ export default function DebugPage() {
                     <p><strong>Sample Containers:</strong></p>
                     <ul className="list-disc list-inside ml-4">
                       {data.debug.docker.details.containers.map((container: any, index: number) => (
-                        <li key={index} className="text-gray-300">
+                        <li key={index} className="text-ink-secondary">
                           {container.name} ({container.id}) - {container.status}
                         </li>
                       ))}
@@ -286,9 +286,9 @@ export default function DebugPage() {
                   <div>
                     <p><strong>Current User:</strong></p>
                     <ul className="list-disc list-inside ml-4">
-                      <li className="text-gray-300">ID: {data.debug.authentication.details.user.id}</li>
-                      <li className="text-gray-300">Username: {data.debug.authentication.details.user.username}</li>
-                      <li className="text-gray-300">Admin: {data.debug.authentication.details.user.isAdmin ? 'Yes' : 'No'}</li>
+                      <li className="text-ink-secondary">ID: {data.debug.authentication.details.user.id}</li>
+                      <li className="text-ink-secondary">Username: {data.debug.authentication.details.user.username}</li>
+                      <li className="text-ink-secondary">Admin: {data.debug.authentication.details.user.isAdmin ? 'Yes' : 'No'}</li>
                     </ul>
                   </div>
                 )}

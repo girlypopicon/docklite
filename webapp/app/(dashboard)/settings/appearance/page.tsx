@@ -98,7 +98,7 @@ export default function AppearanceSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+        <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
           <Palette size={20} weight="duotone" />
           Appearance Settings
         </h2>
@@ -109,7 +109,7 @@ export default function AppearanceSettingsPage() {
 
       {/* Theme Selection */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
           <Palette size={20} weight="duotone" />
           Theme Selection
         </h2>
@@ -136,7 +136,7 @@ export default function AppearanceSettingsPage() {
 
       {/* Font Settings */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
           <TextT size={20} weight="duotone" />
           Font Settings
         </h2>
@@ -168,7 +168,7 @@ export default function AppearanceSettingsPage() {
 
       {/* Visual Effects */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-yellow)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
           <Sparkle size={20} weight="duotone" />
           Visual Effects
         </h2>
@@ -216,7 +216,7 @@ export default function AppearanceSettingsPage() {
 
       {/* Preview: the real container card with made-up data */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-2xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
           <Eye size={20} weight="duotone" />
           Preview
         </h2>
@@ -242,7 +242,7 @@ export default function AppearanceSettingsPage() {
               className="docklite-neon docklite-neon-green p-6 rounded-xl relative"
               style={{ background: 'var(--surface-dim)', backdropFilter: 'blur(12px)' }}
             >
-              <h3 className="docklite-db-title text-xl font-bold neon-text truncate" style={{ color: 'var(--neon-cyan)' }}>
+              <h3 className="docklite-db-title text-xl font-bold neon-text truncate" style={{ color: 'var(--text-cyan)' }}>
                 preview_db
               </h3>
               <div className="mt-3 mb-4 flex justify-center">
@@ -250,19 +250,19 @@ export default function AppearanceSettingsPage() {
                   size={46}
                   weight="duotone"
                   style={{
-                    color: 'var(--neon-cyan)',
+                    color: 'var(--text-cyan)',
                     filter: 'drop-shadow(0 0 8px rgba(var(--neon-cyan-rgb), 0.7)) drop-shadow(0 0 14px rgba(var(--neon-cyan-rgb), 0.45))',
                   }}
                 />
               </div>
               <span
                 className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-4"
-                style={{ background: 'rgba(var(--status-success-rgb), 0.2)', color: 'var(--neon-green)', border: '1px solid var(--neon-green)' }}
+                style={{ background: 'rgba(var(--status-success-rgb), 0.2)', color: 'var(--text-green)', border: '1px solid var(--neon-green)' }}
               >
                 ● 7.3 MB Small
               </span>
               <div className="space-y-2 text-sm font-mono">
-                <div><span className="opacity-60" style={{ color: 'var(--text-secondary)' }}>Port: </span><span className="font-bold" style={{ color: 'var(--neon-purple)' }}>5432</span></div>
+                <div><span className="opacity-60" style={{ color: 'var(--text-secondary)' }}>Port: </span><span className="font-bold" style={{ color: 'var(--text-purple)' }}>5432</span></div>
                 <div><span className="opacity-60" style={{ color: 'var(--text-secondary)' }}>Connect: </span><span>localhost:5432</span></div>
               </div>
             </div>

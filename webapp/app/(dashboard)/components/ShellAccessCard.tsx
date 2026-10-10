@@ -62,7 +62,7 @@ export default function ShellAccessCard() {
 
   return (
     <div className="card-vapor p-6 rounded-xl">
-      <h3 className="text-xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+      <h3 className="text-xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
         <TerminalWindow size={20} weight="duotone" />
         Shell access
       </h3>

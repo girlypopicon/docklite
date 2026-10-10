@@ -30,11 +30,11 @@ function CheckRow({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li className="flex items-center gap-2 text-sm">
       {ok ? (
-        <CheckCircle size={16} weight="fill" style={{ color: 'var(--neon-green)' }} />
+        <CheckCircle size={16} weight="fill" style={{ color: 'var(--text-green)' }} />
       ) : (
         <XCircle size={16} weight="fill" style={{ color: 'var(--status-error)' }} />
       )}
-      <span className={ok ? 'text-gray-300' : 'text-gray-400'}>{label}</span>
+      <span className={ok ? 'text-ink-secondary' : 'text-ink-muted'}>{label}</span>
     </li>
   );
 }
@@ -105,21 +105,21 @@ export default function CloudflareSetup({ config, onSaved }: { config: Cloudflar
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-neon-cyan mb-1">Connect Cloudflare</h2>
-        <p className="text-sm text-gray-400">
-          DockLite uses a Cloudflare <span className="text-gray-300">API token</span> — a password that only allows
+        <h2 className="text-xl font-bold text-accent-cyan mb-1">Connect Cloudflare</h2>
+        <p className="text-sm text-ink-muted">
+          DockLite uses a Cloudflare <span className="text-ink-secondary">API token</span> — a password that only allows
           the specific things you tick. It takes about two minutes.
         </p>
       </div>
 
-      <div className="bg-dark-bg/50 p-4 rounded-lg flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-gray-400">
+      <div className="bg-surface-muted p-4 rounded-lg flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm text-ink-muted">
           Status:{' '}
           {config?.hasToken ? (
             config.enabled ? (
-              <span className="text-neon-green">✓ Connected</span>
+              <span className="text-accent-green">✓ Connected</span>
             ) : (
-              <span className="text-gray-500">Token saved, integration turned off</span>
+              <span className="text-ink-muted">Token saved, integration turned off</span>
             )
           ) : (
             <span className="text-status-warning inline-flex items-center gap-1">
@@ -139,10 +139,10 @@ export default function CloudflareSetup({ config, onSaved }: { config: Cloudflar
         )}
       </div>
 
-      <ol className="space-y-4 text-sm text-gray-300 list-decimal list-inside">
+      <ol className="space-y-4 text-sm text-ink-secondary list-decimal list-inside">
         <li>
           Open{' '}
-          <a href={TOKEN_PAGE} target="_blank" rel="noopener noreferrer" className="text-neon-pink hover:underline inline-flex items-center gap-1">
+          <a href={TOKEN_PAGE} target="_blank" rel="noopener noreferrer" className="text-accent-pink hover:underline inline-flex items-center gap-1">
             Cloudflare → My Profile → API Tokens <ArrowSquareOut size={12} />
           </a>{' '}
           and click <b>Create Token</b>.
@@ -158,10 +158,10 @@ export default function CloudflareSetup({ config, onSaved }: { config: Cloudflar
               <tbody>
                 {PERMISSIONS.map((p) => (
                   <tr key={p.item} className="border-t border-neon-purple/20">
-                    <td className="py-1.5 pr-3 font-mono whitespace-nowrap text-neon-cyan">
+                    <td className="py-1.5 pr-3 font-mono whitespace-nowrap text-accent-cyan">
                       {p.scope} → {p.item} → {p.level}
                     </td>
-                    <td className="py-1.5 text-gray-400">so DockLite can {p.why}</td>
+                    <td className="py-1.5 text-ink-muted">so DockLite can {p.why}</td>
                   </tr>
                 ))}
               </tbody>
@@ -178,7 +178,7 @@ export default function CloudflareSetup({ config, onSaved }: { config: Cloudflar
       </ol>
 
       <form onSubmit={save} className="space-y-3">
-        <label className="block text-sm font-bold text-neon-cyan">Cloudflare API token</label>
+        <label className="block text-sm font-bold text-accent-cyan">Cloudflare API token</label>
         <input
           type="password"
           value={apiToken}
@@ -191,7 +191,7 @@ export default function CloudflareSetup({ config, onSaved }: { config: Cloudflar
           autoComplete="off"
           disabled={busy !== null}
         />
-        <p className="text-xs text-gray-500">Stored on this server only; DockLite never shows it again.</p>
+        <p className="text-xs text-ink-muted">Stored on this server only; DockLite never shows it again.</p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="cyber-button-sm" onClick={runCheck} disabled={busy !== null || !apiToken.trim()}>
             {busy === 'check' ? 'Checking…' : 'Check token'}
@@ -201,15 +201,15 @@ export default function CloudflareSetup({ config, onSaved }: { config: Cloudflar
           </button>
         </div>
         {!apiToken.trim() && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-muted">
             Paste a token above to enable these buttons — don’t have one yet? Follow steps 1–5.
           </p>
         )}
       </form>
 
       {check && (
-        <div className="bg-dark-bg/50 p-4 rounded-lg space-y-2">
-          <div className="text-sm font-bold text-neon-cyan">What this token can do</div>
+        <div className="bg-surface-muted p-4 rounded-lg space-y-2">
+          <div className="text-sm font-bold text-accent-cyan">What this token can do</div>
           <ul className="space-y-1">
             <CheckRow ok={check.valid} label="Cloudflare accepts the token" />
             <CheckRow
@@ -223,14 +223,14 @@ export default function CloudflareSetup({ config, onSaved }: { config: Cloudflar
             />
           </ul>
           {check.error && <p className="text-xs text-status-warning">{check.error}</p>}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-muted">
             “Edit” permissions can’t be tested without changing something, so DockLite only checks reading here.
           </p>
         </div>
       )}
 
       {message && (
-        <p className={`text-sm ${message.kind === 'ok' ? 'text-neon-green' : 'text-status-error'}`}>{message.text}</p>
+        <p className={`text-sm ${message.kind === 'ok' ? 'text-accent-green' : 'text-status-error'}`}>{message.text}</p>
       )}
     </div>
   );

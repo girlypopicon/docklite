@@ -162,7 +162,7 @@ export default function NginxPanel() {
     <div className="space-y-4">
       {/* Top actions bar */}
       <div className="card-vapor p-4 rounded-xl flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+        <div className="flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
           <Stack size={18} weight="duotone" />
           <span className="font-bold text-sm">Nginx Config Manager</span>
         </div>
@@ -172,7 +172,7 @@ export default function NginxPanel() {
             onClick={testConfig}
             disabled={testing}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
-            style={{ background: 'rgba(var(--neon-cyan-rgb), 0.12)', color: 'var(--neon-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb), 0.3)' }}
+            style={{ background: 'rgba(var(--neon-cyan-rgb), 0.12)', color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb), 0.3)' }}
           >
             {testing ? <SpinnerGap size={13} className="animate-spin" /> : <CheckCircle size={13} weight="duotone" />}
             Test Config
@@ -181,7 +181,7 @@ export default function NginxPanel() {
             onClick={reloadNginx}
             disabled={reloading}
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
-            style={{ background: 'rgba(var(--neon-purple-rgb), 0.12)', color: 'var(--neon-purple)', border: '1px solid rgba(var(--neon-purple-rgb), 0.3)' }}
+            style={{ background: 'rgba(var(--neon-purple-rgb), 0.12)', color: 'var(--text-purple)', border: '1px solid rgba(var(--neon-purple-rgb), 0.3)' }}
           >
             {reloading ? <SpinnerGap size={13} className="animate-spin" /> : <ArrowClockwise size={13} weight="duotone" />}
             Reload Nginx
@@ -193,7 +193,7 @@ export default function NginxPanel() {
             className="w-full text-xs font-mono px-3 py-2 rounded-lg mt-1"
             style={{
               background: testResult.ok ? 'rgba(var(--neon-green-rgb), 0.1)' : 'rgba(var(--status-error-rgb), 0.1)',
-              color: testResult.ok ? 'var(--neon-green)' : 'var(--status-error)',
+              color: testResult.ok ? 'var(--text-green)' : 'var(--status-error)',
               border: `1px solid ${testResult.ok ? 'rgba(var(--neon-green-rgb), 0.3)' : 'rgba(var(--status-error-rgb), 0.3)'}`,
             }}
           >
@@ -234,7 +234,7 @@ export default function NginxPanel() {
                     </span>
                     <span
                       className="text-[10px] px-2 py-0.5 rounded-full font-mono shrink-0"
-                      style={{ background: 'rgba(var(--neon-purple-rgb), 0.12)', color: 'var(--neon-purple)' }}
+                      style={{ background: 'rgba(var(--neon-purple-rgb), 0.12)', color: 'var(--text-purple)' }}
                     >
                       {site.templateType}
                     </span>
@@ -242,7 +242,7 @@ export default function NginxPanel() {
 
                   <div className="flex items-center gap-2 shrink-0">
                     {site.enabled ? (
-                      <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: 'var(--neon-green)' }}>
+                      <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: 'var(--text-green)' }}>
                         <CheckCircle size={12} weight="duotone" /> enabled
                       </span>
                     ) : site.hasConfig ? (
@@ -297,7 +297,7 @@ export default function NginxPanel() {
                         )}
                         {editor?.success && (
                           <div className="text-xs font-mono px-3 py-2 rounded-lg"
-                            style={{ background: 'rgba(var(--neon-green-rgb), 0.1)', color: 'var(--neon-green)', border: '1px solid rgba(var(--neon-green-rgb), 0.3)' }}>
+                            style={{ background: 'rgba(var(--neon-green-rgb), 0.1)', color: 'var(--text-green)', border: '1px solid rgba(var(--neon-green-rgb), 0.3)' }}>
                             ✓ Config saved and nginx reloaded
                           </div>
                         )}
@@ -307,7 +307,7 @@ export default function NginxPanel() {
                             onClick={() => saveConfig(site.domain)}
                             disabled={editor?.saving || !isDirty(site.domain)}
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40"
-                            style={{ background: 'rgba(var(--neon-cyan-rgb), 0.15)', color: 'var(--neon-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb), 0.3)' }}
+                            style={{ background: 'rgba(var(--neon-cyan-rgb), 0.15)', color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb), 0.3)' }}
                           >
                             {editor?.saving ? <SpinnerGap size={12} className="animate-spin" /> : <FloppyDisk size={12} weight="duotone" />}
                             Save & Reload
@@ -316,7 +316,7 @@ export default function NginxPanel() {
                             onClick={() => resetConfig(site.domain)}
                             disabled={!isDirty(site.domain)}
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40"
-                            style={{ background: 'rgba(var(--neon-purple-rgb), 0.1)', color: 'var(--neon-purple)', border: '1px solid rgba(var(--neon-purple-rgb), 0.2)' }}
+                            style={{ background: 'rgba(var(--neon-purple-rgb), 0.1)', color: 'var(--text-purple)', border: '1px solid rgba(var(--neon-purple-rgb), 0.2)' }}
                           >
                             <ArrowCounterClockwise size={12} weight="duotone" />
                             Revert

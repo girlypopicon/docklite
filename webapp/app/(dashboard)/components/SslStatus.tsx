@@ -162,7 +162,7 @@ export default function SslStatus() {
       <div className="card-vapor p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+            <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
               <Lock size={20} weight="duotone" />
               SSL Certificates
             </h2>
@@ -231,11 +231,11 @@ export default function SslStatus() {
             <table className="w-full font-mono text-sm">
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--neon-purple)' }}>
-                  <th className="text-left py-3 px-4" style={{ color: 'var(--neon-pink)' }}>DOMAIN</th>
-                  <th className="text-left py-3 px-4" style={{ color: 'var(--neon-pink)' }}>SOURCE</th>
-                  <th className="text-left py-3 px-4" style={{ color: 'var(--neon-pink)' }}>STATUS</th>
-                  <th className="text-left py-3 px-4" style={{ color: 'var(--neon-pink)' }}>EXPIRES</th>
-                  <th className="text-left py-3 px-4" style={{ color: 'var(--neon-pink)' }}>ACTIONS</th>
+                  <th className="text-left py-3 px-4" style={{ color: 'var(--text-pink)' }}>DOMAIN</th>
+                  <th className="text-left py-3 px-4" style={{ color: 'var(--text-pink)' }}>SOURCE</th>
+                  <th className="text-left py-3 px-4" style={{ color: 'var(--text-pink)' }}>STATUS</th>
+                  <th className="text-left py-3 px-4" style={{ color: 'var(--text-pink)' }}>EXPIRES</th>
+                  <th className="text-left py-3 px-4" style={{ color: 'var(--text-pink)' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -246,7 +246,7 @@ export default function SslStatus() {
                     style={{ borderBottom: '1px solid rgba(var(--text-muted-rgb), 0.1)' }}
                   >
                     <td className="py-3 px-4">
-                      <div style={{ color: 'var(--neon-cyan)' }}>{cert.domain}</div>
+                      <div style={{ color: 'var(--text-cyan)' }}>{cert.domain}</div>
                       {cert.domains && cert.domains.length > 1 && (
                         <div className="text-[10px] mt-1" style={{ color: 'var(--text-secondary)' }}>
                           {cert.domains.join(', ')}
@@ -255,11 +255,11 @@ export default function SslStatus() {
                     </td>
                     <td className="py-3 px-4">
                       {cert.source === 'managed' ? (
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: 'rgba(var(--neon-cyan-rgb), 0.1)', color: 'var(--neon-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb), 0.3)' }}>
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: 'rgba(var(--neon-cyan-rgb), 0.1)', color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb), 0.3)' }}>
                           DockLite
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: 'rgba(var(--neon-purple-rgb), 0.1)', color: 'var(--neon-purple)', border: '1px solid rgba(var(--neon-purple-rgb), 0.3)' }}>
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: 'rgba(var(--neon-purple-rgb), 0.1)', color: 'var(--text-purple)', border: '1px solid rgba(var(--neon-purple-rgb), 0.3)' }}>
                           Server
                         </span>
                       )}
@@ -349,15 +349,15 @@ function IssueSslModal({ onClose, onIssue, loading }: { onClose: () => void; onI
       <div className="card-vapor max-w-lg w-full p-6 rounded-2xl border-2 border-neon-purple/40" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.2em]" style={{ color: 'var(--neon-purple)' }}>SSL Certificate</div>
-            <div className="text-2xl font-bold" style={{ color: 'var(--neon-cyan)' }}>Issue New Certificate</div>
+            <div className="text-xs uppercase tracking-[0.2em]" style={{ color: 'var(--text-purple)' }}>SSL Certificate</div>
+            <div className="text-2xl font-bold" style={{ color: 'var(--text-cyan)' }}>Issue New Certificate</div>
           </div>
           <button onClick={onClose} className="btn-neon px-3 py-1 text-sm font-bold">✕</button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-bold block mb-2" style={{ color: 'var(--neon-cyan)' }}>Domain</label>
+            <label className="text-sm font-bold block mb-2" style={{ color: 'var(--text-cyan)' }}>Domain</label>
             <input
               className="input-vapor w-full px-3 py-2 font-mono"
               placeholder="example.com"
@@ -367,7 +367,7 @@ function IssueSslModal({ onClose, onIssue, loading }: { onClose: () => void; onI
           </div>
 
           <div>
-            <label className="text-sm font-bold block mb-2" style={{ color: 'var(--neon-cyan)' }}>Email (optional)</label>
+            <label className="text-sm font-bold block mb-2" style={{ color: 'var(--text-cyan)' }}>Email (optional)</label>
             <input
               className="input-vapor w-full px-3 py-2 font-mono"
               placeholder="admin@example.com"
@@ -387,7 +387,7 @@ function IssueSslModal({ onClose, onIssue, loading }: { onClose: () => void; onI
               checked={includeWww}
               onChange={(e) => setIncludeWww(e.target.checked)}
             />
-            <label htmlFor="ssl-include-www" className="text-sm" style={{ color: 'var(--neon-purple)' }}>
+            <label htmlFor="ssl-include-www" className="text-sm" style={{ color: 'var(--text-purple)' }}>
               Include www.{domain || 'example.com'}
             </label>
           </div>

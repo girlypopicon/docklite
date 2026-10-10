@@ -144,7 +144,7 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
       headline = `Certificate expires in ${days} day${days === 1 ? '' : 's'}`;
       detail = `Valid until ${date}. Let’s Encrypt certificates normally renew themselves about 30 days before this.`;
     } else {
-      icon = <Lock size={18} weight="duotone" style={{ color: 'var(--neon-green)' }} />;
+      icon = <Lock size={18} weight="duotone" style={{ color: 'var(--text-green)' }} />;
       headline = 'HTTPS certificate is valid';
       detail = date ? `Valid until ${date}${days !== null ? ` (${days} days)` : ''}; it renews automatically.` : 'Certificate installed.';
     }
@@ -152,7 +152,7 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
 
   return (
     <div className="card-vapor p-4 rounded-xl space-y-3">
-      <div className="text-sm font-bold" style={{ color: 'var(--neon-cyan)' }}>
+      <div className="text-sm font-bold" style={{ color: 'var(--text-cyan)' }}>
         HTTPS for {domain}
       </div>
       {loading ? (
@@ -172,7 +172,7 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
               {CF_MODE_TEXT[cloudflare.ssl] || cloudflare.ssl}
               {cloudflare.alwaysUseHttps ? ' http:// visitors are sent to https://.' : ''}
               <div className="mt-2">
-                <button type="button" className="underline" style={{ color: 'var(--neon-cyan)' }} onClick={() => setShowSsl((v) => !v)}>
+                <button type="button" className="underline" style={{ color: 'var(--text-cyan)' }} onClick={() => setShowSsl((v) => !v)}>
                   {showSsl ? 'Hide SSL settings' : 'Change Cloudflare SSL settings'}
                 </button>
               </div>
@@ -183,7 +183,7 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
             <div className="text-xs border-t border-neon-purple/20 pt-3 space-y-2" style={{ color: 'var(--text-secondary)' }}>
               <span className="font-bold" style={{ color: 'var(--text-primary)' }}>DNS in Cloudflare: </span>
               {dns.records.every((r) => r.action === 'exists') ? (
-                <span style={{ color: 'var(--neon-green)' }}>✓ this site’s records are set up.</span>
+                <span style={{ color: 'var(--text-green)' }}>✓ this site’s records are set up.</span>
               ) : (
                 <>
                   <ul className="font-mono space-y-1 mt-1">

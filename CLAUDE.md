@@ -203,6 +203,13 @@ PM2 is managed via `sudo pm2` since the daemon runs as root. The `docklite` CLI 
 2. CRUD functions in `webapp/lib/db.ts`
 3. Auto-applies on GUI startup
 
+## Text colours and themes
+
+Never use `--neon-*` (or Tailwind `text-neon-*`) for **text**: the neon colours are for borders, glows and fills, and are pale on the
+light themes. Text uses `var(--text-cyan|pink|purple|green|yellow)` / `text-accent-*`, which each theme defines to be readable on
+its own background (`globals.css`). After theme or colour changes, run `node scripts/contrast-audit.js` against a running demo
+(`scripts/demo.sh up`): it reports every piece of text below WCAG contrast in all four themes. Target: zero.
+
 ## Brand
 
 Rainbow gradient (used in TUI splash, CLI tools): `#FF6AD5`, `#FF9A8B`, `#FFD166`, `#B8F2A2`, `#9AD0FF`, `#C7A4FF`. Web GUI uses a "vapor/neon" Tailwind theme.

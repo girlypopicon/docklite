@@ -102,7 +102,7 @@ export default function TerminalContainerPicker({ currentId, currentName, onSele
         aria-haspopup="listbox"
         aria-expanded={open}
         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border"
-        style={{ borderColor: 'rgba(var(--status-success-rgb), 0.5)', color: 'var(--neon-green)', background: 'rgba(var(--status-success-rgb), 0.08)' }}
+        style={{ borderColor: 'rgba(var(--status-success-rgb), 0.5)', color: 'var(--text-green)', background: 'rgba(var(--status-success-rgb), 0.08)' }}
       >
         {currentName ? currentName : 'Choose a container…'}
         <CaretDown size={12} weight="bold" />
@@ -116,7 +116,7 @@ export default function TerminalContainerPicker({ currentId, currentName, onSele
           aria-label="Containers"
         >
           <div className="p-2 border-b flex items-center gap-2" style={{ borderColor: 'rgba(var(--status-success-rgb), 0.25)' }}>
-            <MagnifyingGlass size={14} weight="bold" style={{ color: 'var(--neon-green)' }} />
+            <MagnifyingGlass size={14} weight="bold" style={{ color: 'var(--text-green)' }} />
             <input
               ref={searchRef}
               value={query}

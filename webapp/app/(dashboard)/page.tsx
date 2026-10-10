@@ -501,7 +501,7 @@ export default function DashboardPage() {
     <div className="max-w-[1400px] mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
         <div>
-          <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Package size={26} weight="duotone" />
             Containers
           </h1>
@@ -511,7 +511,7 @@ export default function DashboardPage() {
             </p>
             <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{
               background: 'rgba(var(--status-success-rgb), 0.2)',
-              color: 'var(--neon-green)',
+              color: 'var(--text-green)',
               border: '1px solid var(--neon-green)'
             }}>
               {totalContainers} containers
@@ -560,9 +560,9 @@ export default function DashboardPage() {
       {totalContainers === 0 ? (
         <div className="mt-12 text-center py-20 card-vapor max-w-3xl mx-auto animate-fade-in">
           <div className="flex justify-center mb-6 animate-float">
-            <Package size={80} weight="duotone" style={{ color: 'var(--neon-cyan)', filter: 'drop-shadow(0 0 20px var(--neon-cyan))' }} />
+            <Package size={80} weight="duotone" style={{ color: 'var(--text-cyan)', filter: 'drop-shadow(0 0 20px var(--neon-cyan))' }} />
           </div>
-          <h2 className="text-3xl font-bold neon-text mb-3" style={{ color: 'var(--neon-pink)' }}>
+          <h2 className="text-3xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>
             Welcome to DockLite!
           </h2>
           <p className="text-lg mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -596,9 +596,9 @@ export default function DashboardPage() {
       ) : filteredFolders.length === 0 ? (
         <div className="mt-12 text-center py-16 card-vapor max-w-2xl mx-auto animate-fade-in">
           <div className="flex justify-center mb-4 opacity-50">
-            <WarningCircle size={64} weight="duotone" style={{ color: 'var(--neon-yellow)' }} />
+            <WarningCircle size={64} weight="duotone" style={{ color: 'var(--text-yellow)' }} />
           </div>
-          <p className="text-xl font-bold neon-text mb-3" style={{ color: 'var(--neon-pink)' }}>
+          <p className="text-xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>
             No containers match this filter
           </p>
           <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
@@ -689,10 +689,10 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Assign <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>{assignTarget.name}</span> to a user.
+              Assign <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>{assignTarget.name}</span> to a user.
             </p>
             <div className="mb-4">
-              <label className="block text-sm font-bold mb-2 text-neon-cyan">
+              <label className="block text-sm font-bold mb-2 text-accent-cyan">
                 Select User
               </label>
               <select
@@ -758,10 +758,10 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Move <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>{moveTarget.name}</span> to a folder.
+              Move <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>{moveTarget.name}</span> to a folder.
             </p>
             <div className="mb-4">
-              <label className="block text-sm font-bold mb-2 text-neon-cyan">
+              <label className="block text-sm font-bold mb-2 text-accent-cyan">
                 Select Folder
               </label>
               <select

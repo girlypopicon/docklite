@@ -76,7 +76,7 @@ export default function DbViewer() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+            <h2 className="text-xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
               <Database size={20} weight="duotone" />
               DockLite System Database
             </h2>
@@ -104,7 +104,7 @@ export default function DbViewer() {
             {/* Modal Header */}
             <div className="p-6 border-b border-purple-500/30 flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+                <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                   <Database size={22} weight="duotone" />
                   DockLite Database Inspector
                 </h2>
@@ -140,7 +140,7 @@ export default function DbViewer() {
             <div className="flex-1 overflow-y-auto p-6">
               {loading && (
                 <div className="text-center py-12">
-                  <div className="text-2xl font-bold neon-text animate-pulse flex items-center justify-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+                  <div className="text-2xl font-bold neon-text animate-pulse flex items-center justify-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                     <SpinnerGap size={20} weight="duotone" className="animate-spin" />
                     Loading...
                   </div>
@@ -165,7 +165,7 @@ export default function DbViewer() {
 
                     return (
                       <div key={table.name} className="card-vapor p-6 rounded-xl border border-purple-500/30">
-                        <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                        <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                           <ChartBar size={16} weight="duotone" />
                           <span>{table.name}</span>
                           <span className="text-xs font-mono opacity-70" style={{ color: 'var(--text-secondary)' }}>
@@ -187,7 +187,7 @@ export default function DbViewer() {
                                   <th
                                     key={col.name}
                                     className="px-3 py-2 text-left font-bold"
-                                    style={{ color: 'var(--neon-purple)' }}
+                                    style={{ color: 'var(--text-purple)' }}
                                   >
                                     {col.name}
                                     {col.pk && <Key size={12} weight="duotone" className="ml-1 inline" />}

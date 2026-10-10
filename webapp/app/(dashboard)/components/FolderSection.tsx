@@ -137,12 +137,12 @@ export default function FolderSection({
               <FolderOpen size={32} weight="duotone" color="var(--neon-pink)" />
             )}
           </span>
-          <h2 className="text-2xl font-bold neon-text transition-all group-hover:brightness-125" style={{ color: 'var(--neon-pink)' }}>
+          <h2 className="text-2xl font-bold neon-text transition-all group-hover:brightness-125" style={{ color: 'var(--text-pink)' }}>
             {folder.name}
           </h2>
           <span className="text-sm font-mono px-2 py-1 rounded-full" style={{
             background: 'rgba(var(--neon-pink-rgb), 0.2)',
-            color: 'var(--neon-pink)',
+            color: 'var(--text-pink)',
             border: '1px solid var(--neon-pink)'
           }}>
             {containers.length}
@@ -159,7 +159,7 @@ export default function FolderSection({
                 style={{
                   background: 'rgba(var(--neon-cyan-rgb), 0.1)',
                   border: '1px solid var(--neon-cyan)',
-                  color: 'var(--neon-cyan)'
+                  color: 'var(--text-cyan)'
                 }}
               >
                 <Plus size={14} weight="duotone" />
@@ -171,7 +171,7 @@ export default function FolderSection({
               style={{
                 background: 'rgba(var(--neon-pink-rgb), 0.1)',
                 border: '1px solid var(--neon-pink)',
-                color: 'var(--neon-pink)'
+                color: 'var(--text-pink)'
               }}
             >
               <Pencil size={14} weight="duotone" />

@@ -77,7 +77,7 @@ export default function AddBackupDestinationModal({ onClose, onSuccess }: AddBac
         </button>
 
         <div className="mb-6">
-          <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
             <HardDrives size={32} weight="duotone" color="var(--status-success)" />
             Add Backup Destination
           </h2>
@@ -101,7 +101,7 @@ export default function AddBackupDestinationModal({ onClose, onSuccess }: AddBac
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Destination Name
             </label>
             <input
@@ -116,7 +116,7 @@ export default function AddBackupDestinationModal({ onClose, onSuccess }: AddBac
           </div>
 
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Storage Type
             </label>
             <div className="input-vapor w-full flex items-center">
@@ -128,7 +128,7 @@ export default function AddBackupDestinationModal({ onClose, onSuccess }: AddBac
           </div>
 
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Local Path
             </label>
             <input
@@ -154,7 +154,7 @@ export default function AddBackupDestinationModal({ onClose, onSuccess }: AddBac
               className="w-4 h-4"
               disabled={loading}
             />
-            <label htmlFor="enabled" className="text-sm font-bold" style={{ color: 'var(--neon-green)' }}>
+            <label htmlFor="enabled" className="text-sm font-bold" style={{ color: 'var(--text-green)' }}>
               Enable this destination
             </label>
           </div>

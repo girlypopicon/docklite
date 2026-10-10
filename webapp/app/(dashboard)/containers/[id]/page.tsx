@@ -155,7 +155,7 @@ export default function ContainerDetailPage() {
         <div className="flex justify-center mb-4 animate-float">
           <Lightning size={48} weight="duotone" color="var(--neon-cyan)" />
         </div>
-        <div className="text-2xl font-bold neon-text animate-pulse" style={{ color: 'var(--neon-cyan)' }}>
+        <div className="text-2xl font-bold neon-text animate-pulse" style={{ color: 'var(--text-cyan)' }}>
           Loading container details...
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function ContainerDetailPage() {
             <ArrowLeft size={20} weight="bold" />
           </Link>
           <div>
-            <h1 className="text-4xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+            <h1 className="text-4xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
               <Package size={24} weight="duotone" />
               {details.name}
             </h1>
@@ -203,7 +203,7 @@ export default function ContainerDetailPage() {
           className="px-4 py-2 rounded-full text-sm font-bold"
           style={{
             background: isRunning ? 'rgba(var(--status-success-rgb), 0.2)' : 'rgba(var(--status-error-rgb), 0.2)',
-            color: isRunning ? 'var(--neon-green)' : 'var(--status-error)',
+            color: isRunning ? 'var(--text-green)' : 'var(--status-error)',
             border: `2px solid ${isRunning ? 'var(--neon-green)' : 'var(--status-error)'}`,
           }}
         >
@@ -225,7 +225,7 @@ export default function ContainerDetailPage() {
             className={`px-6 py-3 rounded-xl font-bold transition-all ${
               activeTab === tab.id
                 ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-gray-900 neon-glow'
-                : 'card-vapor text-neon-cyan hover:text-neon-cyan/80'
+                : 'card-vapor text-accent-cyan hover:text-accent-cyan/80'
             }`}
           >
             <span className="mr-2 inline-flex">{tab.icon}</span>
@@ -240,7 +240,7 @@ export default function ContainerDetailPage() {
           {/* Real-time Stats */}
           {isRunning && stats && (
             <div className="card-vapor p-6 rounded-xl">
-              <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+              <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                 <ChartBar size={20} weight="duotone" />
                 Real-time Resources
               </h2>
@@ -248,10 +248,10 @@ export default function ContainerDetailPage() {
                 {/* CPU */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                    <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                       CPU Usage
                     </span>
-                    <span className="text-2xl font-bold" style={{ color: 'var(--neon-yellow)' }}>
+                    <span className="text-2xl font-bold" style={{ color: 'var(--text-yellow)' }}>
                       {(stats.cpu ?? 0).toFixed(2)}%
                     </span>
                   </div>
@@ -266,10 +266,10 @@ export default function ContainerDetailPage() {
                 {/* Memory */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                    <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                       Memory Usage
                     </span>
-                    <span className="text-2xl font-bold" style={{ color: 'var(--neon-pink)' }}>
+                    <span className="text-2xl font-bold" style={{ color: 'var(--text-pink)' }}>
                       {(stats.memory?.percentage ?? 0).toFixed(2)}%
                     </span>
                   </div>
@@ -289,14 +289,14 @@ export default function ContainerDetailPage() {
 
           {/* Container Info */}
           <div className="card-vapor p-6 rounded-xl">
-            <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+            <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
               <Info size={20} weight="duotone" />
               Container Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm">
               <div>
                 <span className="opacity-70">ID:</span>
-                <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                <div className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                   {details.id.substring(0, 12)}
                 </div>
               </div>
@@ -312,7 +312,7 @@ export default function ContainerDetailPage() {
               </div>
               <div>
                 <span className="opacity-70">Restart Policy:</span>
-                <div className="font-bold" style={{ color: 'var(--neon-green)' }}>
+                <div className="font-bold" style={{ color: 'var(--text-green)' }}>
                   {details.restartPolicy.Name || 'none'}
                 </div>
               </div>
@@ -322,7 +322,7 @@ export default function ContainerDetailPage() {
           {/* Mounts */}
           {details.mounts.length > 0 && (
             <div className="card-vapor p-6 rounded-xl">
-            <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+            <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
               <Database size={20} weight="duotone" />
               Volumes & Mounts
             </h2>
@@ -332,11 +332,11 @@ export default function ContainerDetailPage() {
                     <div className="font-mono text-sm">
                       <div className="mb-2">
                         <span className="opacity-70">Source:</span>
-                        <div className="font-bold text-neon-cyan">{mount.Source}</div>
+                        <div className="font-bold text-accent-cyan">{mount.Source}</div>
                       </div>
                       <div className="mb-2">
                         <span className="opacity-70">Destination:</span>
-                        <div className="font-bold text-neon-pink">{mount.Destination}</div>
+                        <div className="font-bold text-accent-pink">{mount.Destination}</div>
                       </div>
                       <div className="flex gap-4 text-xs">
                         <span className={mount.RW ? 'text-status-success' : 'text-status-error'}>
@@ -367,7 +367,7 @@ export default function ContainerDetailPage() {
       {activeTab === 'logs' && (
         <div className="card-vapor p-6 rounded-xl">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+            <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
               <NotePencil size={20} weight="duotone" />
               Container Logs
             </h2>
@@ -405,7 +405,7 @@ export default function ContainerDetailPage() {
             className="bg-black/50 p-4 rounded-lg font-mono text-xs overflow-x-auto"
             style={{ maxHeight: '600px', overflowY: 'auto' }}
           >
-            <pre className="whitespace-pre-wrap" style={{ color: 'var(--neon-green)' }}>
+            <pre className="whitespace-pre-wrap" style={{ color: 'var(--text-green)' }}>
               {logs || 'No logs available'}
             </pre>
           </div>
@@ -415,7 +415,7 @@ export default function ContainerDetailPage() {
       {/* Environment Tab */}
       {activeTab === 'env' && (
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+          <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
             <Wrench size={20} weight="duotone" />
             Environment Variables
           </h2>
@@ -429,10 +429,10 @@ export default function ContainerDetailPage() {
                 return (
                   <div key={idx} className="p-4 bg-purple-900/20 rounded-lg font-mono text-sm">
                     <div className="flex items-start gap-4">
-                      <span className="font-bold min-w-[200px]" style={{ color: 'var(--neon-cyan)' }}>
+                      <span className="font-bold min-w-[200px]" style={{ color: 'var(--text-cyan)' }}>
                         {key}
                       </span>
-                      <span className="flex-1 break-all" style={{ color: 'var(--neon-pink)' }}>
+                      <span className="flex-1 break-all" style={{ color: 'var(--text-pink)' }}>
                         {value || '(empty)'}
                       </span>
                     </div>
@@ -449,47 +449,47 @@ export default function ContainerDetailPage() {
         <div className="space-y-6">
           {/* Network Info */}
           <div className="card-vapor p-6 rounded-xl">
-            <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+            <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
               <Globe size={20} weight="duotone" />
               Network Configuration
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm mb-6">
               <div>
                 <span className="opacity-70">IP Address:</span>
-                <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                <div className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                   {details.networkSettings.ipAddress || 'N/A'}
                 </div>
               </div>
               <div>
                 <span className="opacity-70">Gateway:</span>
-                <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                <div className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                   {details.networkSettings.gateway || 'N/A'}
                 </div>
               </div>
             </div>
 
             {/* Networks */}
-            <h3 className="text-xl font-bold neon-text mb-4" style={{ color: 'var(--neon-cyan)' }}>
+            <h3 className="text-xl font-bold neon-text mb-4" style={{ color: 'var(--text-cyan)' }}>
               Networks
             </h3>
             <div className="space-y-3">
               {Object.entries(details.networkSettings.networks).map(([name, network]: [string, any]) => (
                 <div key={name} className="p-4 bg-purple-900/20 rounded-lg">
-                  <div className="font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+                  <div className="font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                     {name}
                   </div>
                   <div className="font-mono text-xs space-y-1">
                     <div>
                       <span className="opacity-70">IP: </span>
-                      <span className="text-neon-cyan">{network.IPAddress || 'N/A'}</span>
+                      <span className="text-accent-cyan">{network.IPAddress || 'N/A'}</span>
                     </div>
                     <div>
                       <span className="opacity-70">Gateway: </span>
-                      <span className="text-neon-cyan">{network.Gateway || 'N/A'}</span>
+                      <span className="text-accent-cyan">{network.Gateway || 'N/A'}</span>
                     </div>
                     <div>
                       <span className="opacity-70">MAC: </span>
-                      <span className="text-neon-cyan">{network.MacAddress || 'N/A'}</span>
+                      <span className="text-accent-cyan">{network.MacAddress || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -499,7 +499,7 @@ export default function ContainerDetailPage() {
 
           {/* Port Mappings */}
           <div className="card-vapor p-6 rounded-xl">
-            <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+            <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
               <Plug size={20} weight="duotone" />
               Port Mappings
             </h2>
@@ -510,11 +510,11 @@ export default function ContainerDetailPage() {
                 {Object.entries(details.networkSettings.ports).map(([containerPort, hostBindings]: [string, any]) => (
                   <div key={containerPort} className="p-4 bg-purple-900/20 rounded-lg font-mono text-sm">
                     <div className="flex items-center gap-4">
-                      <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                      <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                         Container: {containerPort}
                       </span>
-                      <span style={{ color: 'var(--neon-purple)' }}>→</span>
-                      <span className="font-bold" style={{ color: 'var(--neon-pink)' }}>
+                      <span style={{ color: 'var(--text-purple)' }}>→</span>
+                      <span className="font-bold" style={{ color: 'var(--text-pink)' }}>
                         Host: {hostBindings && hostBindings[0]?.HostPort ? hostBindings[0].HostPort : 'Not mapped'}
                       </span>
                     </div>

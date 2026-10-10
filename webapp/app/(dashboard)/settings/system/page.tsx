@@ -32,7 +32,7 @@ export default function SystemSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+        <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
           <DesktopTower size={20} weight="duotone" />
           System Settings
         </h2>
@@ -43,7 +43,7 @@ export default function SystemSettingsPage() {
 
       {/* Docker Status */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-2xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
           <Cube size={20} weight="duotone" />
           Docker Connection
         </h2>
@@ -66,7 +66,7 @@ export default function SystemSettingsPage() {
 
       {/* Configuration Options */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-yellow)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
           <Gear size={20} weight="duotone" />
           Configuration
         </h2>
@@ -97,7 +97,7 @@ export default function SystemSettingsPage() {
 
       {/* Maintenance Tools */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
           <Wrench size={20} weight="duotone" />
           Maintenance Tools
         </h2>

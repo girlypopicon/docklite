@@ -480,7 +480,7 @@ export default function ServerPage() {
     <div className="max-w-[1400px] mx-auto">
       <div className="sm:flex sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+          <h1 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
             <DesktopTower size={22} weight="duotone" />
             Server
           </h1>
@@ -492,7 +492,7 @@ export default function ServerPage() {
 
       {accessDenied && (
         <div className="card-vapor p-6 rounded-xl flex items-center gap-3 mb-6" style={{ borderColor: 'rgba(var(--text-muted-rgb), 0.15)' }}>
-          <ShieldCheck size={22} weight="duotone" style={{ color: 'var(--neon-cyan)' }} />
+          <ShieldCheck size={22} weight="duotone" style={{ color: 'var(--text-cyan)' }} />
           <div>
             <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Admin access required</div>
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -513,7 +513,7 @@ export default function ServerPage() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Info size={18} weight="duotone" />
             Overview
           </h2>
@@ -524,29 +524,29 @@ export default function ServerPage() {
           ) : (
             <dl className="space-y-3">
               <div className="flex justify-between items-center">
-                <dt className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>HOSTNAME</dt>
+                <dt className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>HOSTNAME</dt>
                 <dd className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{overview.hostname}</dd>
               </div>
               <div className="flex justify-between items-center">
-                <dt className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>OS</dt>
+                <dt className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>OS</dt>
                 <dd className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{overview.os || '—'} {overview.osVersion}</dd>
               </div>
               <div className="flex justify-between items-center">
-                <dt className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>KERNEL</dt>
+                <dt className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>KERNEL</dt>
                 <dd className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{overview.kernel || '—'}</dd>
               </div>
               <div className="flex justify-between items-center">
-                <dt className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>UPTIME</dt>
-                <dd className="text-sm font-mono" style={{ color: 'var(--neon-green)' }}>{formatUptime(overview.uptime)}</dd>
+                <dt className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>UPTIME</dt>
+                <dd className="text-sm font-mono" style={{ color: 'var(--text-green)' }}>{formatUptime(overview.uptime)}</dd>
               </div>
               <div className="flex justify-between items-center">
-                <dt className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>TIME SYNC</dt>
+                <dt className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>TIME SYNC</dt>
                 <dd className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>
                   {overview.timeSync.status} ({overview.timeSync.timezone || 'UTC'})
                 </dd>
               </div>
               <div className="flex justify-between items-center">
-                <dt className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>CLOCK</dt>
+                <dt className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>CLOCK</dt>
                 <dd className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{formatDateTime(overview.clockIso)}</dd>
               </div>
             </dl>
@@ -554,7 +554,7 @@ export default function ServerPage() {
         </div>
 
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
             <Gauge size={18} weight="duotone" />
             Performance
           </h2>
@@ -565,20 +565,20 @@ export default function ServerPage() {
           ) : (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>CPU</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>CPU</span>
                 <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>
                   {overview.cpuCount} cores
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>LOAD</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>LOAD</span>
                 <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>
                   {overview.loadAvg.one.toFixed(2)} / {overview.loadAvg.five.toFixed(2)} / {overview.loadAvg.fifteen.toFixed(2)}
                 </span>
               </div>
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>MEMORY</span>
+                  <span className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>MEMORY</span>
                   <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
                     {formatBytes(overview.memory.total - overview.memory.free)} / {formatBytes(overview.memory.total)}
                   </span>
@@ -596,7 +596,7 @@ export default function ServerPage() {
               </div>
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>DISK</span>
+                  <span className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>DISK</span>
                   <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
                     {formatBytes(overview.disk.used)} / {formatBytes(overview.disk.total)}
                   </span>
@@ -617,7 +617,7 @@ export default function ServerPage() {
         </div>
 
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
             <Clock size={18} weight="duotone" />
             Updates
           </h2>
@@ -628,25 +628,25 @@ export default function ServerPage() {
           ) : (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>PENDING</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>PENDING</span>
                 <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{updates.pendingUpdates}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>SECURITY</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>SECURITY</span>
                 <span className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{updates.securityUpdates}</span>
               </div>
               <div className="flex items-center gap-2">
                 {updates.rebootRequired ? (
                   <WarningCircle size={16} weight="duotone" style={{ color: 'var(--status-error)' }} />
                 ) : (
-                  <CheckCircle size={16} weight="duotone" style={{ color: 'var(--neon-green)' }} />
+                  <CheckCircle size={16} weight="duotone" style={{ color: 'var(--text-green)' }} />
                 )}
                 <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                   {updates.rebootRequired ? 'Reboot required' : 'No reboot needed'}
                 </span>
               </div>
               <div>
-                <div className="text-xs font-bold" style={{ color: 'var(--neon-purple)' }}>AUTO-UPDATES</div>
+                <div className="text-xs font-bold" style={{ color: 'var(--text-purple)' }}>AUTO-UPDATES</div>
                 <div className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{updates.autoUpdates.status}</div>
                 <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{updates.autoUpdates.detail}</div>
               </div>
@@ -661,7 +661,7 @@ export default function ServerPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Gear size={18} weight="duotone" />
             Core Services
           </h2>
@@ -703,7 +703,7 @@ export default function ServerPage() {
 
               {serviceLogsTarget && (
                 <div className="mt-2">
-                  <div className="text-xs font-bold mb-1" style={{ color: 'var(--neon-purple)' }}>
+                  <div className="text-xs font-bold mb-1" style={{ color: 'var(--text-purple)' }}>
                     {(serviceInfo(serviceLogsTarget)?.name || serviceLogsTarget).toUpperCase()} LOGS
                   </div>
                   <LogViewer
@@ -719,7 +719,7 @@ export default function ServerPage() {
         </div>
 
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
             <ShieldCheck size={18} weight="duotone" />
             Host Security
           </h2>
@@ -730,7 +730,7 @@ export default function ServerPage() {
           ) : (
             <div className="space-y-4">
               <div>
-                <div className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>SSH</div>
+                <div className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>SSH</div>
                 <div className="flex items-center gap-2 mt-1">
                   {statusBadge(security.ssh.status)}
                   <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{security.ssh.unit || 'unknown'}</span>
@@ -740,13 +740,13 @@ export default function ServerPage() {
                 </div>
               </div>
               <div>
-                <div className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>SUDO USERS</div>
+                <div className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>SUDO USERS</div>
                 <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                   {security.sudoUsers.length > 0 ? security.sudoUsers.join(', ') : 'No sudo users detected'}
                 </div>
               </div>
               <div>
-                <div className="text-sm font-bold" style={{ color: 'var(--neon-purple)' }}>FAILED LOGINS</div>
+                <div className="text-sm font-bold" style={{ color: 'var(--text-purple)' }}>FAILED LOGINS</div>
                 <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                   {security.failedLogins.count} recent failures ({security.failedLogins.source})
                 </div>
@@ -763,7 +763,7 @@ export default function ServerPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <HardDrives size={18} weight="duotone" />
             Storage
           </h2>
@@ -773,7 +773,7 @@ export default function ServerPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="text-xs font-bold" style={{ color: 'var(--neon-purple)' }}>MOUNTS</div>
+              <div className="text-xs font-bold" style={{ color: 'var(--text-purple)' }}>MOUNTS</div>
               <div>
                 <table className="w-full text-left text-xs">
                   <thead style={{ color: 'var(--text-secondary)' }}>
@@ -801,7 +801,7 @@ export default function ServerPage() {
         </div>
 
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
             <Package size={18} weight="duotone" />
             Docker Storage
           </h2>
@@ -813,19 +813,19 @@ export default function ServerPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-xs font-bold" style={{ color: 'var(--neon-purple)' }}>IMAGES</div>
+                  <div className="text-xs font-bold" style={{ color: 'var(--text-purple)' }}>IMAGES</div>
                   <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{storage.docker.imageCount} ({formatBytes(storage.docker.imageSize)})</div>
                 </div>
                 <div>
-                  <div className="text-xs font-bold" style={{ color: 'var(--neon-purple)' }}>CONTAINERS</div>
+                  <div className="text-xs font-bold" style={{ color: 'var(--text-purple)' }}>CONTAINERS</div>
                   <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{storage.docker.containerCount} ({formatBytes(storage.docker.containerSize)})</div>
                 </div>
                 <div>
-                  <div className="text-xs font-bold" style={{ color: 'var(--neon-purple)' }}>VOLUMES</div>
+                  <div className="text-xs font-bold" style={{ color: 'var(--text-purple)' }}>VOLUMES</div>
                   <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{storage.docker.volumeCount} ({formatBytes(storage.docker.volumeSize)})</div>
                 </div>
                 <div>
-                  <div className="text-xs font-bold" style={{ color: 'var(--neon-purple)' }}>BUILD CACHE</div>
+                  <div className="text-xs font-bold" style={{ color: 'var(--text-purple)' }}>BUILD CACHE</div>
                   <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{storage.docker.buildCacheCount} ({formatBytes(storage.docker.buildCacheSize)})</div>
                 </div>
               </div>
@@ -840,7 +840,7 @@ export default function ServerPage() {
               </div>
 
               <div>
-                <div className="text-xs font-bold mb-2" style={{ color: 'var(--neon-purple)' }}>VOLUMES (READ-ONLY)</div>
+                <div className="text-xs font-bold mb-2" style={{ color: 'var(--text-purple)' }}>VOLUMES (READ-ONLY)</div>
                 <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {storage.volumes.length === 0 ? (
                     <div>No volumes detected.</div>
@@ -863,13 +863,13 @@ export default function ServerPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <TerminalWindow size={18} weight="duotone" />
             Logs
           </h2>
           <div className="space-y-4">
             <div>
-              <div className="text-xs font-bold mb-1" style={{ color: 'var(--neon-purple)' }}>SYSTEM LOGS</div>
+              <div className="text-xs font-bold mb-1" style={{ color: 'var(--text-purple)' }}>SYSTEM LOGS</div>
               <LogViewer
                 text={systemLogs}
                 loading={loadingSystemLogs}
@@ -879,7 +879,7 @@ export default function ServerPage() {
               />
             </div>
             <div>
-              <div className="text-xs font-bold mb-1" style={{ color: 'var(--neon-purple)' }}>DOCKLITE LOGS</div>
+              <div className="text-xs font-bold mb-1" style={{ color: 'var(--text-purple)' }}>DOCKLITE LOGS</div>
               <LogViewer
                 text={dockliteLogs}
                 loading={loadingDockliteLogs}
@@ -892,7 +892,7 @@ export default function ServerPage() {
         </div>
 
         <div className="card-vapor p-6 rounded-xl">
-          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+          <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
             <DownloadSimple size={18} weight="duotone" />
             Diagnostics
           </h2>

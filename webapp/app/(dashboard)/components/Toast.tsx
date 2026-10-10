@@ -29,7 +29,7 @@ export default function Toast({ message, type, onClose, duration = 5000 }: Toast
     success: {
       bg: 'rgba(var(--status-success-rgb), 0.15)',
       border: 'var(--neon-green)',
-      color: 'var(--neon-green)',
+      color: 'var(--text-green)',
       icon: <CheckCircle size={22} weight="duotone" />,
     },
     error: {
@@ -41,13 +41,13 @@ export default function Toast({ message, type, onClose, duration = 5000 }: Toast
     warning: {
       bg: 'rgba(var(--status-warning-rgb), 0.15)',
       border: 'var(--neon-yellow)',
-      color: 'var(--neon-yellow)',
+      color: 'var(--text-yellow)',
       icon: <WarningCircle size={22} weight="duotone" />,
     },
     info: {
       bg: 'rgba(var(--neon-cyan-rgb), 0.15)',
       border: 'var(--neon-cyan)',
-      color: 'var(--neon-cyan)',
+      color: 'var(--text-cyan)',
       icon: <Info size={22} weight="duotone" />,
     },
   };

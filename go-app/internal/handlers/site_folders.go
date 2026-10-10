@@ -404,18 +404,31 @@ func (h *Handlers) TrashFolder(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	dest, err := moveToTrash(p)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	h.audit(r, "site.folder-trash", p, map[string]any{"to": dest})
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "moved_to": dest})
+}
+
+// moveToTrash moves a site folder into /var/www/sites/.trash (never deletes). The path must be a folder one or two
+// levels under the sites root.
+func moveToTrash(p string) (string, error) {
+	p, _, err := folderTarget(p)
+	if err != nil {
+		return "", err
+	}
 	trash := filepath.Join(siteBaseDir, trashDirName)
 	if err := os.MkdirAll(trash, 0o775); err != nil {
-		writeError(w, http.StatusInternalServerError, "cannot create the trash folder: "+err.Error())
-		return
+		return "", fmt.Errorf("cannot create the trash folder: %w", err)
 	}
 	chownDocklite(trash)
 	rel, _ := filepath.Rel(siteBaseDir, p)
 	dest := filepath.Join(trash, time.Now().UTC().Format("20060102-150405")+"-"+strings.ReplaceAll(rel, string(filepath.Separator), "__"))
 	if err := os.Rename(p, dest); err != nil {
-		writeError(w, http.StatusInternalServerError, "could not move it (it may be owned by root; run: sudo mv "+p+" "+dest+"): "+err.Error())
-		return
+		return "", fmt.Errorf("could not move it (it may be owned by root; run: sudo mv %s %s): %w", p, dest, err)
 	}
-	h.audit(r, "site.folder-trash", p, map[string]any{"to": dest})
-	writeJSON(w, http.StatusOK, map[string]any{"success": true, "moved_to": dest})
+	return dest, nil
 }
