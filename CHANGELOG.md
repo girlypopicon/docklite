@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.2.3 (2026-10-10)
+
 ### Added
 - `scripts/contrast-audit.js`: measures text contrast in every theme on a running demo, so theme changes are checked by numbers.
 
