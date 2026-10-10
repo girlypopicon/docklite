@@ -38,6 +38,15 @@ func (h *Handlers) audit(r *http.Request, action, target string, detail map[stri
 		Target: target,
 		Detail: detail,
 	}
+	appendAudit(entry)
+}
+
+// auditSystem records something DockLite did by itself (no signed-in user), e.g. an automatic fix.
+func auditSystem(action, target string, detail map[string]any) {
+	appendAudit(auditEntry{Time: time.Now().UTC().Format(time.RFC3339), Role: "system", From: "agent", Action: action, Target: target, Detail: detail})
+}
+
+func appendAudit(entry auditEntry) {
 	line, err := json.Marshal(entry)
 	if err != nil {
 		return

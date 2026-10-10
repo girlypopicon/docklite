@@ -20,11 +20,20 @@ backups and server health, always supports `--json`, and refuses destructive act
 
 ## Versioning (do this every session)
 
-The owner relies on Claude Code to maintain versions. After any user-visible change, add a bullet under
-`## Unreleased` in `CHANGELOG.md`. Run `make version` when finishing work; it flags drift between `VERSION`,
-`webapp/package.json`, the latest git tag and the changelog. To release, use `scripts/release.sh patch|minor|major`
-(add `--dry-run` first); it commits and tags locally and never pushes. Remind the owner to push and tag from `main`
-after they merge. See `CONTRIBUTING.md`.
+The owner relies on Claude Code to run versioning and releases; they don't touch it. Servers update themselves from
+GitHub **releases**: the dashboard's Update button installs the newest `vX.Y.Z` tag, so an untagged version is invisible.
+
+- After any user-visible change, add a bullet under `## Unreleased` in `CHANGELOG.md`.
+- Pick the next number: fixes bump the last digit (patch), new features the middle one (minor), `1.5.0` is the "production
+  ready" goal. Every set of changes the owner wants deployed gets its own number.
+- Release in three steps (all in `scripts/release.sh`; `make version` shows where things stand):
+  1. On the feature branch: `scripts/release.sh prepare minor` (or `patch`, or `X.Y.Z`; `--dry-run` previews). Bumps `VERSION`,
+     `webapp/package.json` and `CHANGELOG.md`, and commits "Release vX.Y.Z". Push the branch and open a PR.
+  2. The owner merges the PR (the permission system blocks merging for Claude; ask them).
+  3. On `main` after the merge: `git pull`, `scripts/release.sh tag --push`, then `scripts/release.sh publish` (creates the
+     GitHub release, with the changelog section as notes). Servers see it right away.
+- Tell the owner the version number and what servers will show ("1.2.0 available").
+- The first install of a server whose Update button predates 1.2.0 needs the one-line install command re-run by hand once.
 
 ## Build & Run Commands
 
@@ -104,6 +113,10 @@ The agent manages nginx configs via sudo commands (`go-app/internal/handlers/ngi
 Per-site vhost configs are generated automatically during site onboarding (`handlers/onboard.go`). The `docklite-default` catch-all config proxies port 80 → agent.
 
 API endpoints: `GET/PUT /api/nginx/sites/{domain}`, `POST /api/nginx/test`, `POST /api/nginx/reload`. UI: `webapp/app/(dashboard)/network/NginxPanel.tsx`.
+
+**Keeping nginx pointed at the right port:** site containers publish on `127.0.0.1:<port>` and nginx's `proxy_pass` names it. New
+sites get a fixed port (`docker/ports.go`); `handlers/upstream_sync.go` fixes any stale `proxy_pass` (agent start, Docker start
+events, every minute) through the root helper's `nginx-upstreams` / `nginx-fix-port`. Tests: `make test-nginx`, `make test-update`.
 
 ## File Management API
 

@@ -49,6 +49,8 @@ func main() {
 	// Pull site images in the background so they are cached before the first
 	// container creation request. This prevents proxy timeouts on first use.
 	dockerClient.PrewarmImages(context.Background())
+	// Keep nginx pointed at each site's real port (reboots, Docker restarts, crashes).
+	go handlers.RunUpstreamSync(context.Background())
 
 	server := &http.Server{
 		Addr:              cfg.ListenAddr,

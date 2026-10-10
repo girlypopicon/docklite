@@ -1,77 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { DesktopTower, Cube, Gear, Wrench, ArrowClockwise, ArrowFatUp, CheckCircle, WarningCircle } from '@phosphor-icons/react';
+import { useState, useEffect } from 'react';
+import { DesktopTower, Cube, Gear, Wrench, ArrowClockwise } from '@phosphor-icons/react';
 import ShellAccessCard from '../../components/ShellAccessCard';
-
-type UpdateStatus = {
-  version: string;
-  gitHash: string;
-  branch: string;
-  commitsBehind: number;
-  updateAvailable: boolean;
-  updateRunning: boolean;
-  lastUpdated: string;
-  log: string[];
-};
+import UpdateCard from '../../components/UpdateCard';
 
 export default function SystemSettingsPage() {
   const [checkingFolders, setCheckingFolders] = useState(false);
   const [folderCheckResult, setFolderCheckResult] = useState<string | null>(null);
-
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
-  const [statusLoading, setStatusLoading] = useState(false);
-  const [updating, setUpdating] = useState(false);
-  const [updateError, setUpdateError] = useState<string | null>(null);
-  const logRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const fetchStatus = async () => {
-    setStatusLoading(true);
-    try {
-      const res = await fetch('/api/system/update/status');
-      if (res.ok) setUpdateStatus(await res.json());
-    } finally {
-      setStatusLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStatus();
-  }, []);
-
-  useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
-    }
-  }, [updateStatus?.log]);
-
-  useEffect(() => {
-    if (updating || updateStatus?.updateRunning) {
-      pollRef.current = setInterval(fetchStatus, 3000);
-    } else {
-      if (pollRef.current) clearInterval(pollRef.current);
-    }
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [updating, updateStatus?.updateRunning]);
-
-  const handleUpdate = async () => {
-    setUpdating(true);
-    setUpdateError(null);
-    try {
-      const res = await fetch('/api/system/update/run', { method: 'POST' });
-      if (!res.ok) {
-        const d = await res.json();
-        setUpdateError(d.error || 'Failed to start update');
-        setUpdating(false);
-        return;
-      }
-      await fetchStatus();
-    } catch (err: any) {
-      setUpdateError(err.message);
-      setUpdating(false);
-    }
-  };
 
   const handleCheckFolders = async () => {
     setCheckingFolders(true);
@@ -157,109 +93,7 @@ export default function SystemSettingsPage() {
       </div>
 
       {/* DockLite Updates */}
-      <div className="card-vapor p-6 rounded-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
-            <ArrowFatUp size={20} weight="duotone" />
-            DockLite Updates
-          </h2>
-          <button
-            onClick={fetchStatus}
-            disabled={statusLoading}
-            className="p-2 rounded-lg transition-all hover:scale-105 disabled:opacity-50"
-            style={{ color: 'var(--text-secondary)' }}
-            title="Refresh status"
-          >
-            <ArrowClockwise size={16} weight="duotone" className={statusLoading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-
-        {updateStatus && (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-              <div className="p-3 rounded-lg" style={{ background: 'var(--surface-muted)' }}>
-                <div className="text-xs opacity-60 mb-1">Version</div>
-                <div className="font-bold font-mono" style={{ color: 'var(--neon-cyan)' }}>{updateStatus.version}</div>
-              </div>
-              <div className="p-3 rounded-lg" style={{ background: 'var(--surface-muted)' }}>
-                <div className="text-xs opacity-60 mb-1">Commit</div>
-                <div className="font-bold font-mono" style={{ color: 'var(--neon-purple)' }}>{updateStatus.gitHash || '—'}</div>
-              </div>
-              <div className="p-3 rounded-lg" style={{ background: 'var(--surface-muted)' }}>
-                <div className="text-xs opacity-60 mb-1">Branch</div>
-                <div className="font-bold font-mono" style={{ color: 'var(--neon-pink)' }}>{updateStatus.branch || '—'}</div>
-              </div>
-              <div className="p-3 rounded-lg" style={{ background: 'var(--surface-muted)' }}>
-                <div className="text-xs opacity-60 mb-1">Behind</div>
-                <div className="font-bold font-mono" style={{ color: updateStatus.updateAvailable ? 'var(--neon-yellow)' : 'var(--neon-green)' }}>
-                  {updateStatus.commitsBehind} commit{updateStatus.commitsBehind !== 1 ? 's' : ''}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 mb-6">
-              {updateStatus.updateAvailable ? (
-                <div className="flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--neon-yellow)' }}>
-                  <WarningCircle size={18} weight="duotone" />
-                  {updateStatus.commitsBehind} update{updateStatus.commitsBehind !== 1 ? 's' : ''} available
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--neon-green)' }}>
-                  <CheckCircle size={18} weight="duotone" />
-                  Up to date
-                </div>
-              )}
-
-              <button
-                onClick={handleUpdate}
-                disabled={updating || updateStatus.updateRunning}
-                className="px-6 py-2 rounded-lg font-bold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                style={{
-                  background: (updating || updateStatus.updateRunning)
-                    ? 'rgba(var(--text-muted-rgb), 0.3)'
-                    : 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%)',
-                  color: 'var(--button-text)',
-                }}
-              >
-                <ArrowFatUp size={16} weight="duotone" className={(updating || updateStatus.updateRunning) ? 'animate-bounce' : ''} />
-                {(updating || updateStatus.updateRunning) ? 'Updating...' : 'Update Now'}
-              </button>
-            </div>
-
-            {updateError && (
-              <div className="mb-4 px-4 py-2 rounded-lg text-sm font-mono" style={{ background: 'rgba(var(--status-error-rgb), 0.15)', color: 'var(--status-error)', border: '1px solid var(--status-error)' }}>
-                {updateError}
-              </div>
-            )}
-
-            {updateStatus.log && updateStatus.log.length > 0 && (
-              <div>
-                <div className="text-xs font-bold mb-2 opacity-60">Update log</div>
-                <div
-                  ref={logRef}
-                  className="rounded-lg p-3 font-mono text-xs overflow-y-auto max-h-56 space-y-0.5"
-                  style={{ background: 'var(--bg-darker)', color: 'var(--text-secondary)' }}
-                >
-                  {updateStatus.log.map((line, i) => (
-                    <div key={i} style={{ color: line.includes('error') || line.includes('Error') ? 'var(--status-error)' : line.includes('===') ? 'var(--neon-cyan)' : undefined }}>
-                      {line}
-                    </div>
-                  ))}
-                </div>
-                {updateStatus.lastUpdated && (
-                  <div className="text-xs opacity-40 mt-1">Last updated: {new Date(updateStatus.lastUpdated).toLocaleString()}</div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {!updateStatus && statusLoading && (
-          <div className="text-sm opacity-50 flex items-center gap-2">
-            <ArrowClockwise size={14} className="animate-spin" /> Checking for updates...
-          </div>
-        )}
-      </div>
+      <UpdateCard />
 
       {/* Maintenance Tools */}
       <div className="card-vapor p-6 rounded-xl">

@@ -30,6 +30,7 @@ up() {
     local token session pass
     token="$(secret .token)"; session="$(secret .session 48)"; pass="$(secret .demo-password 12)"
 
+    cp "$REPO/VERSION" "$DIR/VERSION"   # a real install has VERSION next to bin/; the demo's agent runs from here
     echo "Building the agent..."
     (cd "$REPO/go-app" && go build -o "$DIR/bin/docklite-agent" ./cmd/docklite-agent)
     # The demo has its own build folder, so it never touches (or needs write access to) an installed build.
@@ -52,8 +53,14 @@ up() {
         [[ -s "$DIR/data/docklite.db" ]] && sqlite3 -readonly "$DIR/data/docklite.db" "select 1 from users limit 1" 2>/dev/null | grep -q 1 && break
         sleep 1
     done
+    # A pretend Cloudflare (example.* zones) so the Cloudflare screens work without any real account or token.
+    if ! alive "$DIR/cf.pid"; then
+        ( exec python3 "$REPO/scripts/demo_cloudflare.py" 3199 ) >"$DIR/logs/cloudflare.log" 2>&1 </dev/null &
+        echo $! > "$DIR/cf.pid"
+        sleep 1
+    fi
     if ! alive "$DIR/agent.pid"; then
-        ( exec env LISTEN_ADDR="127.0.0.1:${AGENT_PORT}" DATABASE_PATH="$DIR/data/docklite.db" DOCKLITE_TOKEN="$token" \
+        ( exec env DOCKLITE_CLOUDFLARE_API="http://127.0.0.1:3199" DOCKLITE_GITHUB_API="http://127.0.0.1:3199" DOCKLITE_PUBLIC_IP="203.0.113.10" LISTEN_ADDR="127.0.0.1:${AGENT_PORT}" DATABASE_PATH="$DIR/data/docklite.db" DOCKLITE_TOKEN="$token" \
             NEXTJS_URL="http://127.0.0.1:${GUI_PORT}" DOCKLITE_DEMO=1 DOCKLITE_SITES_DIR="$SITES" \
             BACKUP_BASE_DIR="$DIR/backups" "$DIR/bin/docklite-agent" ) >"$DIR/logs/agent.log" 2>&1 </dev/null &
         echo $! > "$DIR/agent.pid"
@@ -77,7 +84,7 @@ status() {
 login() { [[ -f "$DIR/.demo-password" ]] || die "no demo yet; run: scripts/demo.sh up"; echo "username: demo"; echo "password: $(cat "$DIR/.demo-password")"; }
 
 down() {
-    local f; for f in agent gui; do
+    local f; for f in agent gui cf; do
         if alive "$DIR/$f.pid"; then kill "$(cat "$DIR/$f.pid")" 2>/dev/null || true; fi
         rm -f "$DIR/$f.pid"
     done

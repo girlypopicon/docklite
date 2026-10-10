@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Palette, TextT, Sparkle, Eye } from '@phosphor-icons/react';
+import { Palette, TextT, Sparkle, Eye, Database } from '@phosphor-icons/react';
 import ContainerCard from '../../components/ContainerCard';
 import { useToast } from '@/lib/hooks/useToast';
 import type { ContainerInfo } from '@/types';
@@ -205,10 +205,10 @@ export default function AppearanceSettingsPage() {
                 className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
                 style={{ background: 'var(--neon-purple)' }}
               />
-              <span className="text-sm font-mono w-12">{neonIntensity}%</span>
+              <span className="text-sm font-mono w-16 text-right">{neonIntensity === 0 ? 'Off' : neonIntensity >= 200 ? 'Max' : `${Math.round(neonIntensity / 2)}%`}</span>
             </div>
             <div className="text-xs opacity-70 mt-2">
-              Adjust the intensity of neon glow effects
+              Off is the standard look. Turn it up for a bigger neon halo around cards, like the screenshots on docklite.net.
             </div>
           </div>
         </div>
@@ -224,16 +224,52 @@ export default function AppearanceSettingsPage() {
           These are the same cards you see on the Containers page, filled with made-up data. They update live as you
           change the settings above, and their buttons don’t do anything.
         </p>
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {SAMPLE_CONTAINERS.map((container) => (
+        {/* Same proportions as the real pages: a site card is narrow (many per row); a database card is wide (three per row). */}
+        <div className="flex flex-wrap items-start gap-8">
+          <div className="w-[254px] max-w-full">
             <ContainerCard
-              key={container.id}
-              container={container}
+              container={SAMPLE_CONTAINERS[0]}
               onAction={() => toast.info('Preview only — this container isn’t real')}
               onViewDetails={() => toast.info('Preview only — this container isn’t real')}
               isTracked
             />
-          ))}
+            <div className="text-xs opacity-60 mt-3 text-center" style={{ color: 'var(--text-secondary)' }}>
+              A site, as on the Containers page
+            </div>
+          </div>
+          <div className="flex-1 min-w-[280px] max-w-[460px]">
+            <div
+              className="docklite-neon docklite-neon-green p-6 rounded-xl relative"
+              style={{ background: 'var(--surface-dim)', backdropFilter: 'blur(12px)' }}
+            >
+              <h3 className="docklite-db-title text-xl font-bold neon-text truncate" style={{ color: 'var(--neon-cyan)' }}>
+                preview_db
+              </h3>
+              <div className="mt-3 mb-4 flex justify-center">
+                <Database
+                  size={46}
+                  weight="duotone"
+                  style={{
+                    color: 'var(--neon-cyan)',
+                    filter: 'drop-shadow(0 0 8px rgba(var(--neon-cyan-rgb), 0.7)) drop-shadow(0 0 14px rgba(var(--neon-cyan-rgb), 0.45))',
+                  }}
+                />
+              </div>
+              <span
+                className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-4"
+                style={{ background: 'rgba(var(--status-success-rgb), 0.2)', color: 'var(--neon-green)', border: '1px solid var(--neon-green)' }}
+              >
+                ● 7.3 MB Small
+              </span>
+              <div className="space-y-2 text-sm font-mono">
+                <div><span className="opacity-60" style={{ color: 'var(--text-secondary)' }}>Port: </span><span className="font-bold" style={{ color: 'var(--neon-purple)' }}>5432</span></div>
+                <div><span className="opacity-60" style={{ color: 'var(--text-secondary)' }}>Connect: </span><span>localhost:5432</span></div>
+              </div>
+            </div>
+            <div className="text-xs opacity-60 mt-3 text-center" style={{ color: 'var(--text-secondary)' }}>
+              A database, as on the Databases page
+            </div>
+          </div>
         </div>
       </div>
 

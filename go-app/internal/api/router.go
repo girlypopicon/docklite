@@ -70,6 +70,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/dns/sync", handlers.Auth(hnd.CSRFMiddleware(handlers.DNSSync)))
 	mux.HandleFunc("/api/dns/cloudflare/check", handlers.Auth(hnd.CSRFMiddleware(handlers.CloudflareCheck)))
 	mux.HandleFunc("/api/dns/zones/import", handlers.Auth(hnd.CSRFMiddleware(handlers.CloudflareImportZones)))
+	mux.HandleFunc("/api/dns/site", handlers.Auth(hnd.CSRFMiddleware(handlers.SiteDNS)))
 	mux.HandleFunc("/api/dns/zones/ssl", handlers.Auth(hnd.CSRFMiddleware(handlers.CloudflareZoneSSL)))
 	mux.HandleFunc("/api/nginx/sites", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxSites)))
 	mux.HandleFunc("/api/nginx/sites/", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxSites)))
@@ -134,7 +135,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 var demoBlockedPrefixes = []string{
 	"/api/server/overview", "/api/server/ports", "/api/server/updates", "/api/server/services",
 	"/api/server/storage", "/api/server/security", "/api/server/logs", "/api/server/diagnostics",
-	"/api/network/", "/api/system/shell-access", "/api/system/update", "/api/debug",
+	"/api/network/", "/api/system/shell-access", "/api/system/update/run", "/api/debug",
 }
 
 func demoBlocked(path string) bool {

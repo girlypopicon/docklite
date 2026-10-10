@@ -8,7 +8,7 @@ func TestDemoBlocked(t *testing.T) {
 			t.Errorf("%s should be blocked in demo mode", p)
 		}
 	}
-	for _, p := range []string{"/api/containers", "/api/server/stats", "/api/databases", "/api/backups"} {
+	for _, p := range []string{"/api/containers", "/api/server/stats", "/api/databases", "/api/backups", "/api/system/update/status"} {
 		if demoBlocked(p) {
 			t.Errorf("%s should stay available in demo mode", p)
 		}

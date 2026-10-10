@@ -76,7 +76,7 @@ pm2_status() {
             fi
             ;;
         docklite-gui)
-            if pgrep -f 'next-server\|next.*start' >/dev/null 2>&1; then
+            if pgrep -f 'next-server|next.* start' >/dev/null 2>&1; then
                 if curl -sf -m 2 "http://127.0.0.1:${GUI_PORT}/" >/dev/null 2>&1; then
                     echo "online"
                 else
@@ -379,7 +379,7 @@ panel_proxy_location() {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto ${proto};
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection \$connection_upgrade;
+        proxy_set_header Connection \$docklite_panel_upgrade;
         proxy_read_timeout 86400;
         proxy_buffering off;
     }
@@ -405,6 +405,11 @@ setup_panel_domain() {
 
     local http_config
     http_config="# Managed by DockLite — do not edit manually
+map \$http_upgrade \$docklite_panel_upgrade {
+    default upgrade;
+    '' close;
+}
+
 server {
     listen 80;
     listen [::]:80;
@@ -416,7 +421,10 @@ $(panel_proxy_location '$scheme')
     if ! echo "$http_config" | root_helper site-write docklite-panel.conf >/dev/null 2>&1 \
         || ! root_helper site-enable docklite-panel.conf >/dev/null 2>&1 \
         || ! root_helper nginx-reload >/dev/null 2>&1; then
-        warn "Could not write the nginx config for ${domain}"
+        # nginx refused it: take it back out so a broken file can never stop nginx at its next restart
+        root_helper site-remove docklite-panel.conf >/dev/null 2>&1 || true
+        warn "nginx rejected the config for ${domain}; it was removed and nginx is unchanged."
+        warn "Details: sudo nginx -t"
         return 1
     fi
     ok "Serving ${domain} over HTTP"
@@ -434,6 +442,11 @@ $(panel_proxy_location '$scheme')
 
     local https_config
     https_config="# Managed by DockLite — do not edit manually
+map \$http_upgrade \$docklite_panel_upgrade {
+    default upgrade;
+    '' close;
+}
+
 server {
     listen 80;
     listen [::]:80;
@@ -460,7 +473,10 @@ $(panel_proxy_location 'https')
     else
         warn "HTTPS config was rejected by nginx — falling back to HTTP"
         echo "$http_config" | root_helper site-write docklite-panel.conf >/dev/null 2>&1
-        root_helper nginx-reload >/dev/null 2>&1 || true
+        if ! root_helper nginx-reload >/dev/null 2>&1; then
+            root_helper site-remove docklite-panel.conf >/dev/null 2>&1 || true
+            warn "The HTTP fallback was rejected too; removed it so nginx stays as it was."
+        fi
         return 1
     fi
 }
@@ -468,10 +484,18 @@ $(panel_proxy_location 'https')
 # Ask for (or change) the panel domain, then set it up.
 prompt_panel_domain() {
     echo ""
-    echo -e "  ${DIM}Optional: a domain for the dashboard (e.g. db.example.com) gets free${NC}"
-    echo -e "  ${DIM}HTTPS from Let's Encrypt. Point its DNS A record at this server first.${NC}"
-    echo -e "  ${DIM}Enter '-' to remove the current one.${NC}"
-    echo -en "  ${BLUE}Panel domain${NC} ${YELLOW}[${PANEL_DOMAIN:-none}]${NC}: "
+    echo -e "  ${BOLD}${CYAN}Dashboard domain${NC} ${DIM}(recommended)${NC}"
+    echo -e "  ${DIM}This is the address you will open DockLite at, with free HTTPS from Let's Encrypt.${NC}"
+    echo -e "  ${DIM}Example:  panel.example.com${NC}"
+    echo ""
+    echo -e "    ${MINT}•${NC} Type just the name: no ${BOLD}https://${NC}, no slashes, no port."
+    echo -e "    ${MINT}•${NC} ${BOLD}Set up DNS first:${NC} create an A record for it pointing at this server's IP address"
+    echo -e "      (or a Cloudflare record). Without that, the certificate step cannot work."
+    echo -e "    ${MINT}•${NC} Ports ${BOLD}80 and 443${NC} must be open to the internet."
+    echo -e "    ${MINT}•${NC} Once set, DockLite is reached ${BOLD}only at that address${NC}, not at the server's IP or a port number."
+    echo -e "    ${MINT}•${NC} http:// then forwards to https:// automatically after the certificate is issued."
+    echo -e "  ${DIM}Leave it blank to skip. Enter '-' to remove the current one.${NC}"
+    echo -en "  ${BLUE}Dashboard domain${NC} ${YELLOW}[${PANEL_DOMAIN:-none}]${NC}: "
     local answer
     read -r answer
     answer="${answer,,}"
@@ -482,6 +506,29 @@ prompt_panel_domain() {
         root_helper nginx-reload >/dev/null 2>&1 || true
         ok "Panel domain removed"
         return 0
+    fi
+    # Be forgiving about how it was typed: strip a pasted URL down to the hostname.
+    answer="${answer#http://}"; answer="${answer#https://}"
+    answer="${answer%%/*}"; answer="${answer%%:*}"; answer="${answer%.}"
+    if [[ -n "$answer" ]]; then
+        local dns_ips local_ips
+        dns_ips="$(getent ahostsv4 "$answer" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ')"
+        local_ips="$(ip -4 -o addr show 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | tr '\n' ' ')"
+        if [[ -z "$dns_ips" ]]; then
+            warn "${answer} has no DNS record yet. Create the A record first, or the certificate step will fail."
+            echo -en "  ${BLUE}Continue anyway?${NC} ${YELLOW}(y/N)${NC}: "
+            local go; read -r go
+            [[ "${go,,}" == "y" ]] || { info "Skipped. Run this again from: docklite  →  Reconfigure  →  Panel domain"; return 0; }
+        else
+            local ip match=0
+            for ip in $dns_ips; do [[ " $local_ips " == *" $ip "* ]] && match=1; done
+            if [[ $match -eq 1 ]]; then
+                ok "DNS: ${answer} → ${dns_ips}(this server)"
+            else
+                info "DNS: ${answer} → ${dns_ips}"
+                info "That is not one of this server's addresses. Fine if you use Cloudflare's proxy; otherwise fix the A record."
+            fi
+        fi
     fi
     [[ -n "$answer" ]] && PANEL_DOMAIN="$answer"
     setup_panel_domain || true
@@ -1088,9 +1135,34 @@ show_help() {
 # SECTION 11: Entry point
 # ══════════════════════════════════════════════════════════════════════════════
 
+# A user who was just added to the docklite group (the installer does this) does not have it in the
+# login session they are already in; Linux only applies it to new sessions. Rather than asking them to
+# log out and in, restart this command inside the group once. No password needed for a real member.
+ensure_docklite_group() {
+    [[ -n "${DOCKLITE_REGROUPED:-}" ]] && return 0
+    [[ "$(id -u)" -eq 0 ]] && return 0
+    getent group docklite >/dev/null 2>&1 || return 0
+    id -nG | tr ' ' '\n' | grep -qx docklite && return 0
+    getent group docklite | cut -d: -f4 | tr ',' '\n' | grep -qx "$(id -un)" || return 0
+    command -v sg >/dev/null 2>&1 || return 0
+    export DOCKLITE_REGROUPED=1
+    local cmd; cmd="$(printf '%q ' "$0" "$@")"
+    exec sg docklite -c "$cmd"
+}
+
+# If an earlier run was interrupted (or the install predates this fix), /opt/docklite can be read-only for
+# the group and the wizard cannot save its settings. Repair it through the root helper.
+ensure_install_writable() {
+    [[ -w "$SCRIPT_DIR" ]] && return 0
+    [[ "$SCRIPT_DIR" == /opt/docklite ]] || return 0
+    root_helper fix-install-perms >/dev/null 2>&1 || true
+}
+
 main() {
     local original_dir="$PWD"
     cd "$SCRIPT_DIR"
+    ensure_docklite_group "$@"
+    ensure_install_writable
 
     case "${1:-}" in
         start-all)

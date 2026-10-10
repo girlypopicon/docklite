@@ -5,7 +5,21 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.2.0 (2026-10-08)
+
 ### Added
+- A working Update button (Settings → System). It checks GitHub for the newest release, shows what's new, and updates with one
+  click: it backs up your data first, installs exactly that release, checks DockLite came back, and goes back to the previous
+  version by itself if it didn't. Your sites keep running throughout. `install.sh --yes` runs the installer without questions.
+- Settings → Cloudflare: connect your Cloudflare account, import your domains and set each domain's SSL mode from Settings
+  (it was only under Network → DNS). The New Site form shows exactly which DNS records will be created, and a site's details
+  show whether its DNS exists in Cloudflare, with buttons to create it and to change the zone's SSL mode.
+- Demo mode includes a pretend Cloudflare (example.* zones), so these screens work without a real account.
+- Cloudflare DNS for new sites: adding a website now creates its DNS records in Cloudflare (an A record for the site, and `www` if
+  requested), proxied by default. It only creates what is missing and never overwrites an existing record unless asked.
+  New endpoint `/api/dns/site` previews or applies it. Admins only.
+- One-line install: `curl -fsSL .../get.sh | bash` downloads DockLite and starts the installer (add `-s -- --dry-run`
+  to only look). Running it again upgrades in place.
 - Demo mode (`scripts/demo.sh up`): a separate DockLite instance with fake users, example.* sites and databases for
   screenshots, testing and demos. It simulates nginx/certificate actions, hides real containers and host details, and
   real DockLites never list its containers.
@@ -27,6 +41,34 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - `docklite upgrade`: re-running `install.sh` keeps your configuration.
 
 ### Fixed
+- **Sites showed 502 after a restart or reboot.** Site containers were given a random port that changed every time they
+  started, while nginx had the old number written in. DockLite now keeps nginx in step by itself: when the agent starts,
+  whenever Docker starts a managed container, and once a minute it finds each site's real port and fixes the matching
+  `proxy_pass` (in `sites-available`, `conf.d` and multi-site files, including aliases of a site), reloading nginx only if
+  `nginx -t` accepts it. New sites get a fixed port from 20000-29999 (`DOCKLITE_PORT_RANGE`), so their port never changes.
+  Per-server workarounds like a port-sync script and timer are no longer needed.
+- The old Update button could never work (it looked for git history that installs don't have, and for a script that didn't
+  exist). It's been replaced.
+- The neon glow slider (Settings → Appearance) did nothing for container and database cards, and containers had lost their glow
+  entirely (their shadows used an invalid color notation). Cards now glow by default; the slider adds a bigger halo, a thicker
+  tube and, near Max, a white-hot core like real neon. Off is the standard look (it was 100% before; the default is now Off).
+- Settings → Appearance preview now shows a narrow site card next to a wide database card, like the real pages.
+- On a server that already has a default nginx site, the dashboard's nginx entry referred to a variable that was only defined in
+  a file DockLite deliberately does not write there, so nginx rejected it (and could have refused to start at its next
+  restart). The entry is now self-contained, and any nginx config nginx rejects is removed again instead of left behind.
+- `docklite status` always said the web GUI was "Not started" (and install printed "GUI may still be starting"), even when it
+  was running: the process check used a pattern that can never match. It now detects the GUI correctly.
+- `docklite` no longer needs a log out and in after install: if you were just added to the docklite group, it restarts
+  itself inside the group. If an interrupted install left `/opt/docklite` read-only for the group, it repairs that itself
+  (new root-helper command `fix-install-perms`).
+- The one-line install left `/opt/docklite` read-only for the docklite group, so the setup wizard could not write its
+  settings ("Permission denied"). The installer now sets the folder group-writable itself.
+- The dashboard-domain question in setup now explains how to type it (just the hostname), that DNS must point at the server
+  first, that ports 80/443 must be open, and that the dashboard is then reached only at that address. A pasted URL is
+  trimmed to the hostname, and it shows what DNS currently says for the name.
+- Installing over an older DockLite that runs as systemd services (`docklite-agent`, `docklite-web`): the installer now asks
+  to stop and disable them first, because they run from the folder being replaced. Sites keep running (nginx and Docker
+  serve them). If the backup fails, the services are started again.
 - The dashboard footer and Settings showed a hard-coded "v1.0"; they now show the real version.
 - The 404 page listed Containers twice; the second link now goes to Backups.
 - Installing on a server that already hosts sites: DockLite no longer disables the `default` and `docklite-sites` nginx

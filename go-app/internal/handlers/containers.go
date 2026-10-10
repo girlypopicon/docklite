@@ -92,6 +92,9 @@ type createContainerRequest struct {
 	UserID       *int64 `json:"user_id"`
 	CodePath     string `json:"code_path"`
 	FolderID     *int64 `json:"folder_id"`
+	// CloudflareDNS: also create the site's DNS records in Cloudflare (admins only; default on when Cloudflare is connected).
+	CloudflareDNS     *bool `json:"cloudflare_dns"`
+	CloudflareProxied *bool `json:"cloudflare_proxied"`
 }
 
 func (h *Handlers) ListContainers(w http.ResponseWriter, r *http.Request) {
@@ -377,23 +380,24 @@ func (h *Handlers) handleLifecycle(w http.ResponseWriter, r *http.Request, id st
 		}
 		_ = h.store.UpdateSiteStatus(site.ID, status)
 	}
-	// After a start or restart, the container may have received a new random
-	// host port (Docker re-draws from the ephemeral range each time).
-	// Re-detect the port and rewrite the nginx upstream so the site stays live.
+	// After a start or restart the container may be on a different port than nginx expects (older sites get a new
+	// random one each time). Fix every stale upstream now, and give a site that has no nginx entry at all a fresh one.
 	if !isStopping {
-		if info, inspErr := h.docker.InspectContainer(ctx, id); inspErr == nil {
+		_, missing, _ := h.SyncUpstreams(ctx)
+		if info, inspErr := h.docker.InspectContainer(ctx, id); inspErr == nil && info.Config != nil {
 			labels := info.Config.Labels
-			if labels["docklite.managed"] == "true" {
-				domain := labels["docklite.domain"]
-				includeWww := labels["docklite.include_www"] == "true"
-				internalPortStr := labels["docklite.internal_port"]
-				internalPort := 80
-				if p, err := strconv.Atoi(internalPortStr); err == nil && p > 0 {
-					internalPort = p
-				}
-				if domain != "" {
+			domain := strings.ToLower(labels["docklite.domain"])
+			if labels["docklite.managed"] == "true" && domain != "" {
+				for _, m := range missing {
+					if m != domain {
+						continue
+					}
+					internalPort := 80
+					if p, err := strconv.Atoi(labels["docklite.internal_port"]); err == nil && p > 0 {
+						internalPort = p
+					}
 					if hostPort, portErr := h.getContainerHostPort(ctx, id, internalPort); portErr == nil && hostPort > 0 {
-						_ = setupNginxForDomain(domain, includeWww, hostPort)
+						_ = setupNginxForDomain(domain, labels["docklite.include_www"] == "true", hostPort)
 					}
 				}
 			}
@@ -902,6 +906,13 @@ func (h *Handlers) createContainer(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{"success": true, "site_id": site.ID}
 	if nginxWarning != "" {
 		resp["warning"] = nginxWarning
+	}
+	// Cloudflare DNS: best effort. A DNS problem never fails site creation; the result is reported alongside.
+	if isAdmin && boolOr(req.CloudflareDNS, true) {
+		if dns := h.siteDNS(domain, includeWww, boolOr(req.CloudflareProxied, true), true, false); dns.Status != "not-configured" {
+			resp["dns"] = dns
+			h.audit(r, "dns.site", domain, map[string]any{"status": dns.Status, "zone": dns.Zone, "via": "site-create"})
+		}
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

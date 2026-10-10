@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # DockLite Installer — interactive setup wizard
-# Usage: sudo bash install.sh   (or: curl -fsSL .../install.sh | sudo bash)
+# Usage: sudo bash install.sh [--dry-run]   (one-line install for users: see get.sh)
 set -euo pipefail
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -35,7 +35,7 @@ rainbow_line() {
 }
 
 banner() {
-    clear
+    clear 2>/dev/null || true
     echo ""
     echo -e "${PINK}     ____             __   __    _ __       ${NC}"
     echo -e "${CORAL}    / __ \\____  _____/ /__/ /   (_) /_____ ${NC}"
@@ -83,13 +83,21 @@ spin() {
 
 ask() {
     local var="$1" prompt="$2" default="$3"
+    if [[ "${ASSUME_YES:-0}" -eq 1 ]]; then printf -v "$var" '%s' "$default"; return; fi
     echo -en "  ${BLUE}${prompt}${NC} ${YELLOW}[${default}]${NC}: "
     local input; read -r input
     printf -v "$var" '%s' "${input:-$default}"
 }
 
+ASSUME_YES=0   # --yes: take the default answer to every question (used by the dashboard's Update button)
+
 ask_yn() {
     local prompt="$1" default="${2:-Y}"
+    if [[ "$ASSUME_YES" -eq 1 ]]; then
+        echo -e "  ${BLUE}${prompt}${NC} ${DIM}-> ${default} (--yes)${NC}"
+        [[ "${default^^}" == "Y" ]]
+        return
+    fi
     echo -en "  ${BLUE}${prompt}${NC} ${YELLOW}(${default}/$([ "$default" = Y ] && echo n || echo y))${NC}: "
     local input; read -r input
     input="${input:-$default}"
@@ -297,6 +305,7 @@ build_webapp() {
 
 DRY_RUN=0
 OLD_INSTALL=0
+OLD_UNITS=()   # older DockLite systemd services (docklite-agent.service, ...)
 
 preflight() {
     local nginx_files=() f n
@@ -342,8 +351,14 @@ preflight() {
         ok "No DockLite in ${INSTALL_DIR} yet"
     fi
     local units
-    units="$(systemctl list-units --all --no-legend 'docklite*' 2>/dev/null | awk '{print $1"("$4")"}' | tr '\n' ' ')"
-    [[ -n "$units" ]] && warn "Older DockLite services exist: ${units}— they are left alone; DockLite picks free ports."
+    units="$(systemctl list-units --all --no-legend 'docklite*.service' 2>/dev/null | sed 's/^[^a-z]*//' | awk '{print $1"("$4")"}' | tr '\n' ' ')"
+    OLD_UNITS=()
+    while read -r f; do [[ -n "$f" ]] && OLD_UNITS+=("$f"); done < <(systemctl list-units --all --no-legend 'docklite*.service' 2>/dev/null | sed 's/^[^a-z]*//' | awk '{print $1}')
+    if [[ ${#OLD_UNITS[@]} -gt 0 ]]; then
+        warn "Older DockLite services exist: ${units}"
+        info "  They run from the folder this install replaces, so you will be asked to stop and disable them first."
+        info "  Your sites do not depend on them: nginx and Docker serve the sites."
+    fi
 
     # docker + sites
     if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
@@ -375,6 +390,29 @@ preflight() {
 }
 
 # Keep a copy of an older install before the sync overwrites its files.
+# The older DockLite's services run from the folder we are about to replace. Stop and disable
+# them (after asking) so two DockLites never share files; sites keep running via nginx and Docker.
+STOPPED_UNITS=()
+stop_old_services() {
+    [[ ${#OLD_UNITS[@]} -gt 0 ]] || return 0
+    echo
+    warn "Older DockLite services are installed: ${OLD_UNITS[*]}"
+    info "They run from ${INSTALL_DIR}, which this install replaces. Your sites keep running, because"
+    info "nginx and Docker serve them, not DockLite itself. Stopping them avoids two DockLites fighting."
+    if ask_yn "Stop and disable the older services?" "Y"; then
+        local u
+        for u in "${OLD_UNITS[@]}"; do
+            if $SUDO systemctl disable --now "$u" >/dev/null 2>&1; then
+                STOPPED_UNITS+=("$u"); ok "Stopped and disabled ${u}"
+            else
+                warn "Could not stop ${u}; stop it yourself: sudo systemctl disable --now ${u}"
+            fi
+        done
+    else
+        warn "Leaving them running; they may misbehave while their files are replaced."
+    fi
+}
+
 backup_old_install() {
     [[ "$OLD_INSTALL" -eq 1 ]] || return 0
     local out="/var/backups/docklite/old-install-$(date +%Y%m%d-%H%M%S).tar.gz"
@@ -384,12 +422,15 @@ backup_old_install() {
         ok "Backed up the older install to ${out}"
     else
         fail "Could not back up ${INSTALL_DIR}; stopping so nothing is lost"
+        local u
+        for u in "${STOPPED_UNITS[@]+"${STOPPED_UNITS[@]}"}"; do $SUDO systemctl enable --now "$u" >/dev/null 2>&1 || true; done
         exit 1
     fi
 }
 
 install_to_opt() {
     step_header "Installing to ${INSTALL_DIR}"
+    stop_old_services
     backup_old_install
     $SUDO mkdir -p "${INSTALL_DIR}"
     # Runtime state lives only in INSTALL_DIR, never in the repo. Excluding
@@ -405,6 +446,10 @@ install_to_opt() {
         "${REPO_DIR}/" "${INSTALL_DIR}/"
     $SUDO mkdir -p "${INSTALL_DIR}/data" "${INSTALL_DIR}/logs"
     $SUDO chown -R docklite:docklite "${INSTALL_DIR}"
+    # The launcher runs as the admin (a docklite group member) and creates .docklite.conf and
+    # ecosystem.config.js here on first setup, so the folder itself must be group-writable. Do not
+    # inherit this from the source checkout: a root-made clone (the one-line install) is 755.
+    $SUDO chmod 775 "${INSTALL_DIR}"
     # The launcher runs as the admin (a docklite group member) and rewrites
     # these, so they must stay group-writable after the chown above.
     local f
@@ -556,8 +601,10 @@ main() {
     for arg in "$@"; do
         case "$arg" in
             --dry-run) DRY_RUN=1 ;;
+            -y|--yes) ASSUME_YES=1 ;;
             -h|--help)
-                echo "Usage: sudo bash install.sh [--dry-run]"
+                echo "Usage: sudo bash install.sh [--dry-run] [--yes]"
+                echo "  --yes       don't ask questions; take the default answers (used for unattended upgrades)"
                 echo "  --dry-run   look at this server and say what would happen; changes nothing"
                 exit 0 ;;
         esac
@@ -659,9 +706,14 @@ main() {
     # An existing config means this is an update: apply it without the
     # wizard, which would pick new ports and regenerate the token, session
     # secret and panel domain.
-    local target_user="${SUDO_USER:-$USER}"
+    local target_user="${SUDO_USER:-${USER:-root}}"
     local action="setup"
     [[ -f "${INSTALL_DIR}/.docklite.conf" ]] && action="upgrade"
+    if [[ "$action" == "setup" && "$ASSUME_YES" -eq 1 ]]; then
+        # The setup wizard needs a person. An unattended run on a fresh install stops here.
+        ok "DockLite is installed. Finish setup by running:  docklite setup"
+        exit 0
+    fi
     if [[ "$target_user" != "root" ]]; then
         exec sudo -u "$target_user" "${INSTALL_DIR}/docklite" "$action"
     else

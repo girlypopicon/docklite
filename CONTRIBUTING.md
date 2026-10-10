@@ -24,13 +24,15 @@ refused. Demo containers carry the label `docklite.demo=1`.
 
 ## Versioning
 
-Add a line under **Unreleased** in `CHANGELOG.md` for every user-visible change as you make it.
+Add a line under **Unreleased** in `CHANGELOG.md` for every user-visible change as you make it. Servers update from GitHub
+*releases* (the dashboard's Update button installs the newest `vX.Y.Z` tag), so a change isn't deployable until it's released.
 
 ```bash
-make version                       # where are we? flags anything out of step
-scripts/release.sh minor           # or patch / major / X.Y.Z; add --dry-run to preview
+make version                                 # where are we? flags anything out of step
+scripts/release.sh prepare minor             # on your branch: bump VERSION, package.json, CHANGELOG; commit (patch|minor|major|X.Y.Z)
+# ...open a PR and merge it, then on main:
+scripts/release.sh tag --push                # tag vX.Y.Z and push the tag
+scripts/release.sh publish                   # create the GitHub release with the changelog notes
 ```
 
-The script moves Unreleased under the new version, updates `VERSION` and `webapp/package.json`, commits
-`Release vX.Y.Z` and tags it locally. It never pushes; it prints the push commands. Release from `main` after
-merging. Rule of thumb: `patch` for fixes, `minor` for new features, and `1.5.0` is the "production ready" goal.
+Rule of thumb: `patch` for fixes, `minor` for new features, and `1.5.0` is the "production ready" goal.

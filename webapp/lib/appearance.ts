@@ -18,7 +18,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   theme: 'cyberpunk',
   fontSize: 'medium',
   animations: true,
-  glow: 100,
+  glow: 0,
 };
 
 // Root font-size as a share of the browser default, so "medium" leaves the
@@ -82,7 +82,11 @@ export function applyAppearance(appearance: Appearance) {
   root.setAttribute('data-theme', appearance.theme);
   root.setAttribute('data-animations', appearance.animations ? 'on' : 'off');
   root.style.fontSize = `${FONT_SCALES[appearance.fontSize]}%`;
-  root.style.setProperty('--glow', String(appearance.glow / 100));
+  // glow 0 = how DockLite looks by default; 200 = the strong neon look. --glow scales text/tab glows (1x to 2x);
+  // --glow-boost (0 to 1) adds the big halo around cards.
+  const boost = Math.min(200, Math.max(0, appearance.glow)) / 200;
+  root.style.setProperty('--glow', String(1 + boost));
+  root.style.setProperty('--glow-boost', String(boost));
 }
 
 /** Source of the pre-paint script: same reading rules as loadAppearance(). */
@@ -97,7 +101,8 @@ r.style.fontSize=(S[f]||100)+'%';
 var a=g('docklite-animations');
 if(a===null)a='true';
 r.setAttribute('data-animations',a==='true'?'on':'off');
-var n=g('docklite-neon-intensity'),v=n===null?100:Number(n);
-if(!isFinite(v))v=100;
-r.style.setProperty('--glow',String(Math.min(200,Math.max(0,v))/100));
+var n=g('docklite-neon-intensity'),v=n===null?0:Number(n);
+if(!isFinite(v))v=0;
+var b=Math.min(200,Math.max(0,v))/200;
+r.style.setProperty('--glow',String(1+b));r.style.setProperty('--glow-boost',String(b));
 }catch(e){}})();`;
