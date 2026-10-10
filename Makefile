@@ -87,3 +87,7 @@ test-update:
 .PHONY: test-nginx
 test-nginx:
 	@bash scripts/test-nginx-helper.sh
+
+.PHONY: test-installer
+test-installer:
+	@bash scripts/test-installer-preflight.sh
