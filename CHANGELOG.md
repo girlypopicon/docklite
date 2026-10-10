@@ -5,6 +5,18 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.2.1 (2026-10-10)
+
+### Added
+- `docklite update`: check for a newer DockLite (`--check`) and install it (`--yes`) from the command line. It follows the update
+  through the restart and exits non-zero if it failed or rolled back. Needs no sudo password, so a person or an assistant logged in
+  to the server can run it.
+- A written roadmap (`docs/ROADMAP.md`): what 1.2.x, 1.3, 1.4 and 1.5 are for.
+
+### Fixed
+- A failed update now puts your **data** back as well as the old program, so the old version never meets a database the new one
+  already changed. (The pre-update backup is restored while DockLite is stopped.)
+
 ## 1.2.0 (2026-10-08)
 
 ### Added

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 type recorded struct {
@@ -387,5 +388,82 @@ func TestTableTidiesImagesAndPorts(t *testing.T) {
 	}
 	if got := dedupePorts(""); got != "-" {
 		t.Fatalf("empty ports: %q", got)
+	}
+}
+
+func TestUpdateCheckAndInstall(t *testing.T) {
+	updatePollInterval = time.Millisecond
+	defer func() { updatePollInterval = 3 * time.Second }()
+
+	agent := newFakeAgent(t)
+	agent.json("GET", "/api/system/update/status", 200, `{"version":"1.2.0","latestVersion":"1.3.0","updateAvailable":true,"notes":"- a new thing","state":"idle","log":[]}`)
+
+	code, out, _ := runCLI(t, agent, "", "update", "--check")
+	if code != 0 || !strings.Contains(out, "installed: 1.2.0") || !strings.Contains(out, "newest:    1.3.0") || !strings.Contains(out, "docklite update --yes") {
+		t.Fatalf("--check must describe the situation and change nothing: exit %d\n%s", code, out)
+	}
+	if len(agent.calls("POST", "/api/system/update/run")) != 0 {
+		t.Fatal("--check started an update")
+	}
+
+	// Without --yes a script/assistant is refused (it is destructive), and nothing starts.
+	code, _, errOut := runCLI(t, agent, "", "update")
+	if code != exitNeedsYes || len(agent.calls("POST", "/api/system/update/run")) != 0 {
+		t.Fatalf("update without --yes must refuse: exit %d %s", code, errOut)
+	}
+
+	// With --yes: starts, follows the log through "success" at the new version.
+	agent.json("POST", "/api/system/update/run", 202, `{"status":"started","version":"1.3.0"}`)
+	polls := 0
+	agent.routes["GET /api/system/update/status"] = func(w http.ResponseWriter, _ string) {
+		polls++
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case polls <= 2: // the status check before starting, then the first poll: still running
+			_, _ = w.Write([]byte(`{"version":"1.2.0","latestVersion":"1.3.0","updateAvailable":true,"state":"running","updateRunning":true,"log":["Backed up your data"]}`))
+		case polls == 3: // DockLite restarting
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = w.Write([]byte(`{"error":"restarting"}`))
+		default:
+			_, _ = w.Write([]byte(`{"version":"1.3.0","latestVersion":"1.3.0","state":"success","log":["Backed up your data","Update complete"]}`))
+		}
+	}
+	// the very first status call (before starting) must report "not running": handle by answering the first call as idle
+	first := true
+	inner := agent.routes["GET /api/system/update/status"]
+	agent.routes["GET /api/system/update/status"] = func(w http.ResponseWriter, b string) {
+		if first {
+			first = false
+			polls = 0
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"version":"1.2.0","latestVersion":"1.3.0","updateAvailable":true,"state":"idle","log":[]}`))
+			return
+		}
+		inner(w, b)
+	}
+	code, out, errOut = runCLI(t, agent, "", "update", "--yes")
+	if code != 0 || !strings.Contains(out, "Update complete") || !strings.Contains(out, "DockLite 1.3.0 is running") {
+		t.Fatalf("a successful update must be followed to the end: exit %d\n%s\n%s", code, out, errOut)
+	}
+	if strings.Count(out, "Backed up your data") != 1 {
+		t.Errorf("log lines must be printed once, not repeated:\n%s", out)
+	}
+
+	// A failed update is a failing exit code with the reason.
+	agent.json("POST", "/api/system/update/run", 202, `{"status":"started"}`)
+	first = true
+	polls = 0
+	agent.routes["GET /api/system/update/status"] = func(w http.ResponseWriter, _ string) {
+		w.Header().Set("Content-Type", "application/json")
+		if first {
+			first = false
+			_, _ = w.Write([]byte(`{"version":"1.2.0","latestVersion":"1.3.0","updateAvailable":true,"state":"idle","log":[]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"version":"1.2.0","state":"rolled-back","stateMessage":"update to 1.3.0 failed; went back to 1.2.0","log":[]}`))
+	}
+	code, _, errOut = runCLI(t, agent, "", "update", "--yes")
+	if code != exitFailure || !strings.Contains(errOut, "went back to 1.2.0") {
+		t.Fatalf("rolled-back must fail with the reason: exit %d %s", code, errOut)
 	}
 }

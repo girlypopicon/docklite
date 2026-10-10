@@ -196,6 +196,8 @@ PM2 is managed via `sudo pm2` since the daemon runs as root. The `docklite` CLI 
 2. API route in `webapp/app/api/[feature]/route.ts`
 3. Check session via `getSession()` from `lib/auth.ts`
 
+**Migrations must stay backward compatible** with the previous release (add tables/columns; never drop or rename in the same release that stops using them). A failed update restores data from its backup, but a deliberate downgrade after a good update keeps the new schema.
+
 **New database table:**
 1. Migration in `webapp/lib/migrations/[number]_description.ts` with `up`/`down` SQL
 2. CRUD functions in `webapp/lib/db.ts`

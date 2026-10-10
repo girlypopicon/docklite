@@ -182,6 +182,17 @@ install_release() {
     return 0
 }
 
+# Put the settings and data back exactly as the pre-update backup had them. Used when an update fails, so the old
+# version never meets a database the new version already changed. Stops DockLite first so nothing is mid-write.
+restore_data() {
+    local backup="$1"
+    [[ -f "$backup" ]] || return 1
+    command -v pm2 >/dev/null 2>&1 && pm2 stop docklite-agent docklite-gui >/dev/null 2>&1 || true
+    rm -f "$INSTALL_DIR/data/docklite.db-wal" "$INSTALL_DIR/data/docklite.db-shm"   # leftovers of the failed version
+    tar xzf "$backup" -C "$INSTALL_DIR" data .docklite.conf || return 1
+    fix_install_perms
+}
+
 run_update_job() {
     # Globals on purpose: the EXIT trap reads them after the function has unwound.
     tag="$1"; UPD_TAG="$1"; UPD_DONE=0
@@ -231,6 +242,7 @@ run_update_job() {
         finish failed "could not download ${tag} from GitHub; nothing was changed"; exit 1
     fi
     ulog "The new version didn't come up cleanly (step result $rc). Trying to restore ${prev_tag}..."
+    if restore_data "$backup"; then ulog "Restored your data from the safety backup."; else ulog "Could not restore your data from the backup automatically."; fi
     if [[ "$prev" != unknown ]] && install_release "$prev_tag" && wait_healthy 150; then
         ulog "Restored ${prev}. Your data backup is at $backup"
         finish rolled-back "update to ${tag#v} failed; went back to ${prev}"; exit 1
