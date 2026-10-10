@@ -18,7 +18,7 @@ GOOD='echo "$VERSION_FILE_CONTENT_PLACEHOLDER" >/dev/null; cp "$(dirname "$0")/V
 mkrelease 1.0.0 "$GOOD"
 mkrelease 1.1.0 "$GOOD"
 mkrelease 1.2.0 "$GOOD"
-mkrelease 1.3.0 'echo "pretend the build blew up"; exit 1'
+mkrelease 1.3.0 'echo "the new version changed the database" > "$INSTALL_DIR/data/docklite.db"; echo junk > "$INSTALL_DIR/data/docklite.db-wal"; echo "pretend the build blew up"; exit 1'
 
 # a fake DockLite that answers like the real one
 PORT=$((20000 + RANDOM % 10000))
@@ -51,6 +51,9 @@ echo "2. update to v1.3.0 whose install fails -> rolls back to 1.2.0"
 bash "$H" update-job v1.3.0; check "exit code" "$?" "1"
 check "state" "$(state)" "rolled-back v1.3.0"
 check "still on the old version" "$(cat "$T/opt/VERSION")" "1.2.0"
+check "database put back as it was before the update" "$(cat "$T/opt/data/docklite.db")" "db"
+check "failed version's leftover journal removed" "$([ -e "$T/opt/data/docklite.db-wal" ] && echo present || echo gone)" "gone"
+check "settings kept" "$(grep -c AGENT_PORT "$T/opt/.docklite.conf")" "1"
 
 echo "3. a release that doesn't exist -> nothing changes"
 bash "$H" update-job v9.9.9; check "exit code" "$?" "1"

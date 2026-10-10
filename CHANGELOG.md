@@ -5,6 +5,13 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- A written roadmap (`docs/ROADMAP.md`): what 1.2.x, 1.3, 1.4 and 1.5 are for.
+
+### Fixed
+- A failed update now puts your **data** back as well as the old program, so the old version never meets a database the new one
+  already changed. (The pre-update backup is restored while DockLite is stopped.)
+
 ## 1.2.0 (2026-10-08)
 
 ### Added
