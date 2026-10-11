@@ -79,6 +79,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/nginx/reload", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxActions)))
 	mux.HandleFunc("/api/ssl", handlers.Auth(handlers.SSLBasic))
 	mux.HandleFunc("/api/ssl/status", handlers.Auth(handlers.SSLStatus))
+	mux.HandleFunc("/api/ssl/auto", handlers.Auth(hnd.CSRFMiddleware(handlers.AutoCerts)))
 	mux.HandleFunc("/api/ssl/issue", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLIssue)))
 	mux.HandleFunc("/api/ssl/renew", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLRenew)))
 	mux.HandleFunc("/api/ssl/delete", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLDelete)))
