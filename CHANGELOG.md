@@ -6,6 +6,7 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## Unreleased
 
 ## 1.2.5 (2026-10-11)
+
 ### Fixed
 - **The dashboard's Update button failed on the build step and left the panel stopped (502 Bad Gateway).** The update runs as a
   background job that has no home folder set, and the installer stopped when it needed one. The installer now copes, and so does
