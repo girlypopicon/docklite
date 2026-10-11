@@ -170,6 +170,14 @@ wait_healthy() {
     return 1
 }
 
+# Turn the installer's terminal output into plain log lines (see install_release).
+clean_installer_output() {
+    LC_ALL=C.UTF-8 tr '\r' '\n' \
+        | LC_ALL=C.UTF-8 sed -u -E 's/\x1b\[[0-9;?]*[A-Za-z]//g; s/[⠀-⣿]//g; s/^[[:space:]]+//; s/[[:space:]]+$//' \
+        | grep --line-buffered -v -E '^$|^[─━]+$|^(_|/|\\|I N S T)|^Updating packages' \
+        | uniq || true
+}
+
 # Check out exactly one release tag in the source copy and install it without asking questions.
 install_release() {
     local tag="$1" want
@@ -177,7 +185,11 @@ install_release() {
     git -C "$UPDATE_SRC" checkout --quiet --force "$tag" || return 11
     want="$(tr -d '[:space:]' < "$UPDATE_SRC/VERSION" 2>/dev/null || true)"
     [[ "v${want}" == "$tag" ]] || { echo "release ${tag} contains version '${want}', which doesn't match its name"; return 12; }
-    ( cd "$UPDATE_SRC" && bash install.sh --yes ) || return 13
+    # The installer draws colours and spinners for a terminal; in the update log they turn into noise. Keep one clean
+    # line per step: no colour codes, spinner frames dropped, repeated lines collapsed, banner and rules removed.
+    ( cd "$UPDATE_SRC" && NO_COLOR=1 bash install.sh --yes 2>&1 ) | clean_installer_output
+    local irc=${PIPESTATUS[0]}
+    [[ $irc -eq 0 ]] || return 13   # the installer's own result, not the filter's
     fix_install_perms
     return 0
 }
@@ -198,6 +210,7 @@ run_update_job() {
     tag="$1"; UPD_TAG="$1"; UPD_DONE=0
     local prev prev_tag backup rc=0
     export TERM=dumb
+    [[ -n "${HOME:-}" ]] || export HOME=/root   # systemd-run starts jobs without one
     exec >>"$UPDATE_LOG" 2>&1
     ulog() { echo "[$(date '+%H:%M:%S')] $*"; }
     finish() { UPD_DONE=1; set_update_state "$1" "$UPD_TAG" "${2:-}"; }

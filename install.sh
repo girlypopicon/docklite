@@ -2,6 +2,12 @@
 # DockLite Installer — interactive setup wizard
 # Usage: sudo bash install.sh [--dry-run]   (one-line install for users: see get.sh)
 set -Eeuo pipefail
+
+# Run from a detached systemd job (the dashboard's Update button) HOME is not set; several steps below look in $HOME.
+if [[ -z "${HOME:-}" ]]; then
+    HOME="$(getent passwd "$(id -u)" 2>/dev/null | cut -d: -f6 || true)"
+    export HOME="${HOME:-/root}"
+fi
 # If the installer ever stops unexpectedly, say where, instead of just disappearing.
 # (Only the installer's own shell reports: harmless misses inside sub-commands stay quiet.)
 on_unexpected_stop() {
