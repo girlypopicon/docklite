@@ -15,6 +15,7 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
   instead of trusting the last note it wrote.
 
 ### Changed
+- **Release notes in the Update card look like notes.** Headings, bullets and bold text are shown properly instead of as raw `###` and `**` symbols.
 - **The update log is tidy no matter which version runs the update.** Colour codes, spinner frames and repeated lines are removed both
   when the log is written and when the dashboard shows it, so each step reads as one line.
 

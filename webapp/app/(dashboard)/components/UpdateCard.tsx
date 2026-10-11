@@ -22,6 +22,37 @@ interface UpdateStatus {
 /** Settings → System: shows the installed and newest DockLite versions and updates with one button.
  *  The update runs on the server as its own job (DockLite restarts partway through), so this card keeps
  *  asking for progress and simply waits through the restart. */
+// Release notes arrive as markdown. Show headings, bullets, **bold** and `code` properly instead of the raw symbols.
+function inlineMarkdown(text: string) {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) return <strong key={i} style={{ color: 'var(--text-primary)' }}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) return <code key={i} className="font-mono">{part.slice(1, -1)}</code>;
+    return part;
+  });
+}
+
+function ReleaseNotes({ text }: { text: string }) {
+  // join continuation lines (indented) onto the bullet they belong to
+  const items: string[] = [];
+  for (const raw of text.split('\n')) {
+    if (/^\s+\S/.test(raw) && items.length && !/^\s*[-*] /.test(raw)) items[items.length - 1] += ' ' + raw.trim();
+    else items.push(raw);
+  }
+  return (
+    <div className="space-y-1.5">
+      {items.map((line, i) => {
+        const t = line.trim();
+        if (!t) return null;
+        const h = t.match(/^#{1,6}\s+(.*)$/);
+        if (h) return <div key={i} className="font-bold pt-1" style={{ color: 'var(--text-primary)' }}>{h[1]}</div>;
+        const b = t.match(/^[-*]\s+(.*)$/);
+        if (b) return <div key={i} className="flex gap-2"><span aria-hidden>•</span><span>{inlineMarkdown(b[1])}</span></div>;
+        return <div key={i}>{inlineMarkdown(t)}</div>;
+      })}
+    </div>
+  );
+}
+
 export default function UpdateCard() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -188,8 +219,8 @@ export default function UpdateCard() {
           {status.updateAvailable && !waiting && !finishedOk && status.notes && (
             <div className="mb-4">
               <div className="text-xs font-bold mb-2 opacity-60">What’s new in {status.latestVersion}</div>
-              <div className="rounded-lg p-3 text-xs whitespace-pre-wrap max-h-48 overflow-y-auto" style={{ background: 'var(--bg-darker)', color: 'var(--text-secondary)' }}>
-                {status.notes}
+              <div className="rounded-lg p-3 text-xs max-h-48 overflow-y-auto" style={{ background: 'var(--bg-darker)', color: 'var(--text-secondary)' }}>
+                <ReleaseNotes text={status.notes} />
               </div>
             </div>
           )}
