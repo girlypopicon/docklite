@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.2.6 (2026-10-11)
+
 ### Fixed
 - **The Update button's installer stopped its own update job.** The installer shuts down "older DockLite services" so they don't fight
   the new one, and it counted the update's own temporary service as one, so the update killed itself right after starting. The
