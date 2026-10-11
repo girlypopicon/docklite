@@ -76,6 +76,9 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Create a website | `docklite sites create example.com` (`--type php` or `--type node --port 3000`) |
 | Get HTTPS for a site | `docklite ssl issue example.com --www --email me@example.com` (DNS must point here first) |
 | See certificates and expiry | `docklite ssl status` |
+| See sites still waiting for their automatic certificate | `docklite ssl pending` |
+| Make a waiting or stopped certificate job try again now | `docklite ssl retry example.com` (or `--all`) |
+| Set or show the email Let's Encrypt uses for automatic certificates | `docklite ssl email me@example.com` |
 | Check/reload nginx | `docklite nginx test` then `docklite nginx reload` |
 | Why is the server slow? | `docklite server overview`, `docklite server services`, `docklite server logs system` |
 | Add a DockLite account | `docklite users create alice` (add `--admin`; use `--password-stdin` in scripts) |

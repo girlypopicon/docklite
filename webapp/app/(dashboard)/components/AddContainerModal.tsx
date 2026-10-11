@@ -26,6 +26,7 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
   const [portTouched, setPortTouched] = useState(false);
   const [includeWww, setIncludeWww] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [autoHttps, setAutoHttps] = useState(true);
   const [cfDns, setCfDns] = useState(true);
   const [cfProxied, setCfProxied] = useState(true);
   const [dnsPreview, setDnsPreview] = useState<DnsPreview | null>(null); // null: not an admin / not checked yet
@@ -91,6 +92,7 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
           code_path: codePath.trim() || undefined,
           port: templateType === 'node' ? Number(port) || 3000 : undefined,
           include_www: includeWww,
+          auto_https: autoHttps,
           cloudflare_dns: dnsPreview && (dnsPreview.status === 'ready' || dnsPreview.status === 'conflict') ? cfDns : false,
           cloudflare_proxied: cfProxied,
         }),
@@ -101,8 +103,9 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
       }
       const warning = data.warning;
       const dns = data.dns as DnsPreview | undefined;
+      const httpsNote = data.https ? ' HTTPS will be set up automatically as soon as the domain’s DNS points here.' : '';
       if (dns && dns.status === 'done') {
-        toast.success(`Site created, and its DNS records were added in Cloudflare (${dns.zone}).`);
+        toast.success(`Site created, and its DNS records were added in Cloudflare (${dns.zone}).${httpsNote}`);
       } else if (dns && dns.status === 'conflict') {
         toast.error(`Site created, but DNS was left alone: ${dns.message || 'a record already points somewhere else.'}`);
       } else if (dns && (dns.status === 'error' || dns.status === 'no-ip')) {
@@ -110,7 +113,7 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
       } else if (warning) {
         toast.success(`Container created. Note: ${warning}`);
       } else {
-        toast.success('Container created with nginx proxy configured');
+        toast.success(`Container created with nginx proxy configured.${httpsNote}`);
       }
       onCreated();
       onClose();
@@ -191,6 +194,22 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
               onChange={(e) => setIncludeWww(e.target.checked)}
             />
                               <label htmlFor="include-www" className="text-sm text-accent-purple">              Request SSL for <code>www.{domain || 'example.com'}</code> too
+            </label>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <input
+              id="auto-https"
+              type="checkbox"
+              className="w-4 h-4 mt-0.5 accent-cyan-400"
+              checked={autoHttps}
+              onChange={(e) => setAutoHttps(e.target.checked)}
+            />
+            <label htmlFor="auto-https" className="text-sm text-accent-green">
+              Get its HTTPS certificate automatically
+              <span className="block text-xs text-ink-muted">
+                DockLite waits until the domain’s DNS points here (this can take a few minutes), then asks Let’s Encrypt for you. You can watch it in the site’s details.
+              </span>
             </label>
           </div>
 

@@ -95,6 +95,8 @@ type createContainerRequest struct {
 	// CloudflareDNS: also create the site's DNS records in Cloudflare (admins only; default on when Cloudflare is connected).
 	CloudflareDNS     *bool `json:"cloudflare_dns"`
 	CloudflareProxied *bool `json:"cloudflare_proxied"`
+	// AutoHTTPS: get the site's Let's Encrypt certificate by itself once its DNS points here (default on).
+	AutoHTTPS *bool `json:"auto_https"`
 }
 
 func (h *Handlers) ListContainers(w http.ResponseWriter, r *http.Request) {
@@ -821,6 +823,11 @@ func (h *Handlers) createContainer(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{"success": true, "site_id": site.ID}
 	if nginxWarning != "" {
 		resp["warning"] = nginxWarning
+	}
+	// HTTPS: a background job waits for DNS and then asks for the certificate; the response says it started.
+	if boolOr(req.AutoHTTPS, true) {
+		job := h.EnqueueCert(domain, includeWww)
+		resp["https"] = map[string]any{"state": job.State, "message": job.Message}
 	}
 	// Cloudflare DNS: best effort. A DNS problem never fails site creation; the result is reported alongside.
 	if isAdmin && boolOr(req.CloudflareDNS, true) {
