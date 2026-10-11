@@ -4,11 +4,10 @@ Versions follow `MAJOR.MINOR.PATCH`. New work is listed under **Unreleased**; `s
 numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in step).
 
 ## Unreleased
-
-## 1.2.4 (2026-10-11)
-
 ### Changed
 - **The update log is readable.** It used to be full of colour codes and spinner frames; it now shows one clean line per step.
+
+## 1.2.4 (2026-10-11)
 
 ### Added
 - **New sites get their HTTPS certificate automatically.** When you create a site, DockLite waits until the domain's DNS points at
