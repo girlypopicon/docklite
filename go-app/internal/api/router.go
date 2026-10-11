@@ -19,6 +19,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/containers/all", handlers.Auth(handlers.ListAllContainers))
 	mux.HandleFunc("/api/containers/scan", handlers.Auth(hnd.CSRFMiddleware(handlers.ScanSites)))
 	mux.HandleFunc("/api/sites/layout", handlers.Auth(hnd.CSRFMiddleware(handlers.SiteLayout)))
+	mux.HandleFunc("/api/sites/permissions", handlers.Auth(hnd.CSRFMiddleware(handlers.SitePermissions)))
 	mux.HandleFunc("/api/sites/folders", handlers.Auth(hnd.CSRFMiddleware(handlers.SiteFolders)))
 	mux.HandleFunc("/api/sites/folders/adopt", handlers.Auth(hnd.CSRFMiddleware(handlers.AdoptFolder)))
 	mux.HandleFunc("/api/sites/folders/trash", handlers.Auth(hnd.CSRFMiddleware(handlers.TrashFolder)))

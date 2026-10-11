@@ -425,6 +425,7 @@ func moveToTrash(p string) (string, error) {
 		return "", fmt.Errorf("cannot create the trash folder: %w", err)
 	}
 	chownDocklite(trash)
+	shareWithGroup(trash)
 	rel, _ := filepath.Rel(siteBaseDir, p)
 	dest := filepath.Join(trash, time.Now().UTC().Format("20060102-150405")+"-"+strings.ReplaceAll(rel, string(filepath.Separator), "__"))
 	if err := os.Rename(p, dest); err != nil {

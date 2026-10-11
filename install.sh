@@ -507,7 +507,7 @@ setup_user_and_dirs() {
     $SUDO mkdir -p /var/www/sites
     # Only the top folder: existing sites (and their owners) are never re-owned here.
     $SUDO chown docklite:docklite /var/www/sites
-    $SUDO chmod 775 /var/www/sites
+    $SUDO chmod 2775 /var/www/sites   # group-writable + setgid: members of the docklite group (and assistants) can work in site folders
     ok "Site directory: /var/www/sites (owned by docklite)"
 
     # Backups and diagnostics bundles are written here by the agent, which

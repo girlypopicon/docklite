@@ -86,6 +86,7 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Move sites into that layout | `docklite sites layout --apply --yes` (copies; old folders are kept) |
 | See if a newer DockLite exists | `docklite update --check` |
 | Update DockLite (sites keep running) | `docklite update --yes` (waits until it's running; rolls back by itself if it fails) |
+| Let me (or an assistant) edit a site's files | new sites already allow it; for older ones: `docklite sites permissions [domain]` |
 | Stop an unused service | `docklite server service traefik stop --yes` |
 
 ## Concepts

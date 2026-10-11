@@ -842,6 +842,7 @@ func ensureFile(path string, content string) error {
 		return err
 	}
 	chownDocklite(path)
+	shareWithGroup(path)
 	return nil
 }
 
@@ -1153,11 +1154,13 @@ func getSitePath(username string, domain string) string {
 
 func ensureSiteDirectory(username string, domain string) error {
 	sitePath := getSitePath(username, domain)
-	if err := os.MkdirAll(sitePath, 0o775); err != nil {
+	if err := mkdirAllShared(sitePath); err != nil {
 		return fmt.Errorf("failed to create site directory: %w", err)
 	}
 	chownDocklite(filepath.Join(siteBaseDir, username))
 	chownDocklite(sitePath)
+	shareWithGroup(filepath.Join(siteBaseDir, username))
+	shareWithGroup(sitePath)
 	return nil
 }
 
