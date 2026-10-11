@@ -210,6 +210,7 @@ run_update_job() {
     tag="$1"; UPD_TAG="$1"; UPD_DONE=0
     local prev prev_tag backup rc=0
     export TERM=dumb
+    [[ -n "${HOME:-}" ]] || export HOME=/root   # systemd-run starts jobs without one
     exec >>"$UPDATE_LOG" 2>&1
     ulog() { echo "[$(date '+%H:%M:%S')] $*"; }
     finish() { UPD_DONE=1; set_update_state "$1" "$UPD_TAG" "${2:-}"; }
