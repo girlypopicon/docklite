@@ -5,6 +5,17 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Fixed
+- **The Update button's installer stopped its own update job.** The installer shuts down "older DockLite services" so they don't fight
+  the new one, and it counted the update's own temporary service as one, so the update killed itself right after starting. The
+  update's service is now left alone.
+- **A killed update no longer blocks the next one for 45 minutes.** DockLite now checks that an update is really still running
+  instead of trusting the last note it wrote.
+
+### Changed
+- **The update log is tidy no matter which version runs the update.** Colour codes, spinner frames and repeated lines are removed both
+  when the log is written and when the dashboard shows it, so each step reads as one line.
+
 ## 1.2.5 (2026-10-11)
 
 ### Fixed

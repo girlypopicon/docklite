@@ -345,8 +345,13 @@ case "$cmd" in
         mkdir -p /var/log/docklite /var/lib/docklite; chmod 755 /var/log/docklite /var/lib/docklite
         if [[ -f "$UPDATE_STATE" ]]; then
             read -r st _t at _rest < "$UPDATE_STATE" || true
+            # "running" counts only while the job really is: its lock is held, or it only just started. A job that was
+            # killed leaves "running" behind, and that must not block the next try.
             if [[ "${st:-}" == running && "${at:-0}" =~ ^[0-9]+$ ]] && (( $(date +%s) - at < 2700 )); then
-                die "an update is already running"
+                age=$(( $(date +%s) - at ))
+                if (( age < 30 )) || ! flock -n /var/lock/docklite-update.lock true 2>/dev/null; then
+                    die "an update is already running"
+                fi
             fi
         fi
         set_update_state running "$1" "starting"
