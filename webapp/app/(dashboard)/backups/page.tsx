@@ -403,7 +403,7 @@ export default function BackupsPage() {
             <HardDrives size={32} weight="duotone" color="var(--neon-pink)" />
             Backups
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-ink-muted mt-1">
             Run instant backups, schedule regular protection, and manage restores.
           </p>
         </div>
@@ -444,8 +444,8 @@ export default function BackupsPage() {
           onClick={() => setActiveTab('backups')}
           className={`px-4 py-2 font-bold transition-colors ${
             activeTab === 'backups'
-              ? 'border-b-2 border-neon-pink text-neon-pink'
-              : 'text-gray-400 hover:text-neon-cyan'
+              ? 'border-b-2 border-neon-pink text-accent-pink'
+              : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
           <HardDrives size={20} weight="duotone" className="inline mr-2" />
@@ -455,8 +455,8 @@ export default function BackupsPage() {
           onClick={() => setActiveTab('schedules')}
           className={`px-4 py-2 font-bold transition-colors ${
             activeTab === 'schedules'
-              ? 'border-b-2 border-neon-pink text-neon-pink'
-              : 'text-gray-400 hover:text-neon-cyan'
+              ? 'border-b-2 border-neon-pink text-accent-pink'
+              : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
           <ClockCounterClockwise size={20} weight="duotone" className="inline mr-2" />
@@ -466,8 +466,8 @@ export default function BackupsPage() {
           onClick={() => setActiveTab('restore')}
           className={`px-4 py-2 font-bold transition-colors ${
             activeTab === 'restore'
-              ? 'border-b-2 border-neon-pink text-neon-pink'
-              : 'text-gray-400 hover:text-neon-cyan'
+              ? 'border-b-2 border-neon-pink text-accent-pink'
+              : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
           <ShieldCheck size={20} weight="duotone" className="inline mr-2" />
@@ -477,7 +477,7 @@ export default function BackupsPage() {
 
       <div className="cyber-card p-6">
         {loading ? (
-          <div className="text-center py-12 text-gray-400">Loading...</div>
+          <div className="text-center py-12 text-ink-muted">Loading...</div>
         ) : (
           <>
             {activeTab === 'backups' && (
@@ -628,8 +628,8 @@ function BackupsTab({
         <div className="lg:col-span-2 card-vapor p-6 border border-neon-purple/40">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-neon-cyan">Run backup now</h2>
-              <p className="text-sm text-gray-400 mt-1">
+              <h2 className="text-xl font-bold text-accent-cyan">Run backup now</h2>
+              <p className="text-sm text-ink-muted mt-1">
                 Create an instant restore point and optionally download it.
               </p>
             </div>
@@ -638,25 +638,25 @@ function BackupsTab({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Target type</label>
+              <label className="block text-sm text-ink-muted mb-2">Target type</label>
               <select
                 value={exportTargetType}
                 onChange={(e) => onTargetTypeChange(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="site" disabled={!isAdmin}>Site</option>
                 <option value="database">Database</option>
               </select>
               {!isAdmin && (
-                <p className="text-xs text-gray-500 mt-1">Site backups require admin access.</p>
+                <p className="text-xs text-ink-muted mt-1">Site backups require admin access.</p>
               )}
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Target</label>
+              <label className="block text-sm text-ink-muted mb-2">Target</label>
               <select
                 value={exportTargetId ?? ''}
                 onChange={(e) => onTargetIdChange(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="" disabled>
                   Select a target
@@ -669,11 +669,11 @@ function BackupsTab({
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Delivery</label>
+              <label className="block text-sm text-ink-muted mb-2">Delivery</label>
               <select
                 value={exportDelivery}
                 onChange={(e) => onDeliveryChange(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="download">Download</option>
                 <option value="local">Local</option>
@@ -681,24 +681,24 @@ function BackupsTab({
             </div>
             {exportDelivery === 'local' && (
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Retention days</label>
+                <label className="block text-sm text-ink-muted mb-2">Retention days</label>
                 <input
                   type="number"
                   min="1"
                   value={exportRetentionDays}
                   onChange={(e) => onRetentionDaysChange(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100"
+                  className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
                 />
               </div>
             )}
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-400 mb-2">Notes (optional)</label>
+              <label className="block text-sm text-ink-muted mb-2">Notes (optional)</label>
               <input
                 type="text"
                 value={exportNotes}
                 onChange={(e) => onNotesChange(e.target.value)}
                 placeholder="Why this backup was created"
-                className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               />
             </div>
           </div>
@@ -714,14 +714,14 @@ function BackupsTab({
         </div>
 
         <div className="card-vapor p-6 border border-neon-purple/30">
-          <h3 className="text-lg font-bold text-neon-pink mb-4">Filters</h3>
+          <h3 className="text-lg font-bold text-accent-pink mb-4">Filters</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-2">App</label>
+              <label className="block text-xs text-ink-muted mb-2">App</label>
               <select
                 value={filterApp}
                 onChange={(e) => onFilterApp(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="all">All apps</option>
                 {appOptions.map((option) => (
@@ -732,11 +732,11 @@ function BackupsTab({
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-2">Type</label>
+              <label className="block text-xs text-ink-muted mb-2">Type</label>
               <select
                 value={filterType}
                 onChange={(e) => onFilterType(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="all">All types</option>
                 <option value="files">Files</option>
@@ -744,11 +744,11 @@ function BackupsTab({
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-2">Status</label>
+              <label className="block text-xs text-ink-muted mb-2">Status</label>
               <select
                 value={filterStatus}
                 onChange={(e) => onFilterStatus(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="all">All statuses</option>
                 <option value="success">Success</option>
@@ -757,18 +757,18 @@ function BackupsTab({
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-2">Date range</label>
+              <label className="block text-xs text-ink-muted mb-2">Date range</label>
               <input
                 type="date"
                 value={filterStart}
                 onChange={(e) => onFilterStart(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100 mb-2"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100 mb-2"
               />
               <input
                 type="date"
                 value={filterEnd}
                 onChange={(e) => onFilterEnd(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg/60 border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               />
             </div>
           </div>
@@ -777,15 +777,15 @@ function BackupsTab({
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-neon-cyan">Restore points</h3>
-          <span className="text-xs text-gray-500">{backups.length} total</span>
+          <h3 className="text-lg font-bold text-accent-cyan">Restore points</h3>
+          <span className="text-xs text-ink-muted">{backups.length} total</span>
         </div>
         {backups.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">No backups yet</div>
+          <div className="text-center py-12 text-ink-muted">No backups yet</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase text-gray-500 border-b border-neon-purple/20">
+              <thead className="text-xs uppercase text-ink-muted border-b border-neon-purple/20">
                 <tr>
                   <th className="py-3 pr-4">Date</th>
                   <th className="py-3 pr-4">App</th>
@@ -865,7 +865,7 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
   return (
     <div className="space-y-4">
       {jobs.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">No schedules configured yet</div>
+        <div className="text-center py-12 text-ink-muted">No schedules configured yet</div>
       ) : (
         jobs.map((job: any) => {
           const destination = destinationMap.get(job.destination);
@@ -873,24 +873,24 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
           return (
             <div
               key={job.id}
-              className="p-5 bg-dark-bg/40 rounded-xl border border-neon-purple/20 hover:border-neon-cyan/40 transition-colors"
+              className="p-5 bg-surface-muted rounded-xl border border-neon-purple/20 hover:border-neon-cyan/40 transition-colors"
             >
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="text-sm text-gray-400">Schedule #{job.id}</div>
-                  <h3 className="text-lg font-bold text-neon-pink">
+                  <div className="text-sm text-ink-muted">Schedule #{job.id}</div>
+                  <h3 className="text-lg font-bold text-accent-pink">
                     {job.target_type.replace('-', ' ')}{job.target_id ? ` #${job.target_id}` : ''}
                   </h3>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-ink-muted">
                     Frequency: {job.frequency} • Retention: {job.retention_days} days
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-ink-muted">
                     Destination: {destination ? destination.name : 'Local'} • {enabled ? 'Enabled' : 'Disabled'}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-ink-muted">
                     Last run: {job.last_run_at ? new Date(job.last_run_at).toLocaleString() : '—'}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-ink-muted">
                     Next run: {job.next_run_at ? new Date(job.next_run_at).toLocaleString() : '—'}
                   </div>
                 </div>
@@ -929,7 +929,7 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
         })
       )}
       {destinations.length === 0 && (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-ink-muted">
           No destinations available. Backups will use the default local destination.
         </div>
       )}
@@ -941,8 +941,8 @@ function RestoreTab() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 card-vapor p-6 border border-neon-purple/30">
-        <h2 className="text-xl font-bold text-neon-cyan">Restore wizard</h2>
-        <p className="text-sm text-gray-400 mt-2">
+        <h2 className="text-xl font-bold text-accent-cyan">Restore wizard</h2>
+        <p className="text-sm text-ink-muted mt-2">
           Choose a restore point and walk through a guided recovery flow.
         </p>
         <button className="cyber-button mt-6 flex items-center gap-2" disabled>
@@ -951,8 +951,8 @@ function RestoreTab() {
         </button>
       </div>
       <div className="card-vapor p-6 border border-neon-purple/20">
-        <h3 className="text-lg font-bold text-neon-pink">Recent restores</h3>
-        <div className="text-sm text-gray-400 mt-4">No restore history yet.</div>
+        <h3 className="text-lg font-bold text-accent-pink">Recent restores</h3>
+        <div className="text-sm text-ink-muted mt-4">No restore history yet.</div>
       </div>
     </div>
   );
@@ -977,6 +977,6 @@ function statusBadge(status: string) {
     case 'in_progress':
       return 'bg-status-warning/20 text-status-warning';
     default:
-      return 'bg-gray-500/20 text-gray-300';
+      return 'bg-gray-500/20 text-ink-secondary';
   }
 }

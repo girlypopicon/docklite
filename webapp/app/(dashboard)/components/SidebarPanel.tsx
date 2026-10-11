@@ -203,14 +203,14 @@ export default function SidebarPanel({
         {/* Header: what's showing, and a way to change it in Settings */}
         {!isFileBrowser && (
           <div className="p-4 border-b border-purple-500/20 flex items-center justify-between gap-2">
-            <div className="font-bold text-sm" style={{ color: 'var(--neon-cyan)' }}>
+            <div className="font-bold text-sm" style={{ color: 'var(--text-cyan)' }}>
               {showTableDetails ? 'Table details' : contentLabels[selectedContent]}
             </div>
             {!showTableDetails && <button
               type="button"
               onClick={() => openSettings('sidebars')}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-colors"
-              style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.4)', color: 'var(--neon-cyan)' }}
+              style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.4)', color: 'var(--text-cyan)' }}
               title="Change what this sidebar shows"
             >
               <Gear size={14} weight="duotone" />
@@ -270,22 +270,22 @@ export default function SidebarPanel({
 function StatsContent() {
   return (
     <div className="text-sm font-mono">
-                  <div className="mb-4 text-neon-cyan font-bold flex items-center gap-2">        <ChartLine size={16} weight="duotone" />
+                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <ChartLine size={16} weight="duotone" />
         Live Stats
       </div>
       <p className="text-xs opacity-70 mb-4">System metrics</p>
       <div className="space-y-4">
         <div className="card-vapor p-3 rounded-lg">
           <div className="text-xs opacity-70 mb-1">CPU Usage</div>
-          <div className="text-2xl font-bold" style={{ color: 'var(--neon-green)' }}>24%</div>
+          <div className="text-2xl font-bold" style={{ color: 'var(--text-green)' }}>24%</div>
         </div>
         <div className="card-vapor p-3 rounded-lg">
           <div className="text-xs opacity-70 mb-1">Memory</div>
-          <div className="text-2xl font-bold" style={{ color: 'var(--neon-cyan)' }}>3.2 GB</div>
+          <div className="text-2xl font-bold" style={{ color: 'var(--text-cyan)' }}>3.2 GB</div>
         </div>
         <div className="card-vapor p-3 rounded-lg">
           <div className="text-xs opacity-70 mb-1">Containers</div>
-          <div className="text-2xl font-bold" style={{ color: 'var(--neon-pink)' }}>12</div>
+          <div className="text-2xl font-bold" style={{ color: 'var(--text-pink)' }}>12</div>
         </div>
       </div>
     </div>
@@ -295,10 +295,10 @@ function StatsContent() {
 function LogsContent() {
   return (
     <div className="text-sm font-mono">
-                  <div className="mb-4 text-neon-cyan font-bold flex items-center gap-2">        <Scroll size={16} weight="duotone" />
+                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <Scroll size={16} weight="duotone" />
         Container Logs
       </div>
-      <div className="bg-black/50 p-3 rounded-lg text-xs space-y-1 font-mono" style={{ color: 'var(--neon-green)' }}>
+      <div className="bg-black/50 p-3 rounded-lg text-xs space-y-1 font-mono" style={{ color: 'var(--text-green)' }}>
         <div>[2025-12-30 04:00:00] Container started</div>
         <div>[2025-12-30 04:00:01] Listening on port 80</div>
         <div>[2025-12-30 04:00:02] Ready to accept connections</div>
@@ -311,7 +311,7 @@ function LogsContent() {
 function DatabaseContent() {
   return (
     <div className="text-sm font-mono">
-                  <div className="mb-4 text-neon-cyan font-bold flex items-center gap-2">        <Database size={16} weight="duotone" />
+                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <Database size={16} weight="duotone" />
         Database Query
       </div>
       <textarea
@@ -338,7 +338,7 @@ function DatabaseContent() {
 function SearchContent() {
   return (
     <div className="text-sm font-mono">
-                  <div className="mb-4 text-neon-cyan font-bold flex items-center gap-2">        <MagnifyingGlass size={16} weight="duotone" />
+                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <MagnifyingGlass size={16} weight="duotone" />
         Search
       </div>
       <input

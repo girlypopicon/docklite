@@ -45,7 +45,7 @@ export function ContainersPageSkeleton() {
       {/* Header: the real title, with the subtitle and action buttons as placeholders */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Package size={26} weight="duotone" />
             Containers
           </h1>
@@ -132,7 +132,7 @@ export function DatabasesPageSkeleton() {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+          <h1 className="text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
             <Database size={24} weight="duotone" />
             Databases
           </h1>

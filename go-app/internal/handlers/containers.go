@@ -578,10 +578,6 @@ func (h *Handlers) TransferSite(w http.ResponseWriter, r *http.Request, containe
 }
 
 func (h *Handlers) transferSiteToUser(w http.ResponseWriter, r *http.Request, containerID string, newUserID int64) {
-
-	ctx, cancel := dockerContext(r.Context())
-	defer cancel()
-
 	site, err := h.store.GetSiteByContainerIDRecord(containerID)
 	if err != nil || site == nil {
 		writeError(w, http.StatusNotFound, "site not found for this container")
@@ -610,119 +606,38 @@ func (h *Handlers) transferSiteToUser(w http.ResponseWriter, r *http.Request, co
 		oldPath = getSitePath(oldUsername, site.Domain)
 	}
 	newPath := getSitePath(newUser.Username, site.Domain)
-
-	if err := ensureSiteDirectory(newUser.Username, site.Domain); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create target directory: "+err.Error())
+	// A site whose folder lives outside the sites root (an old or hand-made layout) keeps its folder where it is;
+	// only the owner changes. We never copy from, or delete, a path outside /var/www/sites.
+	filesStay := !isWithinBase(oldPath)
+	if filesStay {
+		newPath = oldPath
+	} else if st, statErr := os.Stat(oldPath); statErr != nil || !st.IsDir() {
+		writeError(w, http.StatusConflict, "this site's folder "+oldPath+" doesn't exist, so there is nothing to move")
 		return
 	}
 
-	if oldPath != newPath {
-		if info, statErr := os.Stat(oldPath); statErr == nil && info.IsDir() {
-			if err := copyFileOrDir(oldPath, newPath); err != nil {
-				writeError(w, http.StatusInternalServerError, "failed to copy files: "+err.Error())
-				return
-			}
-			_ = os.RemoveAll(oldPath)
-		}
-	}
-
-	if err := h.store.TransferSite(site.ID, newUserID, newPath); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to update site record: "+err.Error())
+	// Copy, switch the container over, and only then (below) retire the old folder. Any failure puts the old one back.
+	if err := h.relocateSite(site, newUserID, newUser.Username, oldPath, newPath); err != nil {
+		h.audit(r, "site.transfer", site.Domain, map[string]any{"from": oldUsername, "to": newUser.Username, "ok": false, "error": err.Error()})
+		writeError(w, http.StatusInternalServerError, "the site was not moved: "+err.Error())
 		return
 	}
-	h.audit(r, "site.transfer", site.Domain, map[string]any{"from": oldUsername, "to": newUser.Username})
-
-	container, inspErr := h.docker.InspectContainer(ctx, containerID)
-	if inspErr != nil {
-		writeJSON(w, http.StatusOK, map[string]any{
-			"success": true,
-			"warning": "site transferred but container could not be inspected — restart it manually",
-		})
-		return
-	}
-
-	includeWww := container.Config.Labels["docklite.include_www"] == "true"
-	templateType := site.TemplateType
-	internalPort := 80
-	if portStr := container.Config.Labels["docklite.internal_port"]; portStr != "" {
-		if p, err := strconv.Atoi(portStr); err == nil {
-			internalPort = p
-		}
-	}
-
-	_ = h.docker.RemoveContainer(ctx, containerID)
-
-	createCtx, createCancel := ctxWithLongTimeout()
-	defer createCancel()
-
-	newContainerID, err := h.docker.CreateSiteContainer(
-		createCtx, site.Domain, templateType, includeWww,
-		newPath, internalPort, site.ID, newUserID, site.FolderID,
-	)
-	if err != nil {
-		_ = h.store.UpdateSiteStatus(site.ID, "failed")
-		writeError(w, http.StatusInternalServerError, "failed to create new container: "+err.Error())
-		return
-	}
-
-	_ = h.store.UpdateSiteContainerID(site.ID, &newContainerID)
-	_ = h.store.UpdateSiteStatus(site.ID, "running")
-
-	nginxWarning := ""
-	if hostPort, portErr := h.getContainerHostPort(createCtx, newContainerID, internalPort); portErr == nil && hostPort > 0 {
-		if ngErr := updateNginxProxyPort(site.Domain, hostPort); ngErr != nil {
-			// Fall back to full config generation if no existing config exists.
-			if ngErr2 := setupNginxForDomain(site.Domain, includeWww, hostPort); ngErr2 != nil {
-				nginxWarning = ngErr2.Error()
-			}
-		}
-	}
-
+	h.audit(r, "site.transfer", site.Domain, map[string]any{"from": oldUsername, "to": newUser.Username, "ok": true})
 	RecordPreviousOwner(newPath, oldUsername, "transfer", actorName(h, r))
-	_ = WriteDKLManifest(newPath, site.Domain, templateType, newUser.Username, internalPort, includeWww, nil)
 
-	resp := map[string]any{
-		"success":          true,
-		"new_user":         newUser.Username,
-		"new_path":         newPath,
-		"new_container_id": newContainerID,
+	resp := map[string]any{"success": true, "new_user": newUser.Username, "new_path": newPath}
+	if updated, _ := h.store.GetSiteByID(site.ID); updated != nil && updated.ContainerID != nil {
+		resp["new_container_id"] = *updated.ContainerID
 	}
-	if nginxWarning != "" {
-		resp["warning"] = nginxWarning
+	// The new site is running; move the old folder to the trash (it is never deleted outright).
+	if !filesStay && filepath.Clean(oldPath) != filepath.Clean(newPath) {
+		if trashed, err := moveToTrash(oldPath); err != nil {
+			resp["warning"] = "the site moved, but the old folder could not be tidied away: " + err.Error()
+		} else {
+			resp["old_folder_moved_to"] = trashed
+		}
 	}
 	writeJSON(w, http.StatusOK, resp)
-}
-
-func copyFileOrDir(src, dst string) error {
-	info, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-	if info.IsDir() {
-		if err := os.MkdirAll(dst, 0o775); err != nil {
-			return err
-		}
-		entries, err := os.ReadDir(src)
-		if err != nil {
-			return err
-		}
-		for _, entry := range entries {
-			if err := copyFileOrDir(filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name())); err != nil {
-				return err
-			}
-		}
-		chownDocklite(dst)
-		return nil
-	}
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(dst, data, 0o664); err != nil {
-		return err
-	}
-	chownDocklite(dst)
-	return nil
 }
 
 func (h *Handlers) createContainer(w http.ResponseWriter, r *http.Request) {
@@ -927,6 +842,7 @@ func ensureFile(path string, content string) error {
 		return err
 	}
 	chownDocklite(path)
+	shareWithGroup(path)
 	return nil
 }
 
@@ -1238,11 +1154,13 @@ func getSitePath(username string, domain string) string {
 
 func ensureSiteDirectory(username string, domain string) error {
 	sitePath := getSitePath(username, domain)
-	if err := os.MkdirAll(sitePath, 0o775); err != nil {
+	if err := mkdirAllShared(sitePath); err != nil {
 		return fmt.Errorf("failed to create site directory: %w", err)
 	}
 	chownDocklite(filepath.Join(siteBaseDir, username))
 	chownDocklite(sitePath)
+	shareWithGroup(filepath.Join(siteBaseDir, username))
+	shareWithGroup(sitePath)
 	return nil
 }
 

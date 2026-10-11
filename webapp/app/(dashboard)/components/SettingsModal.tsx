@@ -130,7 +130,7 @@ function SettingsModal({
         }}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.3)' }}>
-          <h1 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h1 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Gear size={22} weight="duotone" />
             Settings
           </h1>
@@ -154,7 +154,7 @@ function SettingsModal({
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold text-left whitespace-nowrap transition-colors"
                 style={
                   t.id === active.id
-                    ? { background: 'rgba(var(--neon-pink-rgb), 0.15)', color: 'var(--neon-pink)' }
+                    ? { background: 'rgba(var(--neon-pink-rgb), 0.15)', color: 'var(--text-pink)' }
                     : { color: 'var(--text-secondary)' }
                 }
               >

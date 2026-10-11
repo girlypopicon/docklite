@@ -467,3 +467,16 @@ func TestUpdateCheckAndInstall(t *testing.T) {
 		t.Fatalf("rolled-back must fail with the reason: exit %d %s", code, errOut)
 	}
 }
+
+func TestSitesPermissionsCommand(t *testing.T) {
+	agent := newFakeAgent(t)
+	agent.json("POST", "/api/sites/permissions", 200, `{"sites":[{"domain":"glowrom.com","changed":12,"skipped":0},{"domain":"other.org","changed":0,"skipped":2}],"changed":12,"skipped":2}`)
+	code, out, _ := runCLI(t, agent, "", "sites", "permissions")
+	if code != 0 || !strings.Contains(out, "glowrom.com") || !strings.Contains(out, "made group-writable") || !strings.Contains(out, "owned by root") {
+		t.Fatalf("unexpected output (exit %d):\n%s", code, out)
+	}
+	code, _, _ = runCLI(t, agent, "", "sites", "permissions", "glowrom.com")
+	if code != 0 || !strings.Contains(agent.calls("POST", "/api/sites/permissions")[1].Body, `"domain":"glowrom.com"`) {
+		t.Fatal("a domain argument must be sent to the agent")
+	}
+}

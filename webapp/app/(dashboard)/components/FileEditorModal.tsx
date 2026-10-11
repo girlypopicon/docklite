@@ -37,8 +37,8 @@ export default function FileEditorModal({
       <div className="card-vapor neon-border text-white rounded-2xl shadow-2xl w-[min(1100px,94vw)] h-[80vh] flex flex-col border-2 border-neon-purple/30">
         <div className="p-4 border-b border-neon-purple/30 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs uppercase tracking-[0.2em] text-neon-purple/70">File Editor</div>
-            <div className="text-sm font-bold text-neon-cyan truncate max-w-[70vw]">{filePath}</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-accent-purple/70">File Editor</div>
+            <div className="text-sm font-bold text-accent-cyan truncate max-w-[70vw]">{filePath}</div>
           </div>
           <div className="flex items-center gap-2">
             {!isEditing && (
@@ -65,7 +65,7 @@ export default function FileEditorModal({
             />
           ) : (
             <div className="h-full overflow-auto">
-              <pre className="whitespace-pre-wrap text-sm text-neon-cyan/80">{content}</pre>
+              <pre className="whitespace-pre-wrap text-sm text-accent-cyan/80">{content}</pre>
             </div>
           )}
         </div>

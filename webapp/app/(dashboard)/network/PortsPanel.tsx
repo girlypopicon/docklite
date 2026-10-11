@@ -60,7 +60,7 @@ function addrLabel(address: string): { label: string; icon: JSX.Element; color: 
     return {
       label: 'Localhost only — not reachable from outside',
       icon: <HouseLine size={12} weight="duotone" />,
-      color: 'var(--neon-cyan)',
+      color: 'var(--text-cyan)',
     };
   }
   return {
@@ -98,7 +98,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
     <div className="space-y-6">
       {/* DockLite Services */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--neon-cyan)' }}>
+        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--text-cyan)' }}>
           DockLite Services
         </h2>
         <p className="text-xs font-mono mb-4" style={{ color: 'var(--text-secondary)' }}>
@@ -116,7 +116,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
               style={{ background: 'rgba(var(--neon-cyan-rgb), 0.07)', border: '1px solid rgba(var(--neon-cyan-rgb), 0.2)' }}
             >
               <div>
-                <div className="font-bold text-sm" style={{ color: 'var(--neon-cyan)' }}>
+                <div className="font-bold text-sm" style={{ color: 'var(--text-cyan)' }}>
                   Agent API
                   {' '}
                   <span className="font-mono">:{services.agentPort}</span>
@@ -127,7 +127,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
               </div>
               <span
                 className="text-xs font-mono px-2 py-1 rounded-full ml-4 shrink-0"
-                style={{ background: 'rgba(var(--neon-cyan-rgb), 0.15)', color: 'var(--neon-cyan)' }}
+                style={{ background: 'rgba(var(--neon-cyan-rgb), 0.15)', color: 'var(--text-cyan)' }}
               >
                 :{services.agentPort}
               </span>
@@ -139,14 +139,14 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
                 style={{ background: 'rgba(var(--neon-purple-rgb), 0.07)', border: '1px solid rgba(var(--neon-purple-rgb), 0.2)' }}
               >
                 <div>
-                  <div className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+                  <div className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
                     Web UI
                     {' '}
                     <span className="font-mono">:{services.webPort}</span>
                     {currentPort === services.webPort && (
                       <span
                         className="text-[10px] px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(var(--neon-green-rgb), 0.15)', color: 'var(--neon-green)' }}
+                        style={{ background: 'rgba(var(--neon-green-rgb), 0.15)', color: 'var(--text-green)' }}
                       >
                         ← you are here
                       </span>
@@ -158,7 +158,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
                 </div>
                 <span
                   className="text-xs font-mono px-2 py-1 rounded-full ml-4 shrink-0"
-                  style={{ background: 'rgba(var(--neon-purple-rgb), 0.15)', color: 'var(--neon-purple)' }}
+                  style={{ background: 'rgba(var(--neon-purple-rgb), 0.15)', color: 'var(--text-purple)' }}
                 >
                   :{services.webPort}
                 </span>
@@ -175,7 +175,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
               className="text-xs font-mono rounded-lg px-4 py-3 flex items-start gap-2"
               style={{ background: 'rgba(var(--neon-cyan-rgb), 0.04)', color: 'var(--text-secondary)' }}
             >
-              <PlugsConnected size={14} className="shrink-0 mt-0.5" style={{ color: 'var(--neon-cyan)' }} />
+              <PlugsConnected size={14} className="shrink-0 mt-0.5" style={{ color: 'var(--text-cyan)' }} />
               <span>
                 To access DockLite from your browser, use{' '}
                 <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -195,7 +195,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
 
       {/* Address guide */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--neon-pink)' }}>
+        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--text-pink)' }}>
           What do those IPs mean?
         </h2>
         <p className="text-xs font-mono mb-4" style={{ color: 'var(--text-secondary)' }}>
@@ -216,7 +216,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
           <div className="flex items-start gap-3">
             <span
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs shrink-0"
-              style={{ background: 'rgba(var(--neon-cyan-rgb), 0.1)', color: 'var(--neon-cyan)' }}
+              style={{ background: 'rgba(var(--neon-cyan-rgb), 0.1)', color: 'var(--text-cyan)' }}
             >
               <HouseLine size={11} /> 127.0.0.1
             </span>
@@ -240,7 +240,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
 
       {/* Listening ports */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--neon-cyan)' }}>
+        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--text-cyan)' }}>
           All Listening Ports
         </h2>
         <p className="text-xs font-mono mb-4" style={{ color: 'var(--text-secondary)' }}>
@@ -259,7 +259,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
                   className="flex flex-wrap items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-mono"
                   style={{ background: 'rgba(var(--neon-purple-rgb), 0.05)', border: '1px solid rgba(var(--neon-purple-rgb), 0.12)' }}
                 >
-                  <span className="font-bold w-14" style={{ color: 'var(--neon-cyan)' }}>
+                  <span className="font-bold w-14" style={{ color: 'var(--text-cyan)' }}>
                     :{p.port}
                   </span>
                   <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -280,7 +280,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
                   {dkl && (
                     <span
                       className="text-xs px-2 py-0.5 rounded-full ml-auto"
-                      style={{ background: 'rgba(var(--neon-cyan-rgb), 0.12)', color: 'var(--neon-cyan)' }}
+                      style={{ background: 'rgba(var(--neon-cyan-rgb), 0.12)', color: 'var(--text-cyan)' }}
                     >
                       {dkl}
                     </span>
@@ -294,7 +294,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
 
       {/* Container port mappings */}
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--neon-pink)' }}>
+        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--text-pink)' }}>
           Container Port Mappings
         </h2>
         <p className="text-xs font-mono mb-4" style={{ color: 'var(--text-secondary)' }}>
@@ -312,11 +312,11 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
                 style={{ border: '1px solid rgba(var(--neon-purple-rgb), 0.2)', background: 'rgba(var(--neon-purple-rgb), 0.04)' }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="font-bold text-sm" style={{ color: 'var(--neon-cyan)' }}>{c.name}</span>
+                  <span className="font-bold text-sm" style={{ color: 'var(--text-cyan)' }}>{c.name}</span>
                   {c.managed ? (
                     <span
                       className="text-[10px] px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(var(--neon-cyan-rgb), 0.1)', color: 'var(--neon-cyan)' }}
+                      style={{ background: 'rgba(var(--neon-cyan-rgb), 0.1)', color: 'var(--text-cyan)' }}
                     >
                       DockLite managed
                     </span>
@@ -346,7 +346,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
                             <span className="text-[10px] mb-0.5" style={{ color: 'var(--text-secondary)' }}>
                               Host port (outside)
                             </span>
-                            <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                            <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                               :{port.hostPort}
                             </span>
                             <span
@@ -362,7 +362,7 @@ export default function PortsPanel({ openPorts, dockerExposed }: Props) {
                             <span className="text-[10px] mb-0.5" style={{ color: 'var(--text-secondary)' }}>
                               Container port (inside)
                             </span>
-                            <span className="font-bold" style={{ color: 'var(--neon-purple)' }}>
+                            <span className="font-bold" style={{ color: 'var(--text-purple)' }}>
                               :{port.containerPort}
                             </span>
                             <span className="text-[10px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>

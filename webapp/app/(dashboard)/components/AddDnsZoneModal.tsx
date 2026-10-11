@@ -79,7 +79,7 @@ export default function AddDnsZoneModal({ onClose, onSuccess }: AddDnsZoneModalP
 
         {/* Header */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
             <Globe size={32} weight="duotone" color="var(--status-success)" />
             Add DNS Zone
           </h2>
@@ -103,7 +103,7 @@ export default function AddDnsZoneModal({ onClose, onSuccess }: AddDnsZoneModalP
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Domain Name
             </label>
             <input
@@ -121,7 +121,7 @@ export default function AddDnsZoneModal({ onClose, onSuccess }: AddDnsZoneModalP
           </div>
 
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Cloudflare Zone ID
             </label>
             <input
@@ -147,7 +147,7 @@ export default function AddDnsZoneModal({ onClose, onSuccess }: AddDnsZoneModalP
               className="w-4 h-4"
               disabled={loading}
             />
-            <label htmlFor="autoImport" className="text-sm font-bold" style={{ color: 'var(--neon-green)' }}>
+            <label htmlFor="autoImport" className="text-sm font-bold" style={{ color: 'var(--text-green)' }}>
               Auto-import DNS records after adding zone
             </label>
           </div>
@@ -183,7 +183,7 @@ export default function AddDnsZoneModal({ onClose, onSuccess }: AddDnsZoneModalP
 
         {/* Help text */}
         <div className="mt-6 p-4 rounded-lg" style={{ background: 'rgba(var(--status-success-rgb), 0.05)', border: '1px solid rgba(var(--status-success-rgb), 0.2)' }}>
-          <p className="text-xs font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+          <p className="text-xs font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
             <Lightbulb size={14} weight="duotone" />
             How to find your Zone ID:
           </p>

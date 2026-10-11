@@ -65,7 +65,7 @@ export default function CreateDatabaseModal({ isOpen, onClose, onSuccess, onErro
     <div className="mt-6 card-vapor p-6 rounded-xl">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <label htmlFor="name" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Database size={16} weight="duotone" />
             DATABASE NAME
           </label>
@@ -84,7 +84,7 @@ export default function CreateDatabaseModal({ isOpen, onClose, onSuccess, onErro
         </div>
 
         <div>
-          <label htmlFor="username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+          <label htmlFor="username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
             <UserCircle size={16} weight="duotone" />
             USERNAME
           </label>
@@ -103,7 +103,7 @@ export default function CreateDatabaseModal({ isOpen, onClose, onSuccess, onErro
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+          <label htmlFor="password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
             <Key size={16} weight="duotone" />
             PASSWORD
           </label>

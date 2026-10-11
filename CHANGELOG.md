@@ -5,6 +5,29 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.2.3 (2026-10-10)
+
+### Added
+- `scripts/contrast-audit.js`: measures text contrast in every theme on a running demo, so theme changes are checked by numbers.
+
+### Changed
+- **Themes are readable.** Text now has its own colours per theme instead of reusing the pale neon colours meant for borders and glows.
+  In Corpo, Corpo Blue and Unicorn about 40% of the text on the main pages was below the readable standard (some almost invisible,
+  e.g. pale green on cream); it is now zero on the pages checked. The Corpo themes use deeper fills with white button text.
+
+### Fixed
+- **Site folders weren't writable by the docklite group**, so anyone logged in to the server (or an assistant working in their shell)
+  had to run `sudo chmod -R g+w` on each new site before they could edit it. DockLite asked for group-writable folders, but the
+  server's default umask silently removed the permission. Folders and files DockLite creates are now explicitly group-writable
+  (folders also keep the docklite group for new files); existing sites are fixed once automatically, and
+  `docklite sites permissions [domain]` does it on demand. It only adds group access: owners and other users are untouched,
+  nothing becomes world-writable, and links are never followed. The installer also adds the standard `acl` package and a default
+  ACL, so files created later in a site folder by a person or assistant (whatever their shell's umask) stay editable by the
+  dashboard's file editor too.
+- **Transferring a site to another user is safer.** It copies the folder first, switches the container over only once the new one is
+  running, puts the old container back if anything fails, and moves the old folder to the trash instead of deleting it. It never
+  copies from or deletes outside `/var/www/sites`, and refuses to overwrite a target folder that already has files.
+
 ## 1.2.2 (2026-10-10)
 
 ### Fixed

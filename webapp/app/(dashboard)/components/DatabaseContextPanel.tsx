@@ -120,7 +120,7 @@ export default function DatabaseContextPanel() {
   if (!table) {
     return (
       <div className="text-sm opacity-80" style={{ color: 'var(--text-secondary)' }}>
-        <div className="font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+        <div className="font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
           <Table size={16} weight="duotone" /> Table details
         </div>
         Pick a table in the schema on the left to see its columns and copy ready-made SQL.
@@ -131,7 +131,7 @@ export default function DatabaseContextPanel() {
   return (
     <div className="space-y-4 text-sm">
       <div>
-        <div className="font-bold flex items-center gap-2 break-all" style={{ color: 'var(--neon-cyan)' }}>
+        <div className="font-bold flex items-center gap-2 break-all" style={{ color: 'var(--text-cyan)' }}>
           <Table size={16} weight="duotone" /> {table.name}
         </div>
         <div className="text-xs opacity-70 mt-1">
@@ -146,7 +146,7 @@ export default function DatabaseContextPanel() {
           return (
             <li key={col.name} className="p-2 rounded-lg" style={{ background: 'var(--surface-muted)' }}>
               <div className="flex items-center gap-2 font-mono text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
-                {isKey && <Key size={12} weight="fill" style={{ color: 'var(--neon-yellow)' }} />}
+                {isKey && <Key size={12} weight="fill" style={{ color: 'var(--text-yellow)' }} />}
                 <span className="break-all">{col.name}</span>
               </div>
               <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
@@ -173,7 +173,7 @@ export default function DatabaseContextPanel() {
 
       {dbName && port && (
         <div className="pt-3 border-t" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.3)' }}>
-          <div className="text-xs font-bold mb-2" style={{ color: 'var(--neon-purple)' }}>Connect from a terminal</div>
+          <div className="text-xs font-bold mb-2" style={{ color: 'var(--text-purple)' }}>Connect from a terminal</div>
           <button type="button" className="btn-neon w-full px-3 py-2 text-xs font-bold inline-flex items-center justify-center gap-2" onClick={() => copy(`psql -h ${window.location.hostname} -p ${port} -U <user> ${dbName}`, 'the psql command')}>
             <Copy size={14} weight="duotone" /> Copy psql command
           </button>

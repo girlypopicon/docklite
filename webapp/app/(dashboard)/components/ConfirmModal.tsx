@@ -29,12 +29,12 @@ export default function ConfirmModal({
     },
     warning: {
       icon: <Lightning size={48} weight="duotone" />,
-      color: 'var(--neon-yellow)',
+      color: 'var(--text-yellow)',
       gradient: 'linear-gradient(135deg, var(--neon-yellow) 0%, var(--neon-pink) 100%)',
     },
     info: {
       icon: <Info size={48} weight="duotone" />,
-      color: 'var(--neon-cyan)',
+      color: 'var(--text-cyan)',
       gradient: 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%)',
     },
   };

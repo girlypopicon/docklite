@@ -71,7 +71,7 @@ export default function ContainerFilterTabs({ type, onType, status, onStatus, co
                       color: 'var(--button-text)',
                       borderColor: 'transparent',
                     }
-                  : { color: 'var(--neon-cyan)', borderColor: 'rgba(var(--neon-cyan-rgb), 0.35)' }
+                  : { color: 'var(--text-cyan)', borderColor: 'rgba(var(--neon-cyan-rgb), 0.35)' }
               }
             >
               {tab.icon}

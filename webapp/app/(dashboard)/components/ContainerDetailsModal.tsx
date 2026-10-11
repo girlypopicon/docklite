@@ -189,7 +189,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
           <div className="flex justify-center mb-4 animate-float">
             <Lightning size={48} weight="duotone" color="var(--neon-cyan)" />
           </div>
-          <div className="text-2xl font-bold neon-text animate-pulse" style={{ color: 'var(--neon-cyan)' }}>
+          <div className="text-2xl font-bold neon-text animate-pulse" style={{ color: 'var(--text-cyan)' }}>
             Loading...
           </div>
         </div>
@@ -231,7 +231,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
         <div className="flex items-center justify-between mb-6 pb-4 border-b" style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.2)' }}>
           <div className="flex items-center gap-4">
             <div>
-              <h2 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+              <h2 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <Package size={22} weight="duotone" />
                 {details.name}
               </h2>
@@ -245,7 +245,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
               className="px-4 py-2 rounded-full text-sm font-bold"
               style={{
                 background: isRunning ? 'rgba(var(--status-success-rgb), 0.2)' : 'rgba(var(--status-error-rgb), 0.2)',
-                color: isRunning ? 'var(--neon-green)' : 'var(--status-error)',
+                color: isRunning ? 'var(--text-green)' : 'var(--status-error)',
                 border: `2px solid ${isRunning ? 'var(--neon-green)' : 'var(--status-error)'}`,
               }}
             >
@@ -254,7 +254,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
             <button
               onClick={onClose}
               className="text-3xl hover:scale-110 transition-transform"
-              style={{ color: 'var(--neon-pink)' }}
+              style={{ color: 'var(--text-pink)' }}
             >
               ×
             </button>
@@ -281,7 +281,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                 background: 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%)',
                 color: 'var(--button-text)'
               } : {
-                color: 'var(--neon-cyan)'
+                color: 'var(--text-cyan)'
               }}
             >
               <span className="mr-2 inline-flex">{tab.icon}</span>
@@ -303,7 +303,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
               {/* Real-time Stats */}
               {isRunning && stats && stats.cpu !== undefined && (
                 <div className="card-vapor p-6 rounded-xl">
-                  <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                  <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                     <ChartBar size={18} weight="duotone" />
                     Real-time Resources
                   </h3>
@@ -311,10 +311,10 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                     {/* CPU */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                        <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                           CPU Usage
                         </span>
-                        <span className="text-2xl font-bold" style={{ color: 'var(--neon-yellow)' }}>
+                        <span className="text-2xl font-bold" style={{ color: 'var(--text-yellow)' }}>
                           {(stats.cpu).toFixed(2)}%
                         </span>
                       </div>
@@ -332,10 +332,10 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                     {/* Memory */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                        <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                           Memory Usage
                         </span>
-                        <span className="text-2xl font-bold" style={{ color: 'var(--neon-pink)' }}>
+                        <span className="text-2xl font-bold" style={{ color: 'var(--text-pink)' }}>
                           {(stats.memory?.percentage ?? 0).toFixed(2)}%
                         </span>
                       </div>
@@ -358,14 +358,14 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
 
               {/* Container Info */}
               <div className="card-vapor p-6 rounded-xl">
-                <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                   <Info size={18} weight="duotone" />
                   Container Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm">
                   <div>
                     <span className="opacity-70">ID:</span>
-                    <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                    <div className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                       {details.id.substring(0, 12)}
                     </div>
                   </div>
@@ -381,7 +381,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                   </div>
                   <div>
                     <span className="opacity-70">Restart Policy:</span>
-                    <div className="font-bold" style={{ color: 'var(--neon-green)' }}>
+                    <div className="font-bold" style={{ color: 'var(--text-green)' }}>
                       {details.restartPolicy.Name || 'none'}
                     </div>
                   </div>
@@ -391,7 +391,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
               {/* Mounts */}
               {details.mounts.length > 0 && (
                 <div className="card-vapor p-6 rounded-xl">
-                  <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                  <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                     <Database size={18} weight="duotone" />
                     Volumes & Mounts
                   </h3>
@@ -401,11 +401,11 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                         <div className="font-mono text-sm">
                           <div className="mb-2">
                             <span className="opacity-70">Source:</span>
-                            <div className="font-bold break-all" style={{ color: 'var(--neon-cyan)' }}>{mount.Source}</div>
+                            <div className="font-bold break-all" style={{ color: 'var(--text-cyan)' }}>{mount.Source}</div>
                           </div>
                           <div className="mb-2">
                             <span className="opacity-70">Destination:</span>
-                            <div className="font-bold" style={{ color: 'var(--neon-pink)' }}>{mount.Destination}</div>
+                            <div className="font-bold" style={{ color: 'var(--text-pink)' }}>{mount.Destination}</div>
                           </div>
                           <div className="flex gap-4 text-xs">
                             <span style={{ color: mount.RW ? 'var(--status-success)' : 'var(--status-error)' }}>
@@ -436,7 +436,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
           {activeTab === 'logs' && (
             <div className="card-vapor p-6 rounded-xl">
               <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
-                <h3 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                <h3 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                   <NotePencil size={18} weight="duotone" />
                   Container Logs
                 </h3>
@@ -473,7 +473,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                 className="bg-black/50 p-4 rounded-lg font-mono text-xs overflow-x-auto"
                 style={{ maxHeight: '500px', overflowY: 'auto' }}
               >
-                <pre className="whitespace-pre-wrap" style={{ color: 'var(--neon-green)' }}>
+                <pre className="whitespace-pre-wrap" style={{ color: 'var(--text-green)' }}>
                   {logs || 'No logs available'}
                 </pre>
               </div>
@@ -483,7 +483,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
           {/* Environment Tab */}
           {activeTab === 'env' && (
             <div className="card-vapor p-6 rounded-xl">
-              <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+              <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                 <Wrench size={18} weight="duotone" />
                 Environment Variables
               </h3>
@@ -497,10 +497,10 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                     return (
                       <div key={idx} className="p-4 rounded-lg font-mono text-sm" style={{ background: 'rgba(var(--neon-purple-rgb), 0.1)' }}>
                         <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
-                          <span className="font-bold min-w-[200px]" style={{ color: 'var(--neon-cyan)' }}>
+                          <span className="font-bold min-w-[200px]" style={{ color: 'var(--text-cyan)' }}>
                             {key}
                           </span>
-                          <span className="flex-1 break-all" style={{ color: 'var(--neon-pink)' }}>
+                          <span className="flex-1 break-all" style={{ color: 'var(--text-pink)' }}>
                             {value || '(empty)'}
                           </span>
                         </div>
@@ -516,46 +516,46 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
           {activeTab === 'network' && (
             <>
               <div className="card-vapor p-6 rounded-xl">
-                <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                   <Globe size={18} weight="duotone" />
                   Network Configuration
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm mb-6">
                   <div>
                     <span className="opacity-70">IP Address:</span>
-                    <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                    <div className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                       {details.networkSettings.ipAddress || 'N/A'}
                     </div>
                   </div>
                   <div>
                     <span className="opacity-70">Gateway:</span>
-                    <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                    <div className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                       {details.networkSettings.gateway || 'N/A'}
                     </div>
                   </div>
                 </div>
 
-                <h4 className="text-lg font-bold neon-text mb-3" style={{ color: 'var(--neon-cyan)' }}>
+                <h4 className="text-lg font-bold neon-text mb-3" style={{ color: 'var(--text-cyan)' }}>
                   Networks
                 </h4>
                 <div className="space-y-3">
                   {Object.entries(details.networkSettings.networks).map(([name, network]: [string, any]) => (
                     <div key={name} className="p-4 rounded-lg" style={{ background: 'rgba(var(--neon-purple-rgb), 0.1)' }}>
-                      <div className="font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+                      <div className="font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                         {name}
                       </div>
                       <div className="font-mono text-xs space-y-1">
                         <div>
                           <span className="opacity-70">IP: </span>
-                          <span style={{ color: 'var(--neon-cyan)' }}>{network.IPAddress || 'N/A'}</span>
+                          <span style={{ color: 'var(--text-cyan)' }}>{network.IPAddress || 'N/A'}</span>
                         </div>
                         <div>
                           <span className="opacity-70">Gateway: </span>
-                          <span style={{ color: 'var(--neon-cyan)' }}>{network.Gateway || 'N/A'}</span>
+                          <span style={{ color: 'var(--text-cyan)' }}>{network.Gateway || 'N/A'}</span>
                         </div>
                         <div>
                           <span className="opacity-70">MAC: </span>
-                          <span style={{ color: 'var(--neon-cyan)' }}>{network.MacAddress || 'N/A'}</span>
+                          <span style={{ color: 'var(--text-cyan)' }}>{network.MacAddress || 'N/A'}</span>
                         </div>
                       </div>
                     </div>
@@ -564,7 +564,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
               </div>
 
               <div className="card-vapor p-6 rounded-xl">
-                <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                   <Plug size={18} weight="duotone" />
                   Port Mappings
                 </h3>
@@ -575,11 +575,11 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                     {Object.entries(details.networkSettings.ports).map(([containerPort, hostBindings]: [string, any]) => (
                       <div key={containerPort} className="p-4 rounded-lg font-mono text-sm" style={{ background: 'rgba(var(--neon-purple-rgb), 0.1)' }}>
                         <div className="flex items-center gap-4">
-                          <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                          <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                             Container: {containerPort}
                           </span>
-                          <span style={{ color: 'var(--neon-purple)' }}>→</span>
-                          <span className="font-bold" style={{ color: 'var(--neon-pink)' }}>
+                          <span style={{ color: 'var(--text-purple)' }}>→</span>
+                          <span className="font-bold" style={{ color: 'var(--text-pink)' }}>
                             Host: {hostBindings && hostBindings[0]?.HostPort ? hostBindings[0].HostPort : 'Not mapped'}
                           </span>
                         </div>

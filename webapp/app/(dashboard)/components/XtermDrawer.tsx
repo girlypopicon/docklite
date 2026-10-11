@@ -21,7 +21,7 @@ type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'closed' | 'error'
 const STATUS_LABEL: Record<ConnectionStatus, { text: string; color: string }> = {
   idle: { text: 'Not connected', color: 'var(--text-secondary)' },
   connecting: { text: 'Connecting…', color: 'var(--status-warning)' },
-  connected: { text: 'Connected', color: 'var(--neon-green)' },
+  connected: { text: 'Connected', color: 'var(--text-green)' },
   closed: { text: 'Disconnected', color: 'var(--status-error)' },
   error: { text: 'Connection failed', color: 'var(--status-error)' },
 };
@@ -258,7 +258,7 @@ export default function XtermDrawer({ open, onClose, containerId, containerName,
               style={{ borderColor: 'rgba(var(--status-success-rgb), 0.2)' }}
             >
               <div className="flex flex-wrap items-center gap-3">
-                <div className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+                <div className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
                   <Lightning size={16} weight="duotone" />
                   Terminal
                 </div>
@@ -278,7 +278,7 @@ export default function XtermDrawer({ open, onClose, containerId, containerName,
                         type="button"
                         onClick={() => setSession((n) => n + 1)}
                         className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg border"
-                        style={{ borderColor: 'rgba(var(--status-success-rgb), 0.5)', color: 'var(--neon-green)' }}
+                        style={{ borderColor: 'rgba(var(--status-success-rgb), 0.5)', color: 'var(--text-green)' }}
                       >
                         <ArrowClockwise size={12} weight="bold" /> Reconnect
                       </button>
@@ -309,7 +309,7 @@ export default function XtermDrawer({ open, onClose, containerId, containerName,
                 <div ref={containerRef} className="h-full w-full" />
                 {!containerId && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-6" style={{ background: 'rgba(0, 0, 0, 0.55)' }}>
-                    <div className="text-sm font-bold" style={{ color: 'var(--neon-green)' }}>Open a shell inside one of your containers</div>
+                    <div className="text-sm font-bold" style={{ color: 'var(--text-green)' }}>Open a shell inside one of your containers</div>
                     <p className="text-xs max-w-md opacity-80" style={{ color: 'var(--text-primary)' }}>
                       You get a real command line inside the container — move around, read files, run commands — as if it were its own Linux machine.
                     </p>

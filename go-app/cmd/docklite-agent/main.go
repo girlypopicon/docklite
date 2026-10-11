@@ -51,6 +51,8 @@ func main() {
 	dockerClient.PrewarmImages(context.Background())
 	// Keep nginx pointed at each site's real port (reboots, Docker restarts, crashes).
 	go handlers.RunUpstreamSync(context.Background())
+	// Make existing site folders usable by the docklite group, once.
+	go handlers.RunSitePermissionsOnce()
 
 	server := &http.Server{
 		Addr:              cfg.ListenAddr,

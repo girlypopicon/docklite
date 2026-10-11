@@ -169,7 +169,7 @@ export default function DnsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Globe size={22} weight="duotone" />
             DNS Management
           </h2>
@@ -194,8 +194,8 @@ export default function DnsPanel() {
           onClick={() => setDnsTab('config')}
           className={`px-4 py-2 font-bold transition-colors ${
             dnsTab === 'config'
-              ? 'border-b-2 border-neon-pink text-neon-pink'
-              : 'text-gray-400 hover:text-neon-cyan'
+              ? 'border-b-2 border-neon-pink text-accent-pink'
+              : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
           <Gear size={18} weight="duotone" className="inline mr-2" />
@@ -205,8 +205,8 @@ export default function DnsPanel() {
           onClick={() => setDnsTab('zones')}
           className={`px-4 py-2 font-bold transition-colors ${
             dnsTab === 'zones'
-              ? 'border-b-2 border-neon-pink text-neon-pink'
-              : 'text-gray-400 hover:text-neon-cyan'
+              ? 'border-b-2 border-neon-pink text-accent-pink'
+              : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
           <Globe size={18} weight="duotone" className="inline mr-2" />
@@ -216,8 +216,8 @@ export default function DnsPanel() {
           onClick={() => setDnsTab('records')}
           className={`px-4 py-2 font-bold transition-colors ${
             dnsTab === 'records'
-              ? 'border-b-2 border-neon-pink text-neon-pink'
-              : 'text-gray-400 hover:text-neon-cyan'
+              ? 'border-b-2 border-neon-pink text-accent-pink'
+              : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
           DNS Records
@@ -302,7 +302,7 @@ function ZonesTab({ zones, canImport, importing, onImport, onAddZone, onDeleteZo
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
-        <h2 className="text-xl font-bold text-neon-cyan">Domains</h2>
+        <h2 className="text-xl font-bold text-accent-cyan">Domains</h2>
         <div className="flex gap-2">
           {canImport && (
             <button onClick={onImport} disabled={importing} className="cyber-button-sm flex items-center gap-2">
@@ -318,20 +318,20 @@ function ZonesTab({ zones, canImport, importing, onImport, onAddZone, onDeleteZo
       </div>
 
       {zones.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-ink-muted">
           {canImport
             ? 'No domains yet — click “Import from Cloudflare” to bring them all in.'
             : 'No domains yet — connect Cloudflare in the Configuration tab first.'}
         </div>
       ) : (
         zones.map((zone: any) => (
-          <div key={zone.id} className="p-4 bg-dark-bg/50 rounded-lg border border-neon-purple/20 space-y-4">
+          <div key={zone.id} className="p-4 bg-surface-muted rounded-lg border border-neon-purple/20 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="font-bold text-neon-cyan">{zone.domain}</h3>
-              <p className="text-xs text-gray-500 font-mono">Zone ID: {zone.zone_id}</p>
+              <h3 className="font-bold text-accent-cyan">{zone.domain}</h3>
+              <p className="text-xs text-ink-muted font-mono">Zone ID: {zone.zone_id}</p>
               {zone.last_synced_at && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-ink-muted">
                   Last synced: {new Date(zone.last_synced_at).toLocaleString()}
                 </p>
               )}
@@ -367,7 +367,7 @@ function RecordsTab({ records, zones, selectedZone, onZoneChange, onAddRecord, o
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-neon-cyan">DNS Records</h2>
+          <h2 className="text-xl font-bold text-accent-cyan">DNS Records</h2>
           {zones.length > 0 && (
             <select
               value={selectedZone || ''}
@@ -409,15 +409,15 @@ function RecordsTab({ records, zones, selectedZone, onZoneChange, onAddRecord, o
 
       {zones.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-400 mb-4">
+          <p className="text-ink-muted mb-4">
             No zones configured yet.
           </p>
-          <p className="text-sm text-gray-500">
-            Go to the <span className="text-neon-cyan font-bold">Zones</span> tab to add a DNS zone first.
+          <p className="text-sm text-ink-muted">
+            Go to the <span className="text-accent-cyan font-bold">Zones</span> tab to add a DNS zone first.
           </p>
         </div>
       ) : records.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-ink-muted">
           No DNS records found. Try syncing from Cloudflare or add a record manually.
         </div>
       ) : (
@@ -425,22 +425,22 @@ function RecordsTab({ records, zones, selectedZone, onZoneChange, onAddRecord, o
           {records.map((record: any) => (
             <div
               key={record.id}
-              className="flex items-center justify-between p-4 bg-dark-bg/50 rounded-lg border border-neon-purple/20"
+              className="flex items-center justify-between p-4 bg-surface-muted rounded-lg border border-neon-purple/20"
             >
               <div className="flex-1">
                 <div className="flex items-center gap-3">
-                  <span className="px-2 py-1 bg-neon-purple/20 text-neon-purple text-xs font-bold rounded">
+                  <span className="px-2 py-1 bg-neon-purple/20 text-accent-purple text-xs font-bold rounded">
                     {record.type}
                   </span>
-                  <span className="font-bold text-neon-cyan">{record.name}</span>
+                  <span className="font-bold text-accent-cyan">{record.name}</span>
                   {record.proxied === 1 && (
                     <span className="px-2 py-1 bg-orange-500/20 text-orange-400 text-xs font-bold rounded">
                       PROXIED
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-400 mt-1">{record.content}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm text-ink-muted mt-1">{record.content}</p>
+                <p className="text-xs text-ink-muted">
                   TTL: {record.ttl === 1 ? 'Auto' : `${record.ttl}s`}
                   {record.priority && ` • Priority: ${record.priority}`}
                 </p>

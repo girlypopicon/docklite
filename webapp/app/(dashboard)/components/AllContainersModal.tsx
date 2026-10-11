@@ -66,9 +66,9 @@ function trackingTier(c: DockerContainer): 'managed' | 'no-manifest' | 'tracked'
 }
 
 const TIER_LABELS: Record<string, { label: string; color: string; desc: string }> = {
-  managed:     { label: 'DockLite Site', color: 'var(--neon-cyan)',    desc: 'Site record + .dkl manifest — survives reinstalls' },
+  managed:     { label: 'DockLite Site', color: 'var(--text-cyan)',    desc: 'Site record + .dkl manifest — survives reinstalls' },
   'no-manifest': { label: 'Missing .dkl', color: 'var(--status-warning)', desc: 'Site record exists but no .dkl — won\'t survive a reinstall' },
-  tracked:     { label: 'Tracked',       color: 'var(--neon-purple)',  desc: 'DockLite watches this container but has no site record' },
+  tracked:     { label: 'Tracked',       color: 'var(--text-purple)',  desc: 'DockLite watches this container but has no site record' },
   untracked:   { label: 'Untracked',     color: 'var(--text-muted)',   desc: 'DockLite ignores this container' },
 };
 
@@ -233,7 +233,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+            <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
               <Cube size={20} weight="duotone" /> All Containers
             </h2>
             <p className="text-xs font-mono mt-0.5" style={{ color: 'var(--text-secondary)' }}>
@@ -285,14 +285,14 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                               {c.name}
                             </span>
                             {c.domain && (
-                              <span className="text-[11px] font-mono flex items-center gap-1" style={{ color: 'var(--neon-cyan)' }}>
+                              <span className="text-[11px] font-mono flex items-center gap-1" style={{ color: 'var(--text-cyan)' }}>
                                 <Tag size={10} /> {c.domain}
                               </span>
                             )}
                             <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono`}
                               style={{
                                 background: c.state === 'running' ? 'rgba(var(--neon-green-rgb),0.12)' : 'rgba(var(--status-error-rgb),0.1)',
-                                color: c.state === 'running' ? 'var(--neon-green)' : 'var(--status-error)',
+                                color: c.state === 'running' ? 'var(--text-green)' : 'var(--status-error)',
                               }}>
                               {c.state}
                             </span>
@@ -307,7 +307,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                                 <span style={{ color: 'var(--status-warning)' }}> — no .dkl</span>
                               )}
                               {key === 'managed' && (
-                                <span style={{ color: 'var(--neon-green)' }}> — .dkl ✓</span>
+                                <span style={{ color: 'var(--text-green)' }}> — .dkl ✓</span>
                               )}
                             </div>
                           )}
@@ -320,7 +320,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                             <>
                               <button onClick={() => handleAction(c.id, 'restart')} title="Restart"
                                 className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
-                                style={{ color: 'var(--neon-cyan)' }}>
+                                style={{ color: 'var(--text-cyan)' }}>
                                 <ArrowClockwise size={15} weight="duotone" />
                               </button>
                               <button onClick={() => handleAction(c.id, 'stop')} title="Stop"
@@ -332,7 +332,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                           ) : (
                             <button onClick={() => handleAction(c.id, 'start')} title="Start"
                               className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
-                              style={{ color: 'var(--neon-green)' }}>
+                              style={{ color: 'var(--text-green)' }}>
                               <Play size={15} weight="duotone" />
                             </button>
                           )}
@@ -352,7 +352,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                             <button onClick={() => openClaim(c)}
                               title="Claim as DockLite site"
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-colors hover:bg-white/10"
-                              style={{ color: 'var(--neon-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb),0.3)' }}>
+                              style={{ color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb),0.3)' }}>
                               <CheckCircle size={12} weight="duotone" /> Claim
                             </button>
                           )}
@@ -362,7 +362,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                             <button onClick={() => handleTracking(c.id, false)}
                               title="Track container"
                               className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
-                              style={{ color: 'var(--neon-purple)' }}>
+                              style={{ color: 'var(--text-purple)' }}>
                               <Eye size={15} weight="duotone" />
                             </button>
                           )}
@@ -395,7 +395,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
         {claimTarget && (
           <div className="rounded-xl p-4 space-y-3"
             style={{ background: 'rgba(var(--neon-cyan-rgb),0.06)', border: '1px solid rgba(var(--neon-cyan-rgb),0.25)' }}>
-            <div className="font-bold text-sm" style={{ color: 'var(--neon-cyan)' }}>
+            <div className="font-bold text-sm" style={{ color: 'var(--text-cyan)' }}>
               Claim &ldquo;{claimTarget.name}&rdquo; as a DockLite site
             </div>
             <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -441,7 +441,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
             <div className="flex gap-2">
               <button onClick={submitClaim} disabled={claimSaving || !claimForm.domain.trim()}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
-                style={{ background: 'rgba(var(--neon-cyan-rgb),0.15)', color: 'var(--neon-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb),0.3)' }}>
+                style={{ background: 'rgba(var(--neon-cyan-rgb),0.15)', color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb),0.3)' }}>
                 {claimSaving ? <SpinnerGap size={12} className="animate-spin" /> : <CheckCircle size={12} weight="duotone" />}
                 Claim + Write .dkl
               </button>
@@ -456,7 +456,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
           style={{ background: 'rgba(var(--neon-purple-rgb),0.04)', border: '1px solid rgba(var(--neon-purple-rgb),0.15)' }}>
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+              <div className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
                 <MagnifyingGlass size={15} weight="duotone" /> Scan Disk for .dkl Files
               </div>
               <p className="text-[11px] font-mono mt-0.5" style={{ color: 'var(--text-secondary)' }}>
@@ -465,7 +465,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
             </div>
             <button onClick={scanDisk} disabled={scanning}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
-              style={{ background: 'rgba(var(--neon-purple-rgb),0.15)', color: 'var(--neon-purple)', border: '1px solid rgba(var(--neon-purple-rgb),0.3)' }}>
+              style={{ background: 'rgba(var(--neon-purple-rgb),0.15)', color: 'var(--text-purple)', border: '1px solid rgba(var(--neon-purple-rgb),0.3)' }}>
               {scanning ? <SpinnerGap size={12} className="animate-spin" /> : <MagnifyingGlass size={12} weight="duotone" />}
               Scan
             </button>
@@ -473,7 +473,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
 
           {scannedSites !== null && (
             scannedSites.length === 0 ? (
-              <div className="text-xs font-mono" style={{ color: 'var(--neon-green)' }}>
+              <div className="text-xs font-mono" style={{ color: 'var(--text-green)' }}>
                 ✓ All .dkl sites are registered.
               </div>
             ) : (
@@ -485,7 +485,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                     <div>
                       <div className="text-sm font-bold" style={{ color: s.registered ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
                         {s.manifest.domain}
-                        {s.registered && <span className="ml-2 text-[10px]" style={{ color: 'var(--neon-green)' }}>registered</span>}
+                        {s.registered && <span className="ml-2 text-[10px]" style={{ color: 'var(--text-green)' }}>registered</span>}
                       </div>
                       <div className="text-[11px] font-mono" style={{ color: 'var(--text-secondary)' }}>
                         {s.path} · {s.manifest.templateType} · {s.manifest.username}
@@ -494,7 +494,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                     {!s.registered && (
                       <button onClick={() => onboardSite(s.path)} disabled={onboarding === s.path}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold disabled:opacity-50"
-                        style={{ background: 'rgba(var(--neon-cyan-rgb),0.15)', color: 'var(--neon-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb),0.3)' }}>
+                        style={{ background: 'rgba(var(--neon-cyan-rgb),0.15)', color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb),0.3)' }}>
                         {onboarding === s.path ? <SpinnerGap size={11} className="animate-spin" /> : null}
                         Onboard
                       </button>

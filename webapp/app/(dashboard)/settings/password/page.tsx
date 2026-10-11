@@ -86,7 +86,7 @@ export default function ChangePasswordPage() {
               style={{
                 background: 'rgba(var(--status-success-rgb), 0.15)',
                 border: '1px solid rgba(var(--status-success-rgb), 0.5)',
-                color: 'var(--neon-green)',
+                color: 'var(--text-green)',
               }}
             >
               Password changed successfully! Redirecting...
@@ -94,7 +94,7 @@ export default function ChangePasswordPage() {
           )}
 
           <div>
-            <label htmlFor="currentPassword" className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label htmlFor="currentPassword" className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Current Password
             </label>
             <input
@@ -108,7 +108,7 @@ export default function ChangePasswordPage() {
           </div>
 
           <div>
-            <label htmlFor="newPassword" className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label htmlFor="newPassword" className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               New Password
             </label>
             <input
@@ -120,11 +120,11 @@ export default function ChangePasswordPage() {
               onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
               className="input-vapor w-full"
             />
-            <p className="mt-2 text-xs font-mono text-gray-400">Minimum 6 characters</p>
+            <p className="mt-2 text-xs font-mono text-ink-muted">Minimum 6 characters</p>
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label htmlFor="confirmPassword" className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Confirm New Password
             </label>
             <input

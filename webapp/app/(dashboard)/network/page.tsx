@@ -259,7 +259,7 @@ export default function NetworkPage() {
     <div className="max-w-[1400px] mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h1 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Globe size={26} weight="duotone" />
             Network
           </h1>
@@ -281,8 +281,8 @@ export default function NetworkPage() {
             onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2 font-bold transition-colors ${
               activeTab === tab.key
-                ? 'border-b-2 border-neon-pink text-neon-pink'
-                : 'text-gray-400 hover:text-neon-cyan'
+                ? 'border-b-2 border-neon-pink text-accent-pink'
+                : 'text-ink-muted hover:text-accent-cyan'
             }`}
           >
             <span className="inline-flex items-center gap-2">
@@ -304,7 +304,7 @@ export default function NetworkPage() {
             <>
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-cyan)' }}>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-cyan)' }}>
                     Identity
                   </h2>
                   <div className="space-y-3 text-sm font-mono">
@@ -328,7 +328,7 @@ export default function NetworkPage() {
                 </div>
 
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-pink)' }}>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-pink)' }}>
                     Primary Addressing
                   </h2>
                   <div className="space-y-3 text-sm font-mono">
@@ -356,7 +356,7 @@ export default function NetworkPage() {
                 </div>
 
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-purple)' }}>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-purple)' }}>
                     Resolver
                   </h2>
                   <div className="space-y-3 text-sm font-mono">
@@ -377,7 +377,7 @@ export default function NetworkPage() {
 
               <div className="card-vapor p-6 rounded-xl">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                  <h2 className="text-lg font-bold" style={{ color: 'var(--text-cyan)' }}>
                     Interfaces
                   </h2>
                   <button
@@ -387,7 +387,7 @@ export default function NetworkPage() {
                     style={{
                       background: 'rgba(var(--neon-cyan-rgb), 0.1)',
                       border: '1px solid rgba(var(--neon-cyan-rgb), 0.3)',
-                      color: 'var(--neon-cyan)',
+                      color: 'var(--text-cyan)',
                     }}
                   >
                     {showRoutes ? 'Hide routes' : 'Show routes'}
@@ -408,7 +408,7 @@ export default function NetworkPage() {
                       {overview.interfaces.map((iface) => (
                         <tr key={iface.name} className="border-t border-purple-500/10">
                           <td className="py-2 pr-2">
-                            <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>{iface.name}</div>
+                            <div className="font-bold" style={{ color: 'var(--text-cyan)' }}>{iface.name}</div>
                             <div className="text-[10px] opacity-70">{iface.mac}</div>
                           </td>
                           <td className="py-2 pr-2">
@@ -437,7 +437,7 @@ export default function NetworkPage() {
 
                 {showRoutes && (
                   <div className="mt-6">
-                    <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--neon-pink)' }}>
+                    <h3 className="text-sm font-bold mb-3" style={{ color: 'var(--text-pink)' }}>
                       Routes
                     </h3>
                     <div className="overflow-x-auto">
@@ -500,7 +500,7 @@ export default function NetworkPage() {
             <>
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-cyan)' }}>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-cyan)' }}>
                     Firewall Status
                   </h2>
                   <div className="space-y-3 text-sm font-mono">
@@ -519,25 +519,25 @@ export default function NetworkPage() {
                 </div>
 
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-pink)' }}>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-pink)' }}>
                     Inbound Overview
                   </h2>
                   <div className="space-y-3 text-sm font-mono">
                     <div className="flex items-center justify-between">
                       <span style={{ color: 'var(--text-secondary)' }}>HTTP :80</span>
-                      <span style={{ color: firewall.httpOpen ? 'var(--neon-green)' : 'var(--status-error)' }}>
+                      <span style={{ color: firewall.httpOpen ? 'var(--text-green)' : 'var(--status-error)' }}>
                         {firewall.httpOpen ? 'Open' : 'Closed'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span style={{ color: 'var(--text-secondary)' }}>HTTPS :443</span>
-                      <span style={{ color: firewall.httpsOpen ? 'var(--neon-green)' : 'var(--status-error)' }}>
+                      <span style={{ color: firewall.httpsOpen ? 'var(--text-green)' : 'var(--status-error)' }}>
                         {firewall.httpsOpen ? 'Open' : 'Closed'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span style={{ color: 'var(--text-secondary)' }}>SSH :22</span>
-                      <span style={{ color: firewall.sshOpen ? 'var(--neon-green)' : 'var(--status-error)' }}>
+                      <span style={{ color: firewall.sshOpen ? 'var(--text-green)' : 'var(--status-error)' }}>
                         {firewall.sshOpen ? 'Open' : 'Closed'}
                       </span>
                     </div>
@@ -548,7 +548,7 @@ export default function NetworkPage() {
                 </div>
 
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-purple)' }}>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-purple)' }}>
                     Exposure Risk
                   </h2>
                   <div className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -561,7 +561,7 @@ export default function NetworkPage() {
                         Review non-standard open ports.
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+                      <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
                         <CheckCircle size={14} weight="duotone" />
                         No unexpected open ports detected.
                       </span>
@@ -571,7 +571,7 @@ export default function NetworkPage() {
               </div>
 
               <div className="card-vapor p-6 rounded-xl">
-                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-cyan)' }}>
+                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-cyan)' }}>
                   Listening Ports
                 </h2>
                 <div className="overflow-x-auto">
@@ -611,7 +611,7 @@ export default function NetworkPage() {
               </div>
 
               <div className="card-vapor p-6 rounded-xl">
-                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-pink)' }}>
+                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-pink)' }}>
                   Container Port Mapping
                 </h2>
                 <div className="space-y-3">
@@ -623,11 +623,11 @@ export default function NetworkPage() {
                     <div key={container.id} className="border border-purple-500/20 rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>{container.name}</div>
+                          <div className="font-bold" style={{ color: 'var(--text-cyan)' }}>{container.name}</div>
                           <div className="text-[11px] opacity-70">{container.image}</div>
                         </div>
                         {container.managed ? (
-                          <span className="text-[10px] px-2 py-1 rounded-full" style={{ background: 'rgba(var(--neon-cyan-rgb), 0.1)', color: 'var(--neon-cyan)' }}>
+                          <span className="text-[10px] px-2 py-1 rounded-full" style={{ background: 'rgba(var(--neon-cyan-rgb), 0.1)', color: 'var(--text-cyan)' }}>
                             DockLite managed
                           </span>
                         ) : (
@@ -643,7 +643,7 @@ export default function NetworkPage() {
                             className="text-xs font-mono px-2 py-1 rounded-full"
                             style={{
                               background: 'rgba(var(--neon-purple-rgb), 0.15)',
-                              color: 'var(--neon-purple)'
+                              color: 'var(--text-purple)'
                             }}
                           >
                             {port.hostIp}:{port.hostPort} → {port.containerPort}/{port.proto}
@@ -674,7 +674,7 @@ export default function NetworkPage() {
             <>
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-cyan)' }}>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-cyan)' }}>
                     Reverse Proxy
                   </h2>
                   <div className="space-y-3 text-sm font-mono">
@@ -698,7 +698,7 @@ export default function NetworkPage() {
                 </div>
 
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-pink)' }}>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-pink)' }}>
                     Bindings
                   </h2>
                   <div className="space-y-2 text-sm font-mono">
@@ -716,7 +716,7 @@ export default function NetworkPage() {
                 </div>
 
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-purple)' }}>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-purple)' }}>
                     TLS + Redirect
                   </h2>
                   <div className="space-y-2 text-sm font-mono">
@@ -736,7 +736,7 @@ export default function NetworkPage() {
               </div>
 
               <div className="card-vapor p-6 rounded-xl">
-                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-cyan)' }}>
+                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-cyan)' }}>
                   Port Exposure
                 </h2>
                 <div className="flex flex-wrap gap-2">
@@ -748,7 +748,7 @@ export default function NetworkPage() {
                     <span
                       key={`${port.hostIp}-${port.hostPort}-${index}`}
                       className="text-xs font-mono px-3 py-1 rounded-full"
-                      style={{ background: 'rgba(var(--neon-cyan-rgb), 0.12)', color: 'var(--neon-cyan)' }}
+                      style={{ background: 'rgba(var(--neon-cyan-rgb), 0.12)', color: 'var(--text-cyan)' }}
                     >
                       {port.hostIp}:{port.hostPort} → {port.containerPort}/{port.proto}
                     </span>
@@ -777,7 +777,7 @@ export default function NetworkPage() {
           <div className="card-vapor p-6 rounded-xl">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold" style={{ color: 'var(--neon-cyan)' }}>
+                <h2 className="text-lg font-bold" style={{ color: 'var(--text-cyan)' }}>
                   Connectivity Diagnostics
                 </h2>
                 <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -808,7 +808,7 @@ export default function NetworkPage() {
           </div>
 
           <div className="card-vapor p-6 rounded-xl">
-            <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--neon-pink)' }}>
+            <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-pink)' }}>
               Results
             </h2>
             {!diagnostics || diagnostics.results.length === 0 ? (
@@ -834,7 +834,7 @@ export default function NetworkPage() {
                         <td className="py-2 pr-2">{result.target}</td>
                         <td className="py-2 pr-2">
                           {result.status === 'ok' ? (
-                            <span className="inline-flex items-center gap-1" style={{ color: 'var(--neon-green)' }}>
+                            <span className="inline-flex items-center gap-1" style={{ color: 'var(--text-green)' }}>
                               <CheckCircle size={12} weight="duotone" />
                               OK
                             </span>

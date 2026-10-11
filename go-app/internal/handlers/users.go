@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -212,10 +211,11 @@ func ensureUserFolder(username string) error {
 		return nil
 	}
 	path := filepath.Join(siteBaseDir, username)
-	if err := os.MkdirAll(path, 0o775); err != nil {
+	if err := mkdirAllShared(path); err != nil {
 		return err
 	}
 	chownDocklite(path)
+	shareWithGroup(path)
 	return nil
 }
 

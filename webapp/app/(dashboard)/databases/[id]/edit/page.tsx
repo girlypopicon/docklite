@@ -378,7 +378,7 @@ export default function DatabaseEditPage() {
       <div className="card-vapor p-6 rounded-xl border border-purple-500/30">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+            <h1 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
               <Sparkle size={20} weight="duotone" />
               Database Edit Mode
             </h1>
@@ -391,7 +391,7 @@ export default function DatabaseEditPage() {
                 style={{
                   background: 'rgba(var(--neon-cyan-rgb), 0.1)',
                   border: '1px solid rgba(var(--neon-cyan-rgb), 0.4)',
-                  color: 'var(--neon-cyan)',
+                  color: 'var(--text-cyan)',
                 }}
               >
                 <CheckCircle size={14} weight="duotone" />
@@ -470,7 +470,7 @@ export default function DatabaseEditPage() {
         <div className="card-vapor p-6 rounded-xl border border-purple-500/20 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+              <h2 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                 📋 {selectedTable || 'Rows'}
               </h2>
               {tableData && (
@@ -539,7 +539,7 @@ export default function DatabaseEditPage() {
           </div>
 
           {loadingTable && (
-            <div className="text-sm font-mono flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+            <div className="text-sm font-mono flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
               <SpinnerGap size={14} weight="duotone" className="animate-spin" />
               Loading table...
             </div>
@@ -555,7 +555,7 @@ export default function DatabaseEditPage() {
             </div>
           )}
           {saveSuccess && (
-            <div className="text-sm font-mono" style={{ color: 'var(--neon-green)' }}>
+            <div className="text-sm font-mono" style={{ color: 'var(--text-green)' }}>
               {saveSuccess}
             </div>
           )}
@@ -569,7 +569,7 @@ export default function DatabaseEditPage() {
                     className="px-3 py-1 rounded-full text-xs font-mono border"
                     style={{
                       borderColor: 'rgba(var(--neon-cyan-rgb), 0.4)',
-                      color: 'var(--neon-cyan)',
+                      color: 'var(--text-cyan)',
                       background: 'rgba(var(--neon-cyan-rgb), 0.08)',
                     }}
                   >
@@ -589,7 +589,7 @@ export default function DatabaseEditPage() {
                             key={col.name}
                             className="px-3 py-2 text-left"
                             style={{
-                              color: 'var(--neon-purple)',
+                              color: 'var(--text-purple)',
                               background: isHighlighted ? 'rgba(var(--neon-cyan-rgb), 0.15)' : 'transparent',
                             }}
                           >
@@ -663,7 +663,7 @@ export default function DatabaseEditPage() {
 
       {activeTab === 'query' && (
         <div className="card-vapor p-6 rounded-xl border border-purple-500/20 space-y-4">
-          <div className="text-xl font-bold" style={{ color: 'var(--neon-green)' }}>
+          <div className="text-xl font-bold" style={{ color: 'var(--text-green)' }}>
             ⚡ Query Editor
           </div>
           <textarea
@@ -713,7 +713,7 @@ export default function DatabaseEditPage() {
                       <thead>
                         <tr>
                           {queryResult.columns?.map((col) => (
-                            <th key={col} className="px-2 py-1 text-left" style={{ color: 'var(--neon-cyan)' }}>
+                            <th key={col} className="px-2 py-1 text-left" style={{ color: 'var(--text-cyan)' }}>
                               {col}
                             </th>
                           ))}
@@ -747,7 +747,7 @@ export default function DatabaseEditPage() {
                 </div>
               ) : (
                 <div className="p-3 rounded-lg border border-purple-500/30 bg-black/30">
-                  <div style={{ color: 'var(--neon-cyan)' }}>
+                  <div style={{ color: 'var(--text-cyan)' }}>
                     {queryResult.output || 'Query executed.'}
                   </div>
                 </div>
@@ -759,12 +759,12 @@ export default function DatabaseEditPage() {
 
       {activeTab === 'structure' && (
         <div className="card-vapor p-6 rounded-xl border border-purple-500/20 space-y-4">
-          <div className="text-xl font-bold" style={{ color: 'var(--neon-cyan)' }}>
+          <div className="text-xl font-bold" style={{ color: 'var(--text-cyan)' }}>
             🏗️ Table Structure {selectedTable ? `: ${selectedTable}` : ''}
           </div>
 
           {loadingSchema && (
-            <div className="text-xs font-mono" style={{ color: 'var(--neon-cyan)' }}>
+            <div className="text-xs font-mono" style={{ color: 'var(--text-cyan)' }}>
               Loading schema...
             </div>
           )}
@@ -786,19 +786,19 @@ export default function DatabaseEditPage() {
               <table className="w-full text-xs font-mono">
                 <thead>
                   <tr>
-                    <th className="px-3 py-2 text-left" style={{ color: 'var(--neon-purple)' }}>
+                    <th className="px-3 py-2 text-left" style={{ color: 'var(--text-purple)' }}>
                       Column
                     </th>
-                    <th className="px-3 py-2 text-left" style={{ color: 'var(--neon-purple)' }}>
+                    <th className="px-3 py-2 text-left" style={{ color: 'var(--text-purple)' }}>
                       Type
                     </th>
-                    <th className="px-3 py-2 text-left" style={{ color: 'var(--neon-purple)' }}>
+                    <th className="px-3 py-2 text-left" style={{ color: 'var(--text-purple)' }}>
                       Nullable
                     </th>
-                    <th className="px-3 py-2 text-left" style={{ color: 'var(--neon-purple)' }}>
+                    <th className="px-3 py-2 text-left" style={{ color: 'var(--text-purple)' }}>
                       Default
                     </th>
-                    <th className="px-3 py-2 text-left" style={{ color: 'var(--neon-purple)' }}>
+                    <th className="px-3 py-2 text-left" style={{ color: 'var(--text-purple)' }}>
                       Key
                     </th>
                   </tr>
@@ -817,7 +817,7 @@ export default function DatabaseEditPage() {
                   ) : (
                     structureColumns.map((column) => (
                       <tr key={column.name} className="border-t border-purple-500/10">
-                        <td className="px-3 py-2" style={{ color: 'var(--neon-cyan)' }}>
+                        <td className="px-3 py-2" style={{ color: 'var(--text-cyan)' }}>
                           {column.name}
                         </td>
                         <td className="px-3 py-2">{column.type}</td>
@@ -827,7 +827,7 @@ export default function DatabaseEditPage() {
                             ? '-'
                             : String(column.default)}
                         </td>
-                        <td className="px-3 py-2" style={{ color: 'var(--neon-purple)' }}>
+                        <td className="px-3 py-2" style={{ color: 'var(--text-purple)' }}>
                           {column.key || '-'}
                         </td>
                       </tr>

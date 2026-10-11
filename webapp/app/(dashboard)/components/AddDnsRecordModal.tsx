@@ -132,7 +132,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
 
         {/* Header */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
             <Globe size={32} weight="duotone" color="var(--status-success)" />
             Add DNS Record
           </h2>
@@ -157,7 +157,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Zone Selection */}
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               DNS Zone
             </label>
             <select
@@ -177,7 +177,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
 
           {/* Record Type */}
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Record Type
             </label>
             <select
@@ -197,7 +197,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
 
           {/* Name */}
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Name
             </label>
             <div className="flex items-center gap-2">
@@ -220,7 +220,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
 
           {/* Content */}
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+            <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
               Content
             </label>
             <input
@@ -245,7 +245,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
           <div className="grid grid-cols-2 gap-4">
             {/* TTL */}
             <div>
-              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                 TTL (seconds)
               </label>
               <select
@@ -270,7 +270,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
             {/* Priority (for MX/SRV) */}
             {showPriority && (
               <div>
-                <label className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+                <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                   Priority
                 </label>
                 <input

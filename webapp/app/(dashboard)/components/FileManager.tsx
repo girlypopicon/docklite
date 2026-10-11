@@ -435,7 +435,7 @@ export default function FileManager({ userSession, embedded = false }: FileManag
                 openTransferModal('move', contextMenu.file);
               }}
               className="w-full px-4 py-3 text-left text-sm font-bold transition-all"
-              style={{ color: 'var(--neon-cyan)' }}
+              style={{ color: 'var(--text-cyan)' }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-dim)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
@@ -448,7 +448,7 @@ export default function FileManager({ userSession, embedded = false }: FileManag
                 openTransferModal('copy', contextMenu.file);
               }}
               className="w-full px-4 py-3 text-left text-sm font-bold transition-all"
-              style={{ color: 'var(--neon-purple)' }}
+              style={{ color: 'var(--text-purple)' }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-dim)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
@@ -496,7 +496,7 @@ export default function FileManager({ userSession, embedded = false }: FileManag
             </div>
             <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
               {transferMode === 'move' ? 'Moving' : 'Copying'}{' '}
-              <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+              <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                 {transferFile.name}
               </span>
             </p>
@@ -603,7 +603,7 @@ export default function FileManager({ userSession, embedded = false }: FileManag
             </div>
             <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
               This will permanently delete{' '}
-              <span className="font-bold" style={{ color: 'var(--neon-cyan)' }}>
+              <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>
                 {deleteTarget.name}
               </span>
               .

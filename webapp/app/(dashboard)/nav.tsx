@@ -156,11 +156,14 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
           style={
             active
               ? { background: 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%)', color: 'var(--button-text)' }
-              : { color: 'var(--neon-cyan)' }
+              : { color: 'var(--text-cyan)' }
           }
         >
-          {TOP_BAR_ICONS[id](20)}
-          <span>{LABELS[id]}</span>
+          {/* the label sits above the shimmer layer, so the shimmer can never wash it out */}
+          <span className="relative z-10 inline-flex items-center gap-2">
+            {TOP_BAR_ICONS[id](20)}
+            <span>{LABELS[id]}</span>
+          </span>
           {active && <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-purple-400/20 animate-pulse rounded-xl"></div>}
         </Link>
       );
@@ -175,7 +178,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
           <button
             key={id}
             onClick={onToggleTerminal}
-            className="px-4 py-2 text-sm font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2"
+            className="docklite-terminal-btn px-4 py-2 text-sm font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2"
             style={{
               background: terminalOpen
                 ? 'linear-gradient(135deg, var(--status-success) 0%, var(--status-info) 100%)'
@@ -197,7 +200,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
             onClick={() => openSettings()}
             aria-label="Settings"
             title="Settings"
-            className="flex items-center justify-center p-2 transition-all hover:scale-105 card-vapor rounded-xl border text-neon-pink/70 hover:text-neon-pink border-neon-pink/20 hover:border-neon-pink/40"
+            className="flex items-center justify-center p-2 transition-all hover:scale-105 card-vapor rounded-xl border text-accent-pink/70 hover:text-accent-pink border-neon-pink/20 hover:border-neon-pink/40"
           >
             <Gear size={22} weight="duotone" />
           </button>
@@ -230,8 +233,8 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
               aria-expanded={isDropdownOpen}
               className={`flex items-center justify-center p-2 transition-all hover:scale-105 card-vapor rounded-xl border ${
                 isDropdownOpen
-                  ? 'text-neon-pink border-neon-pink/60 bg-neon-pink/10'
-                  : 'text-neon-pink/70 hover:text-neon-pink border-neon-pink/20 hover:border-neon-pink/40'
+                  ? 'text-accent-pink border-neon-pink/60 bg-neon-pink/10'
+                  : 'text-accent-pink/70 hover:text-accent-pink border-neon-pink/20 hover:border-neon-pink/40'
               }`}
             >
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-xl relative" style={{ background: 'rgba(var(--neon-pink-rgb), 0.2)' }}>
@@ -253,7 +256,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
                 }}
               >
                 <div className="p-4 border-b" style={{ borderColor: 'rgba(var(--neon-pink-rgb), 0.3)' }}>
-                  <div className="font-bold flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                  <div className="font-bold flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                     {user.username}
                     {user.role === 'super_admin' ? (
                       <span className="text-sm flex items-center gap-1">
@@ -365,7 +368,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
                       {item.id === 'spacer' ? (
                         <div
                           className="h-10 rounded-xl flex items-center justify-center gap-1 text-xs font-bold"
-                          style={{ color: 'var(--neon-cyan)', background: 'rgba(var(--neon-cyan-rgb), 0.08)' }}
+                          style={{ color: 'var(--text-cyan)', background: 'rgba(var(--neon-cyan-rgb), 0.08)' }}
                         >
                           <ArrowsHorizontal size={16} weight="bold" /> space
                         </div>

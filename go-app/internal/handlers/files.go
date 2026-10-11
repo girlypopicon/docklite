@@ -109,12 +109,12 @@ func (h *Handlers) CreatePath(w http.ResponseWriter, r *http.Request) {
 	}
 	switch strings.ToLower(req.Type) {
 	case "folder":
-		if err := os.MkdirAll(target, 0o775); err != nil {
+		if err := mkdirAllShared(target); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	case "file":
-		if err := os.MkdirAll(filepath.Dir(target), 0o775); err != nil {
+		if err := mkdirAllShared(filepath.Dir(target)); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -122,10 +122,11 @@ func (h *Handlers) CreatePath(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "file already exists")
 			return
 		}
-		if err := os.WriteFile(target, []byte(""), 0o644); err != nil {
+		if err := os.WriteFile(target, []byte(""), 0o664); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		shareWithGroup(target)
 	default:
 		writeError(w, http.StatusBadRequest, "type must be file or folder")
 		return
@@ -302,7 +303,7 @@ func (h *Handlers) saveFile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o775); err != nil {
+	if err := mkdirAllShared(filepath.Dir(target)); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -310,10 +311,11 @@ func (h *Handlers) saveFile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusRequestEntityTooLarge, "file too large to save")
 		return
 	}
-	if err := os.WriteFile(target, []byte(req.Content), 0o644); err != nil {
+	if err := os.WriteFile(target, []byte(req.Content), 0o664); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	shareWithGroup(target)
 	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 

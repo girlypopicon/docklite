@@ -107,7 +107,7 @@ export default function UpdateCard() {
   return (
     <div className="card-vapor p-6 rounded-xl">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+        <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
           <ArrowFatUp size={20} weight="duotone" />
           DockLite Updates
         </h2>
@@ -133,11 +133,11 @@ export default function UpdateCard() {
           <div className="grid grid-cols-2 gap-4 mb-5">
             <div className="p-3 rounded-lg" style={{ background: 'var(--surface-muted)' }}>
               <div className="text-xs opacity-60 mb-1">Installed</div>
-              <div className="font-bold font-mono" style={{ color: 'var(--neon-cyan)' }}>{status.version}</div>
+              <div className="font-bold font-mono" style={{ color: 'var(--text-cyan)' }}>{status.version}</div>
             </div>
             <div className="p-3 rounded-lg" style={{ background: 'var(--surface-muted)' }}>
               <div className="text-xs opacity-60 mb-1">Newest release</div>
-              <div className="font-bold font-mono" style={{ color: status.updateAvailable ? 'var(--neon-yellow)' : 'var(--neon-green)' }}>
+              <div className="font-bold font-mono" style={{ color: status.updateAvailable ? 'var(--text-yellow)' : 'var(--text-green)' }}>
                 {status.latestVersion || '—'}
               </div>
             </div>
@@ -145,7 +145,7 @@ export default function UpdateCard() {
 
           {waiting ? (
             <div className="mb-4 p-3 rounded-lg text-sm" style={{ border: '1px solid var(--neon-cyan)', color: 'var(--text-primary)' }}>
-              <div className="font-bold flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+              <div className="font-bold flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <ArrowClockwise size={16} className="animate-spin" />
                 {reconnecting ? 'DockLite is restarting…' : `Updating to ${target || status.latestVersion}…`}
               </div>
@@ -156,7 +156,7 @@ export default function UpdateCard() {
               </div>
             </div>
           ) : finishedOk ? (
-            <div className="mb-4 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--neon-green)' }}>
+            <div className="mb-4 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--text-green)' }}>
               <CheckCircle size={18} weight="duotone" /> Updated to {status.version}. Reloading…
             </div>
           ) : failed ? (
@@ -176,11 +176,11 @@ export default function UpdateCard() {
               <WarningCircle size={18} weight="duotone" /> Couldn’t read the installed version, so I can’t tell whether you’re up to date.
             </div>
           ) : status.updateAvailable ? (
-            <div className="mb-4 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--neon-yellow)' }}>
+            <div className="mb-4 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--text-yellow)' }}>
               <WarningCircle size={18} weight="duotone" /> Version {status.latestVersion} is available
             </div>
           ) : (
-            <div className="mb-4 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--neon-green)' }}>
+            <div className="mb-4 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--text-green)' }}>
               <CheckCircle size={18} weight="duotone" /> You have the newest version
             </div>
           )}
@@ -210,7 +210,7 @@ export default function UpdateCard() {
               </button>
             )}
             {status.releaseUrl && (
-              <a href={status.releaseUrl} target="_blank" rel="noreferrer" className="text-xs underline flex items-center gap-1" style={{ color: 'var(--neon-cyan)' }}>
+              <a href={status.releaseUrl} target="_blank" rel="noreferrer" className="text-xs underline flex items-center gap-1" style={{ color: 'var(--text-cyan)' }}>
                 Release notes <ArrowSquareOut size={12} />
               </a>
             )}

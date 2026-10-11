@@ -346,7 +346,7 @@ export default function DatabasesPage() {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+          <h1 className="text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
             <Database size={24} weight="duotone" />
             Databases
           </h1>
@@ -383,48 +383,48 @@ export default function DatabasesPage() {
 
       {connectionInfo && (
         <div className="mt-4 card-vapor p-6 rounded-lg border-2" style={{ borderColor: 'rgba(var(--status-success-rgb), 0.5)' }}>
-          <h3 className="text-lg font-bold mb-3 neon-text flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+          <h3 className="text-lg font-bold mb-3 neon-text flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
             <Sparkle size={16} weight="duotone" />
             Database Created Successfully!
           </h3>
           <div className="space-y-2 font-mono text-sm" style={{ color: 'var(--text-primary)' }}>
             <div className="flex justify-between">
-              <span className="inline-flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+              <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <Globe size={14} weight="duotone" />
                 HOST:
               </span>
               <span>{connectionInfo.host}</span>
             </div>
             <div className="flex justify-between">
-              <span className="inline-flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+              <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <Plug size={14} weight="duotone" />
                 PORT:
               </span>
               <span>{connectionInfo.port}</span>
             </div>
             <div className="flex justify-between">
-              <span className="inline-flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+              <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <Database size={14} weight="duotone" />
                 DATABASE:
               </span>
               <span>{connectionInfo.database}</span>
             </div>
             <div className="flex justify-between">
-              <span className="inline-flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+              <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <UserCircle size={14} weight="duotone" />
                 USERNAME:
               </span>
               <span>{connectionInfo.username}</span>
             </div>
             <div className="flex justify-between">
-              <span className="inline-flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+              <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <Key size={14} weight="duotone" />
                 PASSWORD:
               </span>
-              <span className="font-bold" style={{ color: 'var(--neon-pink)' }}>{connectionInfo.password}</span>
+              <span className="font-bold" style={{ color: 'var(--text-pink)' }}>{connectionInfo.password}</span>
             </div>
           </div>
-          <p className="mt-4 text-xs font-mono flex items-center gap-2" style={{ color: 'var(--neon-yellow)' }}>
+          <p className="mt-4 text-xs font-mono flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
             <WarningCircle size={14} weight="duotone" />
             Save these credentials - the password will not be shown again!
           </p>
@@ -477,7 +477,7 @@ export default function DatabasesPage() {
             </div>
 
             <div>
-              <label htmlFor="name" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+              <label htmlFor="name" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <Database size={16} weight="duotone" />
                 DATABASE NAME
               </label>
@@ -498,7 +498,7 @@ export default function DatabasesPage() {
             {dbType === 'postgres' ? (
               <>
                 <div>
-                  <label htmlFor="username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+                  <label htmlFor="username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
                     <UserCircle size={16} weight="duotone" />
                     USERNAME
                   </label>
@@ -517,7 +517,7 @@ export default function DatabasesPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                  <label htmlFor="password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                     <Key size={16} weight="duotone" />
                     PASSWORD
                   </label>
@@ -537,7 +537,7 @@ export default function DatabasesPage() {
             ) : (
               <>
                 <div>
-                  <label htmlFor="container" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+                  <label htmlFor="container" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
                     <Package size={16} weight="duotone" />
                     HOST CONTAINER
                   </label>
@@ -567,7 +567,7 @@ export default function DatabasesPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="path" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-yellow)' }}>
+                  <label htmlFor="path" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
                     <LinkSimple size={16} weight="duotone" />
                     FILE PATH
                   </label>
@@ -610,14 +610,14 @@ export default function DatabasesPage() {
 
       {/* PostgreSQL Databases */}
       <div className="mt-8">
-        <h2 className="text-2xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
           <Database size={20} weight="duotone" />
           PostgreSQL Databases
         </h2>
 
         {databases.length === 0 ? (
           <div className="text-center py-12 card-vapor">
-            <p className="text-lg font-bold mb-2 flex items-center justify-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+            <p className="text-lg font-bold mb-2 flex items-center justify-center gap-2" style={{ color: 'var(--text-pink)' }}>
               <Package size={20} weight="duotone" />
               No PostgreSQL databases yet!
             </p>
@@ -659,7 +659,7 @@ export default function DatabasesPage() {
                     style={{
                       background: 'transparent',
                       border: '2px solid var(--neon-purple)',
-                      color: 'var(--neon-purple)',
+                      color: 'var(--text-purple)',
                       boxShadow: `
                         0 0 5px rgba(var(--neon-purple-rgb), 0.6),
                         0 0 10px rgba(var(--neon-purple-rgb), 0.3)
@@ -707,7 +707,7 @@ export default function DatabasesPage() {
                             }}
                             onMouseDown={stopMenu}
                             className="w-full px-4 py-3 text-left text-sm font-bold transition-all hover:bg-white/5 flex items-center gap-3"
-                            style={{ color: 'var(--neon-cyan)' }}
+                            style={{ color: 'var(--text-cyan)' }}
                           >
                             <PencilSimpleLine size={16} weight="duotone" />
                             Edit Credentials
@@ -723,7 +723,7 @@ export default function DatabasesPage() {
                             }}
                             onMouseDown={stopMenu}
                             className="w-full px-4 py-3 text-left text-sm font-bold transition-all hover:bg-white/5 flex items-center gap-3"
-                            style={{ color: 'var(--neon-purple)' }}
+                            style={{ color: 'var(--text-purple)' }}
                           >
                             <SignIn size={16} weight="duotone" />
                             Edit Database Mode
@@ -755,7 +755,7 @@ export default function DatabasesPage() {
                             }}
                             onMouseDown={stopMenu}
                             className="w-full px-4 py-3 text-left text-sm font-bold transition-all hover:bg-white/5 flex items-center gap-3"
-                            style={{ color: 'var(--neon-green)' }}
+                            style={{ color: 'var(--text-green)' }}
                           >
                             <DownloadSimple size={16} weight="duotone" />
                             Download Database
@@ -768,7 +768,7 @@ export default function DatabasesPage() {
 
                 {/* Header with centered database icon */}
                 <div className="mb-4">
-                  <h3 className="docklite-db-title text-xl font-bold neon-text truncate" style={{ color: 'var(--neon-cyan)' }}>
+                  <h3 className="docklite-db-title text-xl font-bold neon-text truncate" style={{ color: 'var(--text-cyan)' }}>
                     {db.name}
                   </h3>
                   <div className="mt-3 flex justify-center pointer-events-none">
@@ -777,7 +777,7 @@ export default function DatabasesPage() {
                       weight="duotone"
                       className="animate-wobble"
                       style={{
-                        color: 'var(--neon-cyan)',
+                        color: 'var(--text-cyan)',
                         filter: 'drop-shadow(0 0 8px rgba(var(--neon-cyan-rgb), 0.7)) drop-shadow(0 0 14px rgba(var(--neon-cyan-rgb), 0.45))',
                       }}
                     />
@@ -792,7 +792,7 @@ export default function DatabasesPage() {
                       background: db.size === 0
                         ? 'rgba(var(--text-muted-rgb), 0.2)'
                         : 'rgba(var(--status-success-rgb), 0.2)',
-                      color: db.size === 0 ? 'var(--text-muted)' : 'var(--neon-green)',
+                      color: db.size === 0 ? 'var(--text-muted)' : 'var(--text-green)',
                       border: `1px solid ${db.size === 0 ? 'var(--text-muted)' : 'var(--neon-green)'}`,
                     }}
                   >
@@ -808,7 +808,7 @@ export default function DatabasesPage() {
                         <LinkSimple size={12} weight="duotone" />
                         Path:
                       </span>
-                      <span className="font-bold truncate" title={db.db_path} style={{ color: 'var(--neon-yellow)' }}>
+                      <span className="font-bold truncate" title={db.db_path} style={{ color: 'var(--text-yellow)' }}>
                         {db.db_path}
                       </span>
                     </div>
@@ -818,7 +818,7 @@ export default function DatabasesPage() {
                         <Plug size={12} weight="duotone" />
                         Port:
                       </span>
-                      <span className="font-bold" style={{ color: 'var(--neon-purple)' }}>
+                      <span className="font-bold" style={{ color: 'var(--text-purple)' }}>
                         {db.postgres_port}
                       </span>
                     </div>
@@ -868,13 +868,13 @@ export default function DatabasesPage() {
         <div className="flex items-start gap-3">
           <Lightbulb size={22} weight="duotone" />
           <div>
-            <p className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+            <p className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
               <LinkSimple size={14} weight="duotone" />
               CONNECTION INFO
             </p>
             <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
-              Connect to your PostgreSQL databases using <span className="font-bold" style={{ color: 'var(--neon-pink)' }}>localhost</span> as the host and the port shown on each card.
-              Default username is <span className="font-bold" style={{ color: 'var(--neon-pink)' }}>docklite</span>. Password is generated randomly during creation.
+              Connect to your PostgreSQL databases using <span className="font-bold" style={{ color: 'var(--text-pink)' }}>localhost</span> as the host and the port shown on each card.
+              Default username is <span className="font-bold" style={{ color: 'var(--text-pink)' }}>docklite</span>. Password is generated randomly during creation.
             </p>
           </div>
         </div>
@@ -885,7 +885,7 @@ export default function DatabasesPage() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
           <div className="card-vapor max-w-lg w-full p-8">
             <div className="mb-6">
-              <h2 className="text-2xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+              <h2 className="text-2xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <PencilSimpleLine size={18} weight="duotone" />
                 Edit Database Credentials
               </h2>
@@ -896,7 +896,7 @@ export default function DatabasesPage() {
 
             <form onSubmit={handleEdit} className="space-y-4">
               <div>
-                <label htmlFor="edit-username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+                <label htmlFor="edit-username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
                   <UserCircle size={16} weight="duotone" />
                   NEW USERNAME
                 </label>
@@ -912,7 +912,7 @@ export default function DatabasesPage() {
               </div>
 
               <div>
-                <label htmlFor="edit-password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                <label htmlFor="edit-password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                   <Key size={16} weight="duotone" />
                   NEW PASSWORD
                 </label>
@@ -928,7 +928,7 @@ export default function DatabasesPage() {
               </div>
 
               <div className="p-4 rounded-lg" style={{ background: 'rgba(var(--status-warning-rgb), 0.1)', border: '1px solid rgba(var(--status-warning-rgb), 0.3)' }}>
-                <p className="text-xs font-mono flex items-center gap-2" style={{ color: 'var(--neon-yellow)' }}>
+                <p className="text-xs font-mono flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
                   <WarningCircle size={14} weight="duotone" />
                   This will update the PostgreSQL user credentials in the database container.
                   Make sure to update your application connection strings!
@@ -1006,7 +1006,7 @@ export default function DatabasesPage() {
               </div>
 
               <div>
-                <label htmlFor="delete-confirm" className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+                <label htmlFor="delete-confirm" className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                   Confirm Database Name
                 </label>
                 <input
@@ -1071,7 +1071,7 @@ export default function DatabasesPage() {
               <div className="flex justify-center mb-4">
                 <Brain size={36} weight="duotone" color="var(--neon-cyan)" />
               </div>
-              <h2 className="text-2xl font-bold neon-text mb-2" style={{ color: 'var(--neon-cyan)' }}>
+              <h2 className="text-2xl font-bold neon-text mb-2" style={{ color: 'var(--text-cyan)' }}>
                 DO YOU WANT TO EDIT MODE?
               </h2>
               <p className="text-sm font-mono opacity-80" style={{ color: 'var(--text-secondary)' }}>
@@ -1081,7 +1081,7 @@ export default function DatabasesPage() {
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="edit-mode-username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+                <label htmlFor="edit-mode-username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
                   <UserCircle size={16} weight="duotone" />
                   DATABASE USERNAME
                 </label>
@@ -1096,7 +1096,7 @@ export default function DatabasesPage() {
               </div>
 
               <div>
-                <label htmlFor="edit-mode-password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                <label htmlFor="edit-mode-password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                   <Key size={16} weight="duotone" />
                   DATABASE PASSWORD
                 </label>
@@ -1158,7 +1158,7 @@ export default function DatabasesPage() {
               <div className="flex justify-center mb-4">
                 <ArrowDown size={36} weight="duotone" color="var(--neon-green)" />
               </div>
-              <h2 className="text-2xl font-bold neon-text mb-2" style={{ color: 'var(--neon-green)' }}>
+              <h2 className="text-2xl font-bold neon-text mb-2" style={{ color: 'var(--text-green)' }}>
                 Download Database
               </h2>
               <p className="text-sm font-mono opacity-80" style={{ color: 'var(--text-secondary)' }}>
@@ -1168,7 +1168,7 @@ export default function DatabasesPage() {
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="download-username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-purple)' }}>
+                <label htmlFor="download-username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
                   <UserCircle size={16} weight="duotone" />
                   DATABASE USERNAME
                 </label>
@@ -1183,7 +1183,7 @@ export default function DatabasesPage() {
               </div>
 
               <div>
-                <label htmlFor="download-password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+                <label htmlFor="download-password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
                   <Key size={16} weight="duotone" />
                   DATABASE PASSWORD
                 </label>
@@ -1197,7 +1197,7 @@ export default function DatabasesPage() {
                 />
               </div>
 
-              <label className="flex items-center gap-3 text-sm font-bold" style={{ color: 'var(--neon-green)' }}>
+              <label className="flex items-center gap-3 text-sm font-bold" style={{ color: 'var(--text-green)' }}>
                 <input
                   type="checkbox"
                   checked={downloadGzip}
@@ -1209,7 +1209,7 @@ export default function DatabasesPage() {
               </label>
 
               <div className="p-4 rounded-lg border" style={{ background: 'rgba(var(--status-warning-rgb), 0.1)', borderColor: 'rgba(var(--status-warning-rgb), 0.35)' }}>
-                <p className="text-xs font-mono flex items-center gap-2" style={{ color: 'var(--neon-yellow)' }}>
+                <p className="text-xs font-mono flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
                   <WarningCircle size={14} weight="duotone" />
                   This backs up the database only. Files/uploads are separate.
                 </p>

@@ -6,7 +6,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8">
       <div className="card-vapor p-6 rounded-xl">
-        <h2 className="text-2xl font-bold neon-text mb-4" style={{ color: 'var(--neon-pink)' }}>
+        <h2 className="text-2xl font-bold neon-text mb-4" style={{ color: 'var(--text-pink)' }}>
           General
         </h2>
         <p className="text-sm font-mono opacity-70" style={{ color: 'var(--text-secondary)' }}>
@@ -15,31 +15,31 @@ export default function SettingsPage() {
       </div>
 
       <div className="card-vapor p-6 rounded-xl">
-        <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+        <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
           <Tag size={20} weight="duotone" />
           System Information
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold neon-text" style={{ color: 'var(--neon-cyan)' }}>
+            <div className="text-2xl font-bold neon-text" style={{ color: 'var(--text-cyan)' }}>
               v{process.env.NEXT_PUBLIC_DOCKLITE_VERSION}
             </div>
             <div className="text-xs font-mono opacity-70">Version</div>
           </div>
           <div className="text-center">
-            <div className="flex justify-center text-2xl font-bold neon-text" style={{ color: 'var(--neon-purple)' }}>
+            <div className="flex justify-center text-2xl font-bold neon-text" style={{ color: 'var(--text-purple)' }}>
               <Cube size={24} weight="duotone" />
             </div>
             <div className="text-xs font-mono opacity-70">Docker</div>
           </div>
           <div className="text-center">
-            <div className="flex justify-center text-2xl font-bold neon-text" style={{ color: 'var(--neon-pink)' }}>
+            <div className="flex justify-center text-2xl font-bold neon-text" style={{ color: 'var(--text-pink)' }}>
               <Lightning size={24} weight="duotone" />
             </div>
             <div className="text-xs font-mono opacity-70">Status</div>
           </div>
           <div className="text-center">
-            <div className="flex justify-center text-2xl font-bold neon-text" style={{ color: 'var(--neon-yellow)' }}>
+            <div className="flex justify-center text-2xl font-bold neon-text" style={{ color: 'var(--text-yellow)' }}>
               <Lock size={24} weight="duotone" />
             </div>
             <div className="text-xs font-mono opacity-70">Secure</div>

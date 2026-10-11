@@ -108,7 +108,7 @@ export default function NginxFlowPanel() {
   const Arrow = () => (
     <div className="flex items-center mx-0.5 flex-shrink-0">
       <div className="h-[2px] w-4 rounded" style={{ background: 'linear-gradient(90deg, var(--neon-cyan), var(--neon-purple))' }} />
-      <ArrowRight size={10} style={{ color: 'var(--neon-cyan)' }} />
+      <ArrowRight size={10} style={{ color: 'var(--text-cyan)' }} />
     </div>
   );
 
@@ -173,7 +173,7 @@ export default function NginxFlowPanel() {
     <div className="card-vapor p-6 rounded-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+          <h2 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <ArrowsClockwise size={18} weight="duotone" />
             Traffic Flow
           </h2>
@@ -186,7 +186,7 @@ export default function NginxFlowPanel() {
 
       {/* DockLite core flow */}
       <div className="mb-6">
-        <div className="text-[10px] font-bold tracking-widest mb-3" style={{ color: 'var(--neon-purple)' }}>DOCKLITE DASHBOARD</div>
+        <div className="text-[10px] font-bold tracking-widest mb-3" style={{ color: 'var(--text-purple)' }}>DOCKLITE DASHBOARD</div>
         <div className="flex items-center gap-1 overflow-x-auto pb-2">
           <NodeBox label="Internet" sublabel="browser" icon="globe" color="var(--neon-pink)" status="online" />
           <Arrow />
@@ -207,7 +207,7 @@ export default function NginxFlowPanel() {
       {/* Managed container flows */}
       {managedContainers.length > 0 && (
         <div className="mb-6">
-          <div className="text-[10px] font-bold tracking-widest mb-3" style={{ color: 'var(--neon-purple)' }}>HOSTED SITES</div>
+          <div className="text-[10px] font-bold tracking-widest mb-3" style={{ color: 'var(--text-purple)' }}>HOSTED SITES</div>
           <div className="space-y-3">
             {managedContainers.map((container) => {
               const site = findNginxSite(container);
@@ -289,11 +289,11 @@ export default function NginxFlowPanel() {
       <div className="mt-4 pt-4 border-t border-white/10">
         <div className="flex flex-wrap gap-4 text-[10px]" style={{ color: 'var(--text-secondary)' }}>
           <span className="flex items-center gap-1">
-            <ShieldCheck size={12} weight="bold" style={{ color: 'var(--neon-green)' }} />
+            <ShieldCheck size={12} weight="bold" style={{ color: 'var(--text-green)' }} />
             nginx port
           </span>
           <span className="flex items-center gap-1">
-            <Anchor size={12} weight="bold" style={{ color: 'var(--neon-cyan)' }} />
+            <Anchor size={12} weight="bold" style={{ color: 'var(--text-cyan)' }} />
             docker port
           </span>
           <span className="flex items-center gap-1">{statusDot('online')} online</span>

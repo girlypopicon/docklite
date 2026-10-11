@@ -126,14 +126,14 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
       <div className="card-vapor max-w-2xl w-full p-6 rounded-2xl border-2 border-neon-purple/40">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-                          <div className="text-xs uppercase tracking-[0.2em] text-neon-purple/70">Create Container</div>            <div className="text-2xl font-bold text-neon-cyan">New Site</div>
+                          <div className="text-xs uppercase tracking-[0.2em] text-accent-purple/70">Create Container</div>            <div className="text-2xl font-bold text-accent-cyan">New Site</div>
           </div>
           <button onClick={onClose} className="btn-neon px-3 py-1 text-sm font-bold">✕ Close</button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-bold text-neon-cyan/80 block mb-2">Domain</label>
+            <label className="text-sm font-bold text-accent-cyan/80 block mb-2">Domain</label>
             <input
               className="input-vapor w-full px-3 py-2 font-mono"
               placeholder="example.com"
@@ -144,7 +144,7 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-bold text-neon-cyan/80 block mb-2">Template</label>
+              <label className="text-sm font-bold text-accent-cyan/80 block mb-2">Template</label>
               <select
                 className="input-vapor w-full px-3 py-2"
                 value={templateType}
@@ -156,7 +156,7 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
               </select>
             </div>
             <div>
-              <label className="text-sm font-bold text-neon-cyan/80 block mb-2">Code Path (optional)</label>
+              <label className="text-sm font-bold text-accent-cyan/80 block mb-2">Code Path (optional)</label>
               <input
                 className="input-vapor w-full px-3 py-2 font-mono"
                 placeholder="/var/www/sites/username/example.com"
@@ -168,7 +168,7 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
 
           {templateType === 'node' && (
             <div>
-              <label className="text-sm font-bold text-neon-cyan/80 block mb-2">Node Internal Port</label>
+              <label className="text-sm font-bold text-accent-cyan/80 block mb-2">Node Internal Port</label>
               <input
                 type="number"
                 className="input-vapor w-full px-3 py-2 font-mono"
@@ -190,13 +190,13 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
               checked={includeWww}
               onChange={(e) => setIncludeWww(e.target.checked)}
             />
-                              <label htmlFor="include-www" className="text-sm text-neon-purple">              Request SSL for <code>www.{domain || 'example.com'}</code> too
+                              <label htmlFor="include-www" className="text-sm text-accent-purple">              Request SSL for <code>www.{domain || 'example.com'}</code> too
             </label>
           </div>
 
           {dnsPreview && (
             <div className="rounded-lg p-3 text-sm space-y-2" style={{ border: '1px solid rgba(var(--neon-purple-rgb), 0.35)' }}>
-              <div className="font-bold" style={{ color: 'var(--neon-cyan)' }}>Cloudflare DNS</div>
+              <div className="font-bold" style={{ color: 'var(--text-cyan)' }}>Cloudflare DNS</div>
               {dnsPreview.status === 'not-configured' && (
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   Cloudflare isn’t connected, so you’ll point this domain’s DNS at the server yourself. Connect it under Settings → Cloudflare and DockLite can do this step for you.
@@ -221,8 +221,8 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
                       <ul className="text-xs font-mono space-y-1" style={{ color: 'var(--text-secondary)' }}>
                         {dnsPreview.records?.map((r) => (
                           <li key={r.type + r.name}>
-                            {r.action === 'exists' && <span style={{ color: 'var(--neon-green)' }}>✓ already set: </span>}
-                            {r.action === 'create' && <span style={{ color: 'var(--neon-cyan)' }}>+ will add: </span>}
+                            {r.action === 'exists' && <span style={{ color: 'var(--text-green)' }}>✓ already set: </span>}
+                            {r.action === 'create' && <span style={{ color: 'var(--text-cyan)' }}>+ will add: </span>}
                             {r.action === 'conflict' && <span style={{ color: 'var(--status-warning)' }}>! left alone: </span>}
                             {r.type} {r.name} → {r.content}
                             {r.action === 'conflict' && r.existing ? ` (there is already ${r.existing})` : ''}

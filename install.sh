@@ -264,7 +264,7 @@ install_nginx() {
 install_system_packages() {
     step_header "System packages"
     ($SUDO apt-get update -qq >/dev/null 2>&1 && \
-        $SUDO apt-get install -y -q ca-certificates curl git openssl build-essential pkg-config >/dev/null 2>&1) &
+        $SUDO apt-get install -y -q ca-certificates curl git openssl build-essential pkg-config acl >/dev/null 2>&1) &
     spin $! "Updating packages..." && ok "System packages ready" || warn "Some packages may have failed"
 }
 
@@ -507,7 +507,13 @@ setup_user_and_dirs() {
     $SUDO mkdir -p /var/www/sites
     # Only the top folder: existing sites (and their owners) are never re-owned here.
     $SUDO chown docklite:docklite /var/www/sites
-    $SUDO chmod 775 /var/www/sites
+    $SUDO chmod 2775 /var/www/sites   # group-writable + setgid: members of the docklite group (and assistants) can work in site folders
+    # Default ACL: files created here later, by anyone and whatever their umask, stay editable by the docklite group
+    # (so the dashboard's file editor can save over a file a person or assistant made). The agent extends this to sites.
+    if command -v setfacl >/dev/null 2>&1; then
+        $SUDO setfacl -m g:docklite:rwx /var/www/sites 2>/dev/null || true
+        $SUDO setfacl -d -m g:docklite:rwx /var/www/sites 2>/dev/null || true
+    fi
     ok "Site directory: /var/www/sites (owned by docklite)"
 
     # Backups and diagnostics bundles are written here by the agent, which

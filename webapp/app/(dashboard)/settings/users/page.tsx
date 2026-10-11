@@ -213,7 +213,7 @@ export default function ManageUsersPage() {
         <div className="flex justify-center mb-4 animate-float">
           <Lightning size={48} weight="duotone" color="var(--neon-cyan)" />
         </div>
-        <div className="text-2xl font-bold neon-text animate-pulse" style={{ color: 'var(--neon-cyan)' }}>
+        <div className="text-2xl font-bold neon-text animate-pulse" style={{ color: 'var(--text-cyan)' }}>
           Loading users...
         </div>
       </div>
@@ -256,18 +256,18 @@ export default function ManageUsersPage() {
       <div className="cyber-card">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-neon-purple/20">
-          <thead className="bg-dark-bg/50">
+          <thead className="bg-surface-muted">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-neon-cyan">
+              <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-accent-cyan">
                 Username
               </th>
-              <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-neon-cyan">
+              <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-accent-cyan">
                 Role
               </th>
-              <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-neon-cyan">
+              <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-accent-cyan">
                 Created
               </th>
-              <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-neon-cyan">
+              <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-accent-cyan">
                 Actions
               </th>
             </tr>
@@ -275,21 +275,21 @@ export default function ManageUsersPage() {
           <tbody className="divide-y divide-neon-purple/20">
             {users.map((user) => (
               <tr key={user.id} className="relative">
-                <td className="px-6 py-4 whitespace-nowrap font-bold text-neon-cyan">
+                <td className="px-6 py-4 whitespace-nowrap font-bold text-accent-cyan">
                   {user.username}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {user.is_admin === 1 ? (
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-neon-purple/20 text-neon-pink">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-neon-purple/20 text-accent-pink">
                       {user.role === 'super_admin' ? 'Superadmin' : 'Admin'}
                     </span>
                   ) : (
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-dark-bg/60 text-neon-cyan">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-surface-muted text-accent-cyan">
                       User
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-ink-muted">
                   {new Date(user.created_at).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -309,7 +309,7 @@ export default function ManageUsersPage() {
                       <div
                         data-user-menu
                         style={menuPos}
-                        className="fixed w-40 rounded-lg border border-neon-purple/30 bg-dark-bg/95 backdrop-blur-md shadow-lg z-[9000] flex flex-col"
+                        className="fixed w-40 rounded-lg border border-neon-purple/30 bg-surface-muted backdrop-blur-md shadow-lg z-[9000] flex flex-col"
                       >
                         <button
                           type="button"
@@ -317,7 +317,7 @@ export default function ManageUsersPage() {
                             setDetailsUser(user);
                             setMenuUserId(null);
                           }}
-                          className="w-full text-left px-4 py-2 text-sm text-neon-cyan hover:bg-neon-purple/10"
+                          className="w-full text-left px-4 py-2 text-sm text-accent-cyan hover:bg-neon-purple/10"
                         >
                           Details
                         </button>
@@ -342,7 +342,7 @@ export default function ManageUsersPage() {
                               setPasswordError('');
                               setMenuUserId(null);
                             }}
-                            className="w-full text-left px-4 py-2 text-sm text-neon-cyan hover:bg-neon-purple/10"
+                            className="w-full text-left px-4 py-2 text-sm text-accent-cyan hover:bg-neon-purple/10"
                           >
                             Change Password
                           </button>
@@ -371,7 +371,7 @@ export default function ManageUsersPage() {
           >
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-neon-cyan">User Details</h2>
+                <h2 className="text-2xl font-bold text-accent-cyan">User Details</h2>
                 <p className="text-xs font-mono mt-2" style={{ color: 'var(--text-secondary)' }}>
                   ▸ Account information ◂
                 </p>
@@ -387,29 +387,29 @@ export default function ManageUsersPage() {
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Username</span>
-                <span className="text-neon-cyan font-bold">{detailsUser.username}</span>
+                <span className="text-ink-muted">Username</span>
+                <span className="text-accent-cyan font-bold">{detailsUser.username}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Role</span>
-                <span className="text-neon-pink font-bold">
+                <span className="text-ink-muted">Role</span>
+                <span className="text-accent-pink font-bold">
                   {detailsUser.role === 'super_admin' ? 'Superadmin' : detailsUser.role === 'admin' ? 'Admin' : 'User'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Created</span>
+                <span className="text-ink-muted">Created</span>
                 <span className="text-gray-200">
                   {new Date(detailsUser.created_at).toLocaleString()}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Managed By</span>
+                <span className="text-ink-muted">Managed By</span>
                 <span className="text-gray-200">
                   {detailsUser.managed_by ? managerMap.get(detailsUser.managed_by) || `User #${detailsUser.managed_by}` : '—'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">User ID</span>
+                <span className="text-ink-muted">User ID</span>
                 <span className="text-gray-200">{detailsUser.id}</span>
               </div>
             </div>
@@ -443,9 +443,9 @@ export default function ManageUsersPage() {
               Are you sure you want to delete this user? This action cannot be undone.
             </p>
             {deleteUserTarget && (
-              <div className="mb-4 text-sm text-gray-300">
+              <div className="mb-4 text-sm text-ink-secondary">
                 Sites will be transferred to{' '}
-                <span className="text-neon-cyan font-bold">
+                <span className="text-accent-cyan font-bold">
                   {deleteUserTarget.managed_by
                     ? managerMap.get(deleteUserTarget.managed_by) || `User #${deleteUserTarget.managed_by}`
                     : currentUser?.username || 'the deleting user'}
@@ -500,7 +500,7 @@ export default function ManageUsersPage() {
             }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-neon-cyan">Change Password</h2>
+              <h2 className="text-2xl font-bold text-accent-cyan">Change Password</h2>
               <button
                 type="button"
                 onClick={() => setPasswordUser(null)}
@@ -510,7 +510,7 @@ export default function ManageUsersPage() {
               </button>
             </div>
             <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Set a new password for <span className="text-neon-pink font-bold">{passwordUser.username}</span>.
+              Set a new password for <span className="text-accent-pink font-bold">{passwordUser.username}</span>.
             </p>
             {passwordError && (
               <div
@@ -526,7 +526,7 @@ export default function ManageUsersPage() {
             )}
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
-                <label htmlFor="change-password" className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+                <label htmlFor="change-password" className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                   New Password
                 </label>
                 <input
@@ -572,7 +572,7 @@ export default function ManageUsersPage() {
           >
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-neon-pink">Create New User</h2>
+                <h2 className="text-2xl font-bold text-accent-pink">Create New User</h2>
                 <p className="text-xs font-mono mt-2" style={{ color: 'var(--text-secondary)' }}>
                   ▸ Add a new account and assign privileges ◂
                 </p>
@@ -601,7 +601,7 @@ export default function ManageUsersPage() {
               )}
 
               <div>
-                <label htmlFor="create-username" className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+                <label htmlFor="create-username" className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                   Username
                 </label>
                 <input
@@ -615,7 +615,7 @@ export default function ManageUsersPage() {
               </div>
 
               <div>
-                <label htmlFor="create-password" className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+                <label htmlFor="create-password" className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                   Password
                 </label>
                 <input
@@ -627,11 +627,11 @@ export default function ManageUsersPage() {
                   onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
                   className="input-vapor w-full"
                 />
-                <p className="mt-2 text-xs font-mono text-gray-400">Minimum 6 characters</p>
+                <p className="mt-2 text-xs font-mono text-ink-muted">Minimum 6 characters</p>
               </div>
 
               <div>
-                <label htmlFor="create-confirm-password" className="block text-sm font-bold mb-2" style={{ color: 'var(--neon-pink)' }}>
+                <label htmlFor="create-confirm-password" className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
                   Confirm Password
                 </label>
                 <input

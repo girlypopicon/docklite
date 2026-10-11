@@ -13,6 +13,13 @@
     --glow: 1;
     /* 0–1: how much extra halo the cards get. Set by Settings → Appearance → Neon glow (0 = default look). */
     --glow-boost: 0;
+    /* Colours for TEXT. Borders and glows keep using --neon-*; text uses these so each theme can make them readable
+       on its own background (a pale glow colour is fine as a border but invisible as text on a light page). */
+    --text-cyan: var(--neon-cyan);
+    --text-pink: var(--neon-pink);
+    --text-purple: #947bff;
+    --text-green: var(--neon-green);
+    --text-yellow: var(--neon-yellow);
     --bg-dark: #0a0a1e;
     --bg-darker: #050510;
     --bg-card: #1a0a2e;
@@ -31,7 +38,7 @@
     --neon-yellow-rgb: 255, 230, 109;
     --text-primary: #e0e0ff;
     --text-secondary: #a0a0c0;
-    --text-muted: #707090;
+    --text-muted: #8e8ea7;
     --text-muted-rgb: 112, 112, 144;
     --card-bg-1: rgba(26, 10, 46, 0.95);
     --card-bg-2: rgba(10, 5, 30, 0.9);
@@ -78,15 +85,15 @@
     --bg-gradient-1: #dde1e9;
     --bg-gradient-2: #eef1f6;
     --bg-gradient-3: #d1d6e0;
-    --neon-cyan: #b0627f;
+    --neon-cyan: #ab5877;
     --neon-cyan-rgb: 176, 98, 127;
-    --neon-pink: #ff2d8e;
+    --neon-pink: #e20068;
     --neon-pink-rgb: 255, 45, 142;
-    --neon-purple: #ff2d8e;
+    --neon-purple: #e20068;
     --neon-purple-rgb: 255, 45, 142;
-    --neon-green: #6f977f;
+    --neon-green: #4d715c;
     --neon-green-rgb: 111, 151, 127;
-    --neon-yellow: #b7995c;
+    --neon-yellow: #8a703d;
     --neon-yellow-rgb: 183, 153, 92;
     --text-primary: #1d212c;
     --text-secondary: #4d5160;
@@ -98,7 +105,7 @@
     --card-shadow: 0 12px 28px rgba(31, 33, 43, 0.12);
     --input-bg: rgba(244, 246, 250, 0.95);
     --input-border: rgba(255, 45, 142, 0.32);
-    --button-text: #1f212b;
+    --button-text: #ffffff;
     --focus-outline: #ff2d8e;
     --modal-bg-1: rgba(248, 249, 253, 0.98);
     --modal-bg-2: rgba(232, 236, 244, 0.98);
@@ -107,16 +114,22 @@
     --surface-dim: rgba(214, 218, 228, 0.35);
     --surface-muted: rgba(232, 236, 244, 0.7);
     --surface-strong: rgba(218, 223, 234, 0.8);
-    --status-error: #d96276;
+    --status-error: #a8203a;
     --status-error-rgb: 217, 98, 118;
     --status-error-strong: #ff2d8e;
     --status-error-strong-rgb: 255, 45, 142;
-    --status-warning: #b7995c;
+    --status-warning: #8a5700;
     --status-warning-rgb: 183, 153, 92;
-    --status-success: #6f977f;
+    --status-success: #1b6f3a;
     --status-success-rgb: 111, 151, 127;
-    --status-info: #b0627f;
+    --status-info: #0b5cad;
     --status-info-rgb: 176, 98, 127;
+    --text-cyan: #85274a;
+    --text-pink: #960045;
+    --text-purple: #960045;
+    --text-green: #195431;
+    --text-yellow: #5d471b;
+    --text-muted: #464854;
   }
 
   [data-theme='corpo-blue'] {
@@ -126,15 +139,15 @@
     --bg-gradient-1: #dde1e9;
     --bg-gradient-2: #eef1f6;
     --bg-gradient-3: #d1d6e0;
-    --neon-cyan: #5aa8ff;
+    --neon-cyan: #006ee9;
     --neon-cyan-rgb: 90, 168, 255;
-    --neon-pink: #2d7bff;
+    --neon-pink: #0e68ff;
     --neon-pink-rgb: 45, 123, 255;
     --neon-purple: #1f6fe5;
     --neon-purple-rgb: 31, 111, 229;
-    --neon-green: #6f977f;
+    --neon-green: #4d715c;
     --neon-green-rgb: 111, 151, 127;
-    --neon-yellow: #b7995c;
+    --neon-yellow: #8a703d;
     --neon-yellow-rgb: 183, 153, 92;
     --text-primary: #1d212c;
     --text-secondary: #4d5160;
@@ -146,7 +159,7 @@
     --card-shadow: 0 12px 28px rgba(31, 33, 43, 0.12);
     --input-bg: rgba(244, 246, 250, 0.95);
     --input-border: rgba(45, 123, 255, 0.32);
-    --button-text: #1f212b;
+    --button-text: #ffffff;
     --focus-outline: #2d7bff;
     --modal-bg-1: rgba(248, 249, 253, 0.98);
     --modal-bg-2: rgba(232, 236, 244, 0.98);
@@ -155,16 +168,22 @@
     --surface-dim: rgba(214, 218, 228, 0.35);
     --surface-muted: rgba(232, 236, 244, 0.7);
     --surface-strong: rgba(218, 223, 234, 0.8);
-    --status-error: #d96276;
+    --status-error: #a8203a;
     --status-error-rgb: 217, 98, 118;
     --status-error-strong: #ff2d8e;
     --status-error-strong-rgb: 255, 45, 142;
-    --status-warning: #b7995c;
+    --status-warning: #8a5700;
     --status-warning-rgb: 183, 153, 92;
-    --status-success: #6f977f;
+    --status-success: #1b6f3a;
     --status-success-rgb: 111, 151, 127;
-    --status-info: #5aa8ff;
+    --status-info: #0b5cad;
     --status-info-rgb: 90, 168, 255;
+    --text-cyan: #004797;
+    --text-pink: #0041af;
+    --text-purple: #114797;
+    --text-green: #195431;
+    --text-yellow: #5d471b;
+    --text-muted: #464854;
   }
 
   [data-theme='unicorn'] {
@@ -205,16 +224,22 @@
     --surface-muted: rgba(255, 236, 210, 0.88);
     --surface-strong: rgba(255, 230, 196, 0.84);
     --spectrum-gradient: linear-gradient(120deg, #FF6AD5 0%, #FF9A8B 14%, #FFD166 28%, #B8F2A2 42%, #9AD0FF 57%, #C7A4FF 71%, #FF6AD5 86%, #FF9A8B 100%);
-    --status-error: #FF9A8B;
+    --status-error: #a8203a;
     --status-error-rgb: 255, 154, 139;
     --status-error-strong: #FF6AD5;
     --status-error-strong-rgb: 255, 106, 213;
-    --status-warning: #FFD166;
+    --status-warning: #8a5700;
     --status-warning-rgb: 255, 209, 102;
-    --status-success: #B8F2A2;
+    --status-success: #1b6f3a;
     --status-success-rgb: 184, 242, 162;
-    --status-info: #9AD0FF;
+    --status-info: #0b5cad;
     --status-info-rgb: 154, 208, 255;
+    --text-cyan: #005197;
+    --text-pink: #9a006f;
+    --text-purple: #5a00e9;
+    --text-green: #225a0d;
+    --text-yellow: #694900;
+    --text-muted: #524d5a;
   }
 
   [data-theme='corpo'] .neon-text,
@@ -349,6 +374,11 @@
     color: var(--text-secondary) !important;
   }
 
+  /* the selected tab is a pastel rainbow pill: dark label */
+  [data-theme='unicorn'] nav a.neon-glow {
+    color: var(--text-primary) !important;
+  }
+
   [data-theme='unicorn'] nav a:hover {
     background: rgba(var(--neon-pink-rgb), 0.16) !important;
     color: var(--text-primary) !important;
@@ -370,7 +400,7 @@
   }
 
   [data-theme='unicorn'] nav .docklite-nav-containers {
-    color: var(--neon-pink) !important;
+    color: var(--text-pink) !important;
   }
 
   [data-theme='unicorn'] table thead {
@@ -591,6 +621,12 @@
     color: var(--text-secondary) !important;
   }
 
+  /* The selected tab is a filled pill: its label must be the on-fill colour, not the grey used for other tabs. */
+  [data-theme='corpo'] nav a.neon-glow,
+  [data-theme='corpo-blue'] nav a.neon-glow {
+    color: var(--button-text) !important;
+  }
+
   [data-theme='corpo'] nav a:hover {
     background: rgba(255, 45, 142, 0.12) !important;
     color: var(--text-primary) !important;
@@ -603,13 +639,13 @@
 
   [data-theme='corpo'] nav a.bg-gradient-to-r {
     background: linear-gradient(135deg, rgba(255, 45, 142, 0.35), rgba(255, 45, 142, 0.24)) !important;
-    color: var(--button-text) !important;
+    color: var(--text-primary) !important;
     box-shadow: 0 6px 18px rgba(31, 33, 43, 0.12) !important;
   }
 
   [data-theme='corpo-blue'] nav a.bg-gradient-to-r {
     background: linear-gradient(135deg, rgba(45, 123, 255, 0.35), rgba(45, 123, 255, 0.24)) !important;
-    color: var(--button-text) !important;
+    color: var(--text-primary) !important;
     box-shadow: 0 6px 18px rgba(31, 33, 43, 0.12) !important;
   }
 
@@ -642,31 +678,32 @@
   }
 
   [data-theme='corpo'] .docklite-logo-dock {
-    color: #00ffff;
+    color: var(--text-cyan);
     text-shadow: 0 0 8px rgba(var(--neon-cyan-rgb), 0.55), 0 0 16px rgba(var(--neon-cyan-rgb), 0.35);
   }
 
   [data-theme='corpo'] .docklite-logo-lite {
-    color: #ff2d8e;
+    color: var(--text-pink);
     text-shadow: 0 0 8px rgba(255, 45, 142, 0.55), 0 0 16px rgba(255, 45, 142, 0.35);
   }
 
   [data-theme='corpo-blue'] .docklite-logo-dock {
-    color: #2dd4ff;
+    color: var(--text-cyan);
     text-shadow: 0 0 8px rgba(var(--neon-cyan-rgb), 0.55), 0 0 16px rgba(var(--neon-cyan-rgb), 0.35);
   }
 
   [data-theme='corpo-blue'] .docklite-logo-lite {
-    color: var(--neon-pink);
+    color: var(--text-pink);
     text-shadow: 0 0 8px rgba(var(--neon-pink-rgb), 0.55), 0 0 16px rgba(var(--neon-pink-rgb), 0.35);
   }
 
   [data-theme='unicorn'] .docklite-logo {
-    background: var(--spectrum-gradient);
+    /* deep rainbow so the name is readable on the pastel page (the pale spectrum washed it out) */
+    background: linear-gradient(90deg, var(--text-pink) 0%, var(--text-purple) 50%, var(--text-cyan) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    text-shadow: 0 0 10px rgba(var(--neon-pink-rgb), 0.45), 0 0 20px rgba(var(--neon-cyan-rgb), 0.35);
+    text-shadow: none;
   }
 
   [data-theme='unicorn'] .docklite-logo-dock,
@@ -732,12 +769,12 @@
   }
 
   [data-theme='corpo'] .docklite-containers-title {
-    color: var(--neon-pink) !important;
+    color: var(--text-pink) !important;
     text-shadow: 0 0 8px rgba(255, 45, 142, 0.4);
   }
 
   [data-theme='corpo-blue'] .docklite-containers-title {
-    color: var(--neon-pink) !important;
+    color: var(--text-pink) !important;
     text-shadow: 0 0 8px rgba(var(--neon-pink-rgb), 0.4);
   }
 
@@ -776,7 +813,7 @@
   }
 
   [data-theme='corpo'] .docklite-file-browser .docklite-file-header {
-    color: var(--neon-pink) !important;
+    color: var(--text-pink) !important;
   }
 
   [data-theme='corpo'] .docklite-file-browser .docklite-file-subtitle {
@@ -788,7 +825,7 @@
   }
 
   [data-theme='corpo-blue'] .docklite-file-browser .docklite-file-header {
-    color: var(--neon-pink) !important;
+    color: var(--text-pink) !important;
   }
 
   [data-theme='corpo-blue'] .docklite-file-browser .docklite-file-subtitle {
@@ -824,7 +861,7 @@
   }
 
   [data-theme='unicorn'] .nav-user-dropdown .font-bold {
-    color: var(--neon-pink) !important;
+    color: var(--text-pink) !important;
     text-shadow: 0 0 8px rgba(var(--neon-pink-rgb), 0.3);
   }
 
@@ -860,12 +897,12 @@
 
   /* Base dropdown link styles */
   .nav-dropdown-link {
-    color: var(--neon-cyan);
+    color: var(--text-cyan);
   }
 
   .nav-dropdown-link:hover {
     background: rgba(var(--neon-cyan-rgb), 0.1);
-    color: var(--neon-pink);
+    color: var(--text-pink);
   }
 
   [data-theme='corpo'] .docklite-sidebar-panel {
@@ -994,12 +1031,12 @@
   }
 
   .docklite-logo-dock {
-    color: var(--neon-cyan);
+    color: var(--text-cyan);
     text-shadow: 0 0 calc(6px * var(--glow)) var(--neon-cyan), 0 0 calc(14px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.7);
   }
 
   .docklite-logo-lite {
-    color: var(--neon-pink);
+    color: var(--text-pink);
     text-shadow: 0 0 calc(6px * var(--glow)) var(--neon-pink), 0 0 calc(14px * var(--glow)) rgba(var(--neon-pink-rgb), 0.65);
   }
 
@@ -1018,12 +1055,12 @@
   }
 
   .neon-text-pink {
-    color: var(--neon-pink);
+    color: var(--text-pink);
     text-shadow: 0 0 calc(3px * var(--glow)) var(--neon-pink), 0 0 calc(6px * var(--glow)) var(--neon-pink);
   }
 
   .neon-text-cyan {
-    color: var(--neon-cyan);
+    color: var(--text-cyan);
     text-shadow: 0 0 calc(3px * var(--glow)) var(--neon-cyan), 0 0 calc(6px * var(--glow)) var(--neon-cyan);
   }
 
@@ -1050,7 +1087,7 @@
     font-weight: 700;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--neon-cyan);
+    color: var(--text-cyan);
     background: linear-gradient(180deg, rgba(24, 14, 44, 0.82), rgba(10, 8, 28, 0.82));
     backdrop-filter: blur(8px);
     border: 1px solid rgba(var(--neon-cyan-rgb), 0.55);
@@ -1070,7 +1107,7 @@
   .docklite-sidebar-toggle:hover,
   .docklite-sidebar-toggle:focus-visible {
     width: 2.7rem;
-    color: var(--neon-pink);
+    color: var(--text-pink);
     animation: none;
     box-shadow: 0 0 calc(18px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.75),
       0 0 calc(30px * var(--glow)) rgba(var(--neon-pink-rgb), 0.35),
@@ -1091,7 +1128,7 @@
     width: 1.5rem;
     height: 3.4rem;
     border-radius: 999px;
-    color: var(--neon-cyan);
+    color: var(--text-cyan);
     background: linear-gradient(180deg, rgba(24, 14, 44, 0.9), rgba(10, 8, 28, 0.9));
     backdrop-filter: blur(8px);
     border: 1px solid rgba(var(--neon-cyan-rgb), 0.55);
@@ -1100,7 +1137,7 @@
   }
   .docklite-sidebar-close:hover,
   .docklite-sidebar-close:focus-visible {
-    color: var(--neon-pink);
+    color: var(--text-pink);
     box-shadow: 0 0 calc(16px * var(--glow)) rgba(var(--neon-cyan-rgb), 0.75),
       0 0 calc(26px * var(--glow)) rgba(var(--neon-pink-rgb), 0.35);
   }
@@ -1918,4 +1955,10 @@
   transition-duration: 0.001ms !important;
   transition-delay: 0s !important;
   scroll-behavior: auto !important;
+}
+
+/* Terminal button in the light themes: two fills that both carry white text. */
+[data-theme='corpo'] .docklite-terminal-btn,
+[data-theme='corpo-blue'] .docklite-terminal-btn {
+  background: linear-gradient(135deg, var(--neon-green) 0%, var(--neon-purple) 100%) !important;
 }

@@ -37,7 +37,7 @@ export default function SidebarSettings() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--neon-cyan)' }}>
+        <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
           Sidebars
         </h2>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -49,7 +49,7 @@ export default function SidebarSettings() {
       <div className="card-vapor p-6 rounded-xl space-y-3">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="font-bold flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+            <div className="font-bold flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
               <FolderOpen size={20} weight="duotone" /> Left sidebar — file browser
             </div>
             <div className="text-sm opacity-70">Browse and edit your sites’ files without leaving the page you’re on.</div>
@@ -65,7 +65,7 @@ export default function SidebarSettings() {
       <div className="card-vapor p-6 rounded-xl space-y-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="font-bold flex items-center gap-2" style={{ color: 'var(--neon-pink)' }}>
+            <div className="font-bold flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
               <Cube size={20} weight="duotone" /> Right sidebar
             </div>
             <div className="text-sm opacity-70">A flexible panel — you choose what lives in it.</div>
@@ -78,7 +78,7 @@ export default function SidebarSettings() {
         </div>
 
         <div className={rightSidebar.enabled ? '' : 'opacity-40 pointer-events-none'} aria-disabled={!rightSidebar.enabled}>
-          <div className="font-bold mb-3 text-sm" style={{ color: 'var(--neon-cyan)' }}>What should it show?</div>
+          <div className="font-bold mb-3 text-sm" style={{ color: 'var(--text-cyan)' }}>What should it show?</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {CONTENT_CHOICES.map((choice) => {
               const selected = rightSidebar.content === choice.value;
@@ -94,7 +94,7 @@ export default function SidebarSettings() {
                       : { borderColor: 'rgba(var(--neon-purple-rgb), 0.2)' }
                   }
                 >
-                  <span style={{ color: selected ? 'var(--neon-cyan)' : 'var(--text-secondary)' }}>{choice.icon}</span>
+                  <span style={{ color: selected ? 'var(--text-cyan)' : 'var(--text-secondary)' }}>{choice.icon}</span>
                   <span>
                     <span className="block font-bold">{choice.label}</span>
                     <span className="block text-xs opacity-70">{choice.description}</span>

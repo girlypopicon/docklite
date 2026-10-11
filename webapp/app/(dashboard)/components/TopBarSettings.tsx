@@ -55,7 +55,7 @@ function Row({
       >
         <DotsSixVertical size={20} weight="bold" />
       </button>
-      <span style={{ color: 'var(--neon-cyan)' }}>{TOP_BAR_ICONS[entry.id]?.(20)}</span>
+      <span style={{ color: 'var(--text-cyan)' }}>{TOP_BAR_ICONS[entry.id]?.(20)}</span>
       <span className="flex-1 min-w-0">
         <span className="block font-bold text-sm">{def.label}</span>
         <span className="block text-xs opacity-70 truncate">{def.description}</span>
@@ -126,7 +126,7 @@ export default function TopBarSettings() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold neon-text" style={{ color: 'var(--neon-cyan)' }}>
+        <h2 className="text-2xl font-bold neon-text" style={{ color: 'var(--text-cyan)' }}>
           Top bar
         </h2>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -137,7 +137,7 @@ export default function TopBarSettings() {
       </div>
 
       <div className="card-vapor p-6 rounded-xl space-y-4">
-        <div className="font-bold text-sm" style={{ color: 'var(--neon-pink)' }}>On your bar (left to right)</div>
+        <div className="font-bold text-sm" style={{ color: 'var(--text-pink)' }}>On your bar (left to right)</div>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={entries.map((e) => e.key)} strategy={verticalListSortingStrategy}>
             <ul className="space-y-2">
@@ -150,7 +150,7 @@ export default function TopBarSettings() {
       </div>
 
       <div className="card-vapor p-6 rounded-xl space-y-4">
-        <div className="font-bold text-sm" style={{ color: 'var(--neon-green)' }}>Shelf — click to add</div>
+        <div className="font-bold text-sm" style={{ color: 'var(--text-green)' }}>Shelf — click to add</div>
         {available.length === 0 ? (
           <p className="text-sm opacity-70">Everything is already on your bar.</p>
         ) : (
@@ -161,7 +161,7 @@ export default function TopBarSettings() {
                 type="button"
                 onClick={() => add(item.id)}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-bold transition-colors"
-                style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.4)', color: 'var(--neon-cyan)' }}
+                style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.4)', color: 'var(--text-cyan)' }}
                 title={item.description}
               >
                 <Plus size={14} weight="bold" />
