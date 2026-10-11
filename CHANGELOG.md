@@ -21,7 +21,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
   server's default umask silently removed the permission. Folders and files DockLite creates are now explicitly group-writable
   (folders also keep the docklite group for new files); existing sites are fixed once automatically, and
   `docklite sites permissions [domain]` does it on demand. It only adds group access: owners and other users are untouched,
-  nothing becomes world-writable, and links are never followed.
+  nothing becomes world-writable, and links are never followed. The installer also adds the standard `acl` package and a default
+  ACL, so files created later in a site folder by a person or assistant (whatever their shell's umask) stay editable by the
+  dashboard's file editor too.
 - **Transferring a site to another user is safer.** It copies the folder first, switches the container over only once the new one is
   running, puts the old container back if anything fails, and moves the old folder to the trash instead of deleting it. It never
   copies from or deletes outside `/var/www/sites`, and refuses to overwrite a target folder that already has files.

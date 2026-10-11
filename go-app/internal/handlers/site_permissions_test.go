@@ -80,3 +80,30 @@ func TestMkdirAllSharedSharesEveryNewFolder(t *testing.T) {
 		}
 	}
 }
+
+func TestApplyGroupACLCallsSetfaclSafely(t *testing.T) {
+	bin := t.TempDir()
+	log := filepath.Join(bin, "calls.log")
+	script := "#!/bin/sh\necho \"$@\" >> " + log + "\n"
+	testhelpers.AssertNoError(t, os.WriteFile(filepath.Join(bin, "setfacl"), []byte(script), 0o755))
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	base := t.TempDir()
+	prev := siteBaseDir
+	siteBaseDir = base
+	defer func() { siteBaseDir = prev }()
+	site := filepath.Join(base, "admin", "glowrom.com")
+	testhelpers.AssertNoError(t, os.MkdirAll(site, 0o755))
+
+	testhelpers.AssertTrue(t, applyGroupACL(site), "should report success when setfacl succeeds")
+	calls, _ := os.ReadFile(log)
+	want := "-R -m g:docklite:rwX " + site + "\n-R -d -m g:docklite:rwX " + site + "\n"
+	testhelpers.AssertEqual(t, string(calls), want)
+
+	// never outside the sites root
+	_ = os.Remove(log)
+	testhelpers.AssertFalse(t, applyGroupACL(t.TempDir()), "a folder outside the sites root must be refused")
+	if _, err := os.Stat(log); err == nil {
+		t.Fatal("setfacl must not even be called for a path outside the sites root")
+	}
+}
