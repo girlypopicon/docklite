@@ -41,4 +41,23 @@ sed "s#/etc/nginx#$T/x#g; s#^preflight() {#preflight() { false;#" "$ROOT/install
 out="$(cd "$T" && TERM=dumb bash boom.sh --dry-run 2>&1 | sed 's/\x1b\[[0-9;]*m//g')"
 check "says where it stopped" "$(grep -c 'stopped unexpectedly at line' <<<"$out")" "1"
 
+echo "5. the dashboard update job's own service is never treated as an older DockLite (stopping it killed the update)"
+mkdir -p "$T/fakebin"
+cat > "$T/fakebin/systemctl" <<'SC'
+#!/usr/bin/env bash
+if [[ "$1" == list-units ]]; then
+    echo "  docklite-update-1791760089.service loaded active running DockLite update"
+    [[ -n "${FAKE_OLD_AGENT:-}" ]] && echo "  docklite-agent.service loaded active running Old agent"
+fi
+exit 0
+SC
+chmod +x "$T/fakebin/systemctl"
+scenario unitonly
+out="$(cd "$T/unitonly" && PATH="$T/fakebin:$PATH" TERM=dumb bash install.sh --dry-run 2>&1 | sed 's/\x1b\[[0-9;]*m//g')"; rc=${PIPESTATUS[0]}
+check "exits 0" "$rc" "0"
+check "no 'older services' warning for the update job" "$(grep -c 'Older DockLite services' <<<"$out")" "0"
+out="$(cd "$T/unitonly" && FAKE_OLD_AGENT=1 PATH="$T/fakebin:$PATH" TERM=dumb bash install.sh --dry-run 2>&1 | sed 's/\x1b\[[0-9;]*m//g')"
+check "a real older service is still reported" "$(grep -c 'Older DockLite services exist: docklite-agent.service' <<<"$out")" "1"
+check "and the update job is not listed with it" "$(grep -c 'docklite-update-' <<<"$out")" "0"
+
 echo; echo "$pass passed, $failn failed"; [[ $failn -eq 0 ]]

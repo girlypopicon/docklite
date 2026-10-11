@@ -26,6 +26,12 @@ PINK='\033[38;2;255;106;213m';   CORAL='\033[38;2;255;154;139m'
 GOLD='\033[38;2;255;209;102m';   MINT='\033[38;2;184;242;162m'
 SKY='\033[38;2;154;208;255m';    LAVENDER='\033[38;2;199;164;255m'
 
+# Output that isn't a terminal (a log file, the dashboard's Update button) gets plain text: no colour codes, no spinner.
+if [[ ! -t 1 || -n "${NO_COLOR:-}" ]]; then
+    RED=''; GREEN=''; YELLOW=''; BLUE=''; CYAN=''; BOLD=''; DIM=''; NC=''
+    PINK=''; CORAL=''; GOLD=''; MINT=''; SKY=''; LAVENDER=''
+fi
+
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/docklite"
 cd "$REPO_DIR"
@@ -83,6 +89,11 @@ spin() {
     local pid=$1 msg=$2
     local frames=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
     local i=0
+    if [[ ! -t 1 ]]; then
+        echo "  ... $msg"
+        wait "$pid" 2>/dev/null
+        return $?
+    fi
     while kill -0 "$pid" 2>/dev/null; do
         printf "\r  ${CYAN}${frames[$((i % 10))]}${NC} %s" "$msg"
         sleep 0.1
@@ -365,9 +376,9 @@ preflight() {
         ok "No DockLite in ${INSTALL_DIR} yet"
     fi
     local units
-    units="$(systemctl list-units --all --no-legend 'docklite*.service' 2>/dev/null | sed 's/^[^a-z]*//' | awk '{print $1"("$4")"}' | tr '\n' ' ')"
+    units="$(systemctl list-units --all --no-legend 'docklite*.service' 2>/dev/null | sed 's/^[^a-z]*//' | { grep -v '^docklite-update-' || true; } | awk '{print $1"("$4")"}' | tr '\n' ' ')"
     OLD_UNITS=()
-    while read -r f; do [[ -n "$f" ]] && OLD_UNITS+=("$f"); done < <(systemctl list-units --all --no-legend 'docklite*.service' 2>/dev/null | sed 's/^[^a-z]*//' | awk '{print $1}')
+    while read -r f; do [[ -n "$f" ]] && OLD_UNITS+=("$f"); done < <(systemctl list-units --all --no-legend 'docklite*.service' 2>/dev/null | sed 's/^[^a-z]*//' | { grep -v '^docklite-update-' || true; } | awk '{print $1}')
     if [[ ${#OLD_UNITS[@]} -gt 0 ]]; then
         warn "Older DockLite services exist: ${units}"
         info "  They run from the folder this install replaces, so you will be asked to stop and disable them first."

@@ -345,10 +345,42 @@ func tailLog(path string, n int) []string {
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 64*1024), 1<<20)
 	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+		lines = appendCleanLogLines(lines, scanner.Text())
 	}
 	if len(lines) > n {
 		lines = lines[len(lines)-n:]
+	}
+	return lines
+}
+
+var (
+	ansiEscape = regexp.MustCompile(`\x1b\[[0-9;?]*[A-Za-z]|\[[0-9;]*m`)
+	spinnerRun = regexp.MustCompile(`[\x{2800}-\x{28FF}]`)
+)
+
+// appendCleanLogLines adds one raw log line to lines as plain text: colour codes and spinner frames removed, banner and
+// divider lines dropped, repeats collapsed. Older updates (and older helpers) wrote the installer's terminal output as is.
+func appendCleanLogLines(lines []string, raw string) []string {
+	for _, part := range strings.Split(raw, "\r") {
+		t := strings.TrimSpace(spinnerRun.ReplaceAllString(ansiEscape.ReplaceAllString(part, ""), ""))
+		switch {
+		case t == "", strings.Trim(t, "─━") == "":
+			continue
+		case strings.HasPrefix(t, "____") || strings.HasPrefix(t, "/ __") || strings.HasPrefix(t, "I N S T"):
+			continue
+		}
+		// A finished spinner line is "msg... msg... msg... ✓ result": keep just the result.
+		if i := strings.Index(t, "... ✓"); i >= 0 {
+			t = t[i+4:]
+		} else if first := strings.Index(t, "..."); first > 0 {
+			for msg := t[:first+3]; strings.Count(t, msg) > 1; {
+				t = strings.Replace(t, msg+" ", "", 1)
+			}
+		}
+		if len(lines) > 0 && lines[len(lines)-1] == t {
+			continue
+		}
+		lines = append(lines, t)
 	}
 	return lines
 }

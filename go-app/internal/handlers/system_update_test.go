@@ -108,3 +108,23 @@ func TestReadUpdateState(t *testing.T) {
 }
 
 func writeFileForTest(path, content string) error { return os.WriteFile(path, []byte(content), 0o644) }
+
+func TestAppendCleanLogLinesStripsInstallerNoise(t *testing.T) {
+	raw := []string{
+		"[23:08:09] Updating DockLite 1.2.2 -> 1.2.5",
+		"\x1b[38;2;255;106;213m ____ __ __ _ __ \x1b[0m",
+		"[38;2;255;106;213m━[38;2;255;154;139m━[0m",
+		"[0;36m⠋[0m Compiling Go agent... [0;36m⠙[0m Compiling Go agent... [0;32m✓[0m Agent and CLI built (21M)",
+		"[0;36m⠋[0m Updating packages... [0;36m⠙[0m Updating packages... [0;32m✓[0m System packages ready",
+		"[0;32m✓[0m Docker 29.1.2",
+		"[0;32m✓[0m Docker 29.1.2",
+	}
+	var got []string
+	for _, l := range raw {
+		got = appendCleanLogLines(got, l)
+	}
+	want := []string{"[23:08:09] Updating DockLite 1.2.2 -> 1.2.5", "✓ Agent and CLI built (21M)", "✓ System packages ready", "✓ Docker 29.1.2"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("got %q\nwant %q", got, want)
+	}
+}

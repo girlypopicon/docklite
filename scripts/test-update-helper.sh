@@ -66,4 +66,15 @@ for bad in "main" "v1.2" "1.2.3" 'v1.2.3;id' 'v1.2.3 v1.2.4' '../v1.2.3' ""; do
     check "rejects '$bad'" "$([ $r -ne 0 ] && echo rejected || echo ACCEPTED)" "rejected"
 done
 
+echo "5. a killed update job doesn't block the next one, a live one does"
+mkdir -p "$T/fake"; printf '#!/bin/sh\necho "$@" > "%s/started"\n' "$T" > "$T/fake/systemd-run"; chmod +x "$T/fake/systemd-run"
+rm -f "$T/started"
+echo "running v1.2.5 $(( $(date +%s) - 120 )) starting" > "$T/state/update-state"
+PATH="$T/fake:$PATH" bash "$H" update-start v1.2.5 >/dev/null 2>&1; check "stale 'running' (no job alive): accepted" "$([ -e "$T/started" ] && echo started || echo refused)" "started"
+rm -f "$T/started"
+echo "running v1.2.5 $(( $(date +%s) - 120 )) starting" > "$T/state/update-state"
+( exec 8>"$T/lock"; flock 8; sleep 5 ) & holder=$!; sleep 0.5
+PATH="$T/fake:$PATH" bash "$H" update-start v1.2.5 >/dev/null 2>&1; check "live job holding the lock: refused" "$([ -e "$T/started" ] && echo started || echo refused)" "refused"
+kill $holder 2>/dev/null; wait $holder 2>/dev/null
+
 echo; echo "$pass passed, $failn failed"; [[ $failn -eq 0 ]]
