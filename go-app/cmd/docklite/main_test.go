@@ -480,3 +480,24 @@ func TestSitesPermissionsCommand(t *testing.T) {
 		t.Fatal("a domain argument must be sent to the agent")
 	}
 }
+
+func TestSSLAutoCommands(t *testing.T) {
+	agent := newFakeAgent(t)
+	agent.json("GET", "/api/ssl/auto", 200, `{"jobs":[{"domain":"glowrom.com","state":"waiting-dns","message":"Waiting for DNS: glowrom.com has no DNS record yet."}],"email":""}`)
+	code, out, _ := runCLI(t, agent, "", "ssl", "pending")
+	if code != 0 || !strings.Contains(out, "glowrom.com") || !strings.Contains(out, "waiting-dns") {
+		t.Fatalf("pending: exit %d\n%s", code, out)
+	}
+	code, out, _ = runCLI(t, agent, "", "ssl", "email")
+	if code != 0 || !strings.Contains(out, "No contact email set") {
+		t.Fatalf("email: exit %d\n%s", code, out)
+	}
+	agent.json("POST", "/api/ssl/auto", 200, `{"started":["glowrom.com"],"jobs":[]}`)
+	code, out, _ = runCLI(t, agent, "", "ssl", "retry", "GlowRom.com")
+	if code != 0 || !strings.Contains(out, "Started: glowrom.com") || !strings.Contains(agent.calls("POST", "/api/ssl/auto")[0].Body, `"domain":"glowrom.com"`) {
+		t.Fatalf("retry must lower-case the domain and say what started: exit %d\n%s", code, out)
+	}
+	if code, _, _ = runCLI(t, agent, "", "ssl", "retry"); code != exitUsage {
+		t.Fatalf("retry needs a domain or --all, exit %d", code)
+	}
+}

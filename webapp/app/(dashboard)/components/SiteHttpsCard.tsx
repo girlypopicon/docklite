@@ -22,6 +22,12 @@ interface DnsRecordPreview {
   existing?: string;
 }
 
+interface CertJob {
+  domain: string;
+  state: 'waiting-dns' | 'issuing' | 'issued' | 'failed';
+  message: string;
+}
+
 interface DnsPreview {
   status: string;
   message?: string;
@@ -55,6 +61,8 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
   const [loading, setLoading] = useState(true);
   const [dns, setDns] = useState<DnsPreview | null>(null);
   const [dnsBusy, setDnsBusy] = useState(false);
+  const [certJob, setCertJob] = useState<CertJob | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [showSsl, setShowSsl] = useState(false);
   const toast = useToast();
 
@@ -64,6 +72,29 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
       if (res.ok) setDns(await res.json());
     } catch {
       /* optional */
+    }
+  };
+
+  // Automatic HTTPS progress for this site (admins only; others just don't see it).
+  const loadCertJob = async () => {
+    try {
+      const res = await fetch('/api/ssl/auto', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const mine = (data.jobs || []).find((j: CertJob) => j.domain === domain) || null;
+      setCertJob(mine);
+    } catch {
+      /* optional */
+    }
+  };
+
+  const retryCert = async () => {
+    setRetrying(true);
+    try {
+      await fetch('/api/ssl/auto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domain }) });
+      await loadCertJob();
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -89,6 +120,9 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    loadCertJob();
+    // while a certificate is being arranged, keep the status fresh
+    const poll = setInterval(loadCertJob, 8000);
     (async () => {
       try {
         const res = await fetch('/api/ssl/status');
@@ -126,6 +160,7 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
     })();
     return () => {
       cancelled = true;
+      clearInterval(poll);
     };
   }, [domain]);
 
@@ -166,6 +201,19 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
               <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{detail}</div>
             </div>
           </div>
+          {!cert && certJob && certJob.state !== 'issued' && (
+            <div className="text-xs rounded-lg p-3 space-y-2" style={{ border: '1px solid rgba(var(--neon-purple-rgb), 0.35)', color: 'var(--text-secondary)' }}>
+              <div className="font-bold" style={{ color: 'var(--text-primary)' }}>
+                {certJob.state === 'failed' ? 'Automatic HTTPS stopped' : certJob.state === 'issuing' ? 'Getting the certificate now…' : 'Getting the certificate automatically'}
+              </div>
+              <div>{certJob.message}</div>
+              {(certJob.state === 'failed' || certJob.state === 'waiting-dns') && (
+                <button type="button" disabled={retrying} onClick={retryCert} className="btn-neon px-3 py-1 text-xs font-bold">
+                  {retrying ? 'Working…' : 'Try now'}
+                </button>
+              )}
+            </div>
+          )}
           {cloudflare && (
             <div className="text-xs border-t border-neon-purple/20 pt-3" style={{ color: 'var(--text-secondary)' }}>
               <span className="font-bold" style={{ color: 'var(--text-primary)' }}>Cloudflare ({cloudflare.zoneDomain}): </span>
