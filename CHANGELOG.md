@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.2.4 (2026-10-11)
+
 ### Added
 - **New sites get their HTTPS certificate automatically.** When you create a site, DockLite waits until the domain's DNS points at
   the server (or at Cloudflare), then requests the certificate itself and retries politely if something isn't ready yet. No more
