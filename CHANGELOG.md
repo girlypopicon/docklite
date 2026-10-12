@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.3.0 (2026-10-12)
+
 ### Added
 - **Restore a site from a backup.** The Restore tab lists your site backups; pick one, see what's in it, and put the site back. Before
   anything changes DockLite saves what the site has now (so a restore can itself be undone), checks the backup is intact and hasn't been
