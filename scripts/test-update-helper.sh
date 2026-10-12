@@ -77,4 +77,13 @@ echo "running v1.2.5 $(( $(date +%s) - 120 )) starting" > "$T/state/update-state
 PATH="$T/fake:$PATH" bash "$H" update-start v1.2.5 >/dev/null 2>&1; check "live job holding the lock: refused" "$([ -e "$T/started" ] && echo started || echo refused)" "refused"
 kill $holder 2>/dev/null; wait $holder 2>/dev/null
 
+echo "6. the log filter works in every locale, and can never stop an update"
+sample='\033[0;36m\xe2\xa0\x8b\033[0m Updating packages... \r\033[0;36m\xe2\xa0\x99\033[0m Updating packages... \033[0;32m\xe2\x9c\x93\033[0m System packages ready\n\033[2m\xe2\x94\x80\xe2\x94\x80\xe2\x94\x80\033[0m\n/var/www/sites exists\n'
+for loc in C C.UTF-8 en_US.utf8 POSIX; do
+    got="$(LC_ALL=$loc bash -c "source <(sed -n '/^CLEAN_SED=/,/^}/p' '$H'); printf '$sample' | clean_installer_output" 2>&1 | tr '\n' '|')"
+    check "filter under LC_ALL=$loc" "$got" "$(printf '\xe2\x9c\x93') System packages ready|/var/www/sites exists|"
+done
+got="$(bash -c "source <(sed -n '/^CLEAN_SED=/,/^}/p' '$H'); sed() { return 1; }; printf 'plain\n' | clean_installer_output" 2>&1)"
+check "a broken filter passes the text through" "$got" "plain"
+
 echo; echo "$pass passed, $failn failed"; [[ $failn -eq 0 ]]

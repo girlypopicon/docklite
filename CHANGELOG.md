@@ -5,6 +5,13 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.3.1 (2026-10-12)
+
+### Fixed
+- **The Update button stopped right after "Downloading and installing" on some servers** ("Invalid collation character"). The step that
+  tidies the update log used a character range some locales reject. It now works on raw bytes in every locale, and if it can't run
+  for any reason the log is shown untidied instead of stopping the update.
+
 ## 1.3.0 (2026-10-12)
 
 ### Added
