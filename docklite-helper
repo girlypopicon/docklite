@@ -170,12 +170,24 @@ wait_healthy() {
     return 1
 }
 
-# Turn the installer's terminal output into plain log lines (see install_release).
+# Turn the installer's terminal output into plain log lines (see install_release). Works on bytes (LC_ALL=C), so it
+# behaves the same under every locale, and if the filter can't run for any reason the output is passed through as it is:
+# a cosmetic step must never be able to stop an update.
+CLEAN_SED='s/\x1b\[[0-9;?]*[A-Za-z]//g
+s/\xe2[\xa0-\xa3][\x80-\xbf]//g
+s/^[[:space:]]+//
+s/[[:space:]]+$//
+s/^.*\.\.\. (\xe2\x9c\x93)/\1/
+/^$/d
+/^(\xe2\x94[\x80\x81])+$/d
+/^[_\/\\|<>(),. -]+$/d
+/^Updating packages/d'
 clean_installer_output() {
-    LC_ALL=C.UTF-8 tr '\r' '\n' \
-        | LC_ALL=C.UTF-8 sed -u -E 's/\x1b\[[0-9;?]*[A-Za-z]//g; s/[⠀-⣿]//g; s/^[[:space:]]+//; s/[[:space:]]+$//' \
-        | grep --line-buffered -v -E '^$|^[─━]+$|^(_|/|\\|I N S T)|^Updating packages' \
-        | uniq || true
+    if [[ "$(printf '\033[0;32m\xe2\xa0\x8bok\033[0m\n' | LC_ALL=C sed -u -E "$CLEAN_SED" 2>/dev/null)" == ok ]]; then
+        LC_ALL=C tr '\r' '\n' | LC_ALL=C sed -u -E "$CLEAN_SED" | LC_ALL=C uniq
+    else
+        cat
+    fi
 }
 
 # Check out exactly one release tag in the source copy and install it without asking questions.
