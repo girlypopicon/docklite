@@ -45,10 +45,22 @@ func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 		Delivery      string `json:"delivery"`
 		RetentionDays *int   `json:"retention_days"`
 		Notes         string `json:"notes"`
+		Domain        string `json:"domain"` // alternative to target_id for a site: its domain name
 	}
 	if err := readJSON(w, r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
+	}
+	if body.TargetType == "" && body.Domain != "" {
+		body.TargetType = "site"
+	}
+	if body.TargetType == "site" && body.TargetID <= 0 && body.Domain != "" {
+		site, err := h.store.GetSiteByDomain(strings.ToLower(strings.TrimSpace(body.Domain)))
+		if err != nil || site == nil {
+			writeError(w, http.StatusNotFound, "there is no site called "+body.Domain)
+			return
+		}
+		body.TargetID = site.ID
 	}
 	if body.TargetType == "" || body.TargetID <= 0 {
 		writeError(w, http.StatusBadRequest, "missing required fields: target_type, target_id")
@@ -283,7 +295,7 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 				writeError(w, http.StatusInternalServerError, err.Error())
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"jobs": jobs})
+			writeJSON(w, http.StatusOK, map[string]any{"jobs": describeJobs(jobs)})
 			return
 		}
 		jobs, err := h.store.GetBackupJobs()
@@ -291,12 +303,13 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"jobs": jobs})
+		writeJSON(w, http.StatusOK, map[string]any{"jobs": describeJobs(jobs)})
 	case http.MethodPost:
 		var body struct {
 			DestinationID int64  `json:"destination_id"`
 			TargetType    string `json:"target_type"`
 			TargetID      *int64 `json:"target_id"`
+			Domain        string `json:"domain"` // alternative to target_id for a site
 			Frequency     string `json:"frequency"`
 			RetentionDays *int   `json:"retention_days"`
 			Enabled       *int   `json:"enabled"`
@@ -305,8 +318,20 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
+		if body.TargetType == "site" && body.TargetID == nil && body.Domain != "" {
+			site, err := h.store.GetSiteByDomain(strings.ToLower(strings.TrimSpace(body.Domain)))
+			if err != nil || site == nil {
+				writeError(w, http.StatusNotFound, "there is no site called "+body.Domain)
+				return
+			}
+			body.TargetID = &site.ID
+		}
 		if body.DestinationID == 0 || body.TargetType == "" || body.Frequency == "" {
 			writeError(w, http.StatusBadRequest, "missing required fields: destination_id, target_type, frequency")
+			return
+		}
+		if _, err := backup.ParseSchedule(body.Frequency); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		retention := 30
@@ -352,6 +377,10 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 			params["target_id"] = *body.TargetID
 		}
 		if body.Frequency != nil {
+			if _, err := backup.ParseSchedule(*body.Frequency); err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
 			params["frequency"] = *body.Frequency
 		}
 		if body.RetentionDays != nil {
@@ -727,4 +756,26 @@ func (h *Handlers) listBackupFiles() ([]map[string]any, error) {
 		return nil
 	})
 	return files, err
+}
+
+// jobView is a backup job plus its schedule in plain words, so the dashboard and terminal needn't parse the frequency text.
+type jobView struct {
+	store.BackupJob
+	ScheduleText  string `json:"schedule_text"`
+	ScheduleValid bool   `json:"schedule_valid"`
+	KeepLast      int    `json:"keep_last"`
+}
+
+func describeJobs(jobs []store.BackupJob) []jobView {
+	out := make([]jobView, 0, len(jobs))
+	for _, j := range jobs {
+		v := jobView{BackupJob: j}
+		if sched, err := backup.ParseSchedule(j.Frequency); err == nil {
+			v.ScheduleText, v.ScheduleValid, v.KeepLast = sched.Describe(), true, sched.KeepLast
+		} else {
+			v.ScheduleText = "unreadable schedule (" + j.Frequency + ")"
+		}
+		out = append(out, v)
+	}
+	return out
 }

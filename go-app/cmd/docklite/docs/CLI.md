@@ -85,6 +85,12 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Let a server user run docklite | `docklite access grant alice --yes` (they must log out and in once) |
 | Remove that access | `docklite access revoke alice --yes` |
 | See all backups | `docklite backups list` |
+| See the backup files on the server | `docklite backups files` |
+| Back up a site now | `docklite backups create example.com` |
+| Check a backup without changing anything | `docklite backups inspect sites/site-example.com-20261011-030000.tar.gz` |
+| Put a site back the way a backup had it (the current files are saved first) | `docklite backups restore sites/site-example.com-20261011-030000.tar.gz --yes` |
+| Back up automatically every night, keeping the last 7 | `docklite backups schedule --all --daily-at 03:00 --keep 7` (or one site, or `--weekly sun@04:00`) |
+| See / remove automatic backups | `docklite backups schedules` / `docklite backups unschedule <id> --yes` |
 | Check sites follow `/var/www/sites/<user>/<domain>` | `docklite sites layout` (report only) |
 | Move sites into that layout | `docklite sites layout --apply --yes` (copies; old folders are kept) |
 | See if a newer DockLite exists | `docklite update --check` |

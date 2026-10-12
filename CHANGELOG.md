@@ -5,6 +5,22 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.3.0 (2026-10-12)
+
+### Added
+- **Restore a site from a backup.** The Restore tab lists your site backups; pick one, see what's in it, and put the site back. Before
+  anything changes DockLite saves what the site has now (so a restore can itself be undone), checks the backup is intact and hasn't been
+  altered, refuses anything that could write outside the site's folder, and swaps the files in place so the running site keeps its
+  folder. Each backup row's Restore button opens the same step. Restoring databases comes in a later version.
+- **Schedules with a time of day and "keep the newest N".** "Every day at 03:00, keep the last 7" instead of "every 24 hours, keep
+  for 30 days". If the server was off at the chosen time the backup runs when it's back. Old schedules keep working. The form now
+  defaults to All Sites.
+- **Backups from the terminal:** `docklite backups files | create | inspect | restore | schedule | schedules | unschedule`.
+
+### Fixed
+- One site failing to back up no longer stops the others, and no longer makes the schedule retry every few minutes: the failure is
+  recorded on that backup and the schedule moves on.
+
 ## 1.2.6 (2026-10-11)
 
 ### Fixed

@@ -1,5 +1,6 @@
 'use client';
 
+import RestoreSiteBackups from '../components/RestoreSiteBackups';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   HardDrives,
@@ -52,6 +53,7 @@ type BackupDestination = {
 
 export default function BackupsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('backups');
+  const [restoreFocus, setRestoreFocus] = useState<string | undefined>(undefined);
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [jobs, setJobs] = useState<BackupJob[]>([]);
   const [destinations, setDestinations] = useState<BackupDestination[]>([]);
@@ -348,6 +350,16 @@ export default function BackupsPage() {
     }
   };
 
+  // A row's Restore button opens the Restore tab with that backup already picked. Database restore isn't built yet.
+  const handleRestoreRow = (backup: BackupRecord) => {
+    if (backup.target_type !== 'site') {
+      toast.info('Restoring a database from here is coming in a later version. Site backups can be restored now.');
+      return;
+    }
+    setRestoreFocus(backup.backup_path || undefined);
+    setActiveTab('restore');
+  };
+
   const handleToggleSchedule = async (job: BackupJob, enabled: number) => {
     try {
       const res = await fetch('/api/backups/jobs', {
@@ -427,15 +439,6 @@ export default function BackupsPage() {
               Create schedule
             </button>
           )}
-          {activeTab === 'restore' && (
-            <button
-              onClick={() => toast.info('Restore wizard coming soon')}
-              className="cyber-button flex items-center gap-2"
-            >
-              <ShieldCheck size={18} weight="duotone" />
-              Start restore
-            </button>
-          )}
         </div>
       </div>
 
@@ -512,7 +515,7 @@ export default function BackupsPage() {
                 onDelete={(backup: BackupRecord) =>
                   setConfirmAction({ type: 'backup', id: backup.id, name: getBackupAppLabel(backup) })
                 }
-                onRestore={() => toast.info('Restore workflow coming soon')}
+                onRestore={handleRestoreRow}
                 onDetails={() => toast.info('Details view coming soon')}
                 filterApp={filterApp}
                 filterType={filterType}
@@ -542,7 +545,7 @@ export default function BackupsPage() {
               />
             )}
 
-            {activeTab === 'restore' && <RestoreTab />}
+            {activeTab === 'restore' && <RestoreSiteBackups focusPath={restoreFocus} />}
           </>
         )}
       </div>
@@ -882,7 +885,7 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
                     {job.target_type.replace('-', ' ')}{job.target_id ? ` #${job.target_id}` : ''}
                   </h3>
                   <div className="text-sm text-ink-muted">
-                    Frequency: {job.frequency} • Retention: {job.retention_days} days
+                    {job.schedule_text || job.frequency}
                   </div>
                   <div className="text-xs text-ink-muted">
                     Destination: {destination ? destination.name : 'Local'} • {enabled ? 'Enabled' : 'Disabled'}
@@ -933,27 +936,6 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
           No destinations available. Backups will use the default local destination.
         </div>
       )}
-    </div>
-  );
-}
-
-function RestoreTab() {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 card-vapor p-6 border border-neon-purple/30">
-        <h2 className="text-xl font-bold text-accent-cyan">Restore wizard</h2>
-        <p className="text-sm text-ink-muted mt-2">
-          Choose a restore point and walk through a guided recovery flow.
-        </p>
-        <button className="cyber-button mt-6 flex items-center gap-2" disabled>
-          <ShieldCheck size={18} weight="duotone" />
-          Start restore (coming soon)
-        </button>
-      </div>
-      <div className="card-vapor p-6 border border-neon-purple/20">
-        <h3 className="text-lg font-bold text-accent-pink">Recent restores</h3>
-        <div className="text-sm text-ink-muted mt-4">No restore history yet.</div>
-      </div>
     </div>
   );
 }

@@ -501,3 +501,62 @@ func TestSSLAutoCommands(t *testing.T) {
 		t.Fatalf("retry needs a domain or --all, exit %d", code)
 	}
 }
+
+func TestBackupsRestoreCommands(t *testing.T) {
+	agent := newFakeAgent(t)
+	agent.json("GET", "/api/backups/local", 200, `{"path":"/var/backups/docklite","files":[{"name":"sites/site-glowrom.com-1-2.tar.gz","size":2048,"modified_at":"2026-10-11T03:00:00Z"}]}`)
+	code, out, _ := runCLI(t, agent, "", "backups", "files")
+	if code != 0 || !strings.Contains(out, "site-glowrom.com") || !strings.Contains(out, "2.0 KB") {
+		t.Fatalf("files: exit %d\n%s", code, out)
+	}
+	agent.json("POST", "/api/backups/export", 200, `{"backup_id":5}`)
+	code, out, _ = runCLI(t, agent, "", "backups", "create", "GlowRom.com")
+	if code != 0 || !strings.Contains(agent.calls("POST", "/api/backups/export")[0].Body, `"domain":"glowrom.com"`) || !strings.Contains(out, "Backed up glowrom.com") {
+		t.Fatalf("create must send the lower-cased domain and keep it local: exit %d\n%s", code, out)
+	}
+	agent.json("GET", "/api/backups/inspect", 200, `{"domain":"glowrom.com","files":12,"bytes":4096,"verified":true}`)
+	code, out, _ = runCLI(t, agent, "", "backups", "inspect", "sites/site-glowrom.com-1-2.tar.gz")
+	if code != 0 || !strings.Contains(out, "glowrom.com") || !strings.Contains(out, "Files: 12") {
+		t.Fatalf("inspect: exit %d\n%s", code, out)
+	}
+	agent.json("POST", "/api/backups/restore", 200, `{"domain":"glowrom.com","files":12,"safety_backup":"/var/backups/docklite/safety/x.tar.gz"}`)
+	if code, _, _ = runCLI(t, agent, "", "backups", "restore", "sites/x.tar.gz"); code == 0 {
+		t.Fatal("restore must refuse without --yes")
+	}
+	if n := len(agent.calls("POST", "/api/backups/restore")); n != 0 {
+		t.Fatalf("nothing may be sent without confirmation, got %d calls", n)
+	}
+	code, out, _ = runCLI(t, agent, "", "backups", "restore", "sites/x.tar.gz", "--yes")
+	if code != 0 || !strings.Contains(out, "Restored glowrom.com") || !strings.Contains(out, "safety/x.tar.gz") {
+		t.Fatalf("restore: exit %d\n%s", code, out)
+	}
+}
+
+func TestBackupsScheduleCommands(t *testing.T) {
+	agent := newFakeAgent(t)
+	agent.json("GET", "/api/backups/destinations", 200, `{"destinations":[{"id":4,"type":"local"}]}`)
+	agent.json("POST", "/api/backups/jobs", 200, `{"id":9}`)
+	code, out, _ := runCLI(t, agent, "", "backups", "schedule", "--all", "--daily-at", "03:00", "--keep", "7")
+	body := agent.calls("POST", "/api/backups/jobs")[0].Body
+	if code != 0 || !strings.Contains(body, `"frequency":"daily@03:00;keep=7"`) || !strings.Contains(body, `"all-sites"`) || !strings.Contains(body, `"destination_id":4`) {
+		t.Fatalf("exit %d out %s body %s", code, out, body)
+	}
+	code, _, _ = runCLI(t, agent, "", "backups", "schedule", "glowrom.com", "--weekly", "sun@04:00")
+	if code != 0 || !strings.Contains(agent.calls("POST", "/api/backups/jobs")[1].Body, `"domain":"glowrom.com"`) {
+		t.Fatal("a site name must be sent as the domain")
+	}
+	if code, _, _ = runCLI(t, agent, "", "backups", "schedule", "--all"); code != exitUsage {
+		t.Fatalf("a schedule needs a time rule, exit %d", code)
+	}
+	if code, _, _ = runCLI(t, agent, "", "backups", "schedule", "--daily-at", "03:00"); code != exitUsage {
+		t.Fatalf("a schedule needs a site or --all, exit %d", code)
+	}
+	agent.json("GET", "/api/backups/jobs", 200, `{"jobs":[{"id":9,"target_type":"all-sites","enabled":1,"schedule_text":"every day at 03:00, keeping the last 7","last_run_at":null,"next_run_at":"2026-10-13T03:00:00Z"}]}`)
+	code, out, _ = runCLI(t, agent, "", "backups", "schedules")
+	if code != 0 || !strings.Contains(out, "every day at 03:00, keeping the last 7") {
+		t.Fatalf("schedules: exit %d\n%s", code, out)
+	}
+	if code, _, _ = runCLI(t, agent, "", "backups", "unschedule", "9"); code == 0 {
+		t.Fatal("unschedule must need --yes")
+	}
+}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"docklite-agent/internal/docker"
@@ -56,58 +55,25 @@ func shouldRunJob(job store.BackupJob) bool {
 	if job.Enabled == 0 {
 		return false
 	}
-	if job.LastRunAt == nil || *job.LastRunAt == "" {
-		return true
+	sched, err := ParseSchedule(job.Frequency)
+	if err != nil {
+		return false // an unreadable schedule never runs; the dashboard shows it as invalid
 	}
-	if job.NextRunAt != nil && *job.NextRunAt != "" {
-		nextRun, err := time.Parse(time.RFC3339, *job.NextRunAt)
-		if err == nil {
-			return time.Now().After(nextRun) || time.Now().Equal(nextRun)
+	var last time.Time
+	if job.LastRunAt != nil && *job.LastRunAt != "" {
+		if t, err := time.Parse(time.RFC3339, *job.LastRunAt); err == nil {
+			last = t
 		}
 	}
-
-	lastRun, err := time.Parse(time.RFC3339, *job.LastRunAt)
-	if err != nil {
-		return true
-	}
-	hoursSince := time.Since(lastRun).Hours()
-
-	switch job.Frequency {
-	case "hourly":
-		return hoursSince >= 1
-	case "daily":
-		return hoursSince >= 24
-	case "every-3-days":
-		return hoursSince >= 72
-	case "weekly":
-		return hoursSince >= 168
-	case "monthly":
-		return hoursSince >= 720
-	default:
-		hours, err := strconv.Atoi(job.Frequency)
-		return err == nil && hoursSince >= float64(hours)
-	}
+	return sched.Due(last, time.Now())
 }
 
 func calculateNextRunTime(frequency string) *string {
-	now := time.Now().UTC()
-	switch frequency {
-	case "hourly":
-		now = now.Add(time.Hour)
-	case "daily":
-		now = now.Add(24 * time.Hour)
-	case "every-3-days":
-		now = now.Add(72 * time.Hour)
-	case "weekly":
-		now = now.Add(7 * 24 * time.Hour)
-	case "monthly":
-		now = now.Add(30 * 24 * time.Hour)
-	default:
-		if hours, err := strconv.Atoi(frequency); err == nil {
-			now = now.Add(time.Duration(hours) * time.Hour)
-		}
+	sched, err := ParseSchedule(frequency)
+	if err != nil {
+		return nil
 	}
-	next := now.Format(time.RFC3339)
+	next := sched.Next(time.Now(), time.Now()).UTC().Format(time.RFC3339)
 	return &next
 }
 
@@ -148,16 +114,19 @@ func executeBackupJob(ctx context.Context, storeHandle *store.SQLiteStore, docke
 		}
 	}
 
+	// One failing site must not stop the others from being backed up, and must not make the job retry every few
+	// minutes: every target is tried, the failure is recorded on its backup row, and the schedule moves on.
+	var firstErr error
 	for _, target := range targets {
-		if err := executeDestinationBackup(ctx, storeHandle, dockerClient, backupBaseDir, job, *dest, target); err != nil {
-			return err
+		if err := executeDestinationBackup(ctx, storeHandle, dockerClient, backupBaseDir, job, *dest, target); err != nil && firstErr == nil {
+			firstErr = err
 		}
 	}
 
-	if err := storeHandle.UpdateBackupJobRunTime(job.ID, calculateNextRunTime(job.Frequency)); err != nil {
-		return err
+	if err := storeHandle.UpdateBackupJobRunTime(job.ID, calculateNextRunTime(job.Frequency)); err != nil && firstErr == nil {
+		firstErr = err
 	}
-	return nil
+	return firstErr
 }
 
 type targetRef struct {
@@ -220,6 +189,9 @@ func executeLocalBackup(ctx context.Context, storeHandle *store.SQLiteStore, doc
 		_ = storeHandle.UpdateBackupStatus(backupID, "success", nil, nil, nil)
 	}
 
+	if sched, err := ParseSchedule(job.Frequency); err == nil && sched.KeepLast > 0 {
+		pruneKeepLast(storeHandle, target.Type, target.ID, sched.KeepLast)
+	}
 	if job.RetentionDays > 0 {
 		_ = cleanupOldBackups(storeHandle, dest.ID, job.RetentionDays)
 	}
