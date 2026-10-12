@@ -20,22 +20,58 @@ const TARGET_TYPES = [
   { value: 'database', label: 'Specific Database', description: 'Backup one database' },
 ];
 
-const FREQUENCIES = [
-  { value: 'hourly', label: 'Every Hour' },
-  { value: 'every-6-hours', label: 'Every 6 Hours' },
-  { value: 'every-12-hours', label: 'Every 12 Hours' },
-  { value: 'daily', label: 'Daily (midnight)' },
-  { value: 'every-3-days', label: 'Every 3 Days' },
-  { value: 'weekly', label: 'Weekly (Sunday)' },
-  { value: 'monthly', label: 'Monthly (1st)' },
+const WEEKDAYS = [
+  { value: 'sun', label: 'Sunday' },
+  { value: 'mon', label: 'Monday' },
+  { value: 'tue', label: 'Tuesday' },
+  { value: 'wed', label: 'Wednesday' },
+  { value: 'thu', label: 'Thursday' },
+  { value: 'fri', label: 'Friday' },
+  { value: 'sat', label: 'Saturday' },
 ];
+
+type ScheduleKind = 'daily' | 'weekly' | 'hours';
+
+// The schedule is stored as text in the job's "frequency": daily@03:00, weekly@sun@03:00, 6 (hours), with ";keep=7" for
+// "keep only the newest 7". Older jobs (daily, hourly, every-3-days, ...) are read too; see go-app/internal/backup/schedule.go.
+function parseFrequency(freq: string | undefined): { kind: ScheduleKind; time: string; weekday: string; hours: number; keep: number } {
+  const out = { kind: 'daily' as ScheduleKind, time: '03:00', weekday: 'sun', hours: 6, keep: 7 };
+  if (!freq) return out;
+  const [main, opts = ''] = freq.split(';');
+  const keep = /keep=(\d+)/.exec(opts);
+  if (keep) out.keep = Number(keep[1]);
+  const parts = main.split('@');
+  if (parts[0] === 'weekly') {
+    out.kind = 'weekly';
+    if (parts.length === 3) {
+      out.weekday = parts[1];
+      out.time = parts[2];
+    }
+  } else if (parts[0] === 'daily') {
+    if (parts[1]) out.time = parts[1];
+  } else if (parts[0] === 'hourly') {
+    out.kind = 'hours';
+    out.hours = 1;
+  } else {
+    const n = Number(parts[0].replace(/^every-/, '').replace(/-hours$/, ''));
+    if (n > 0) {
+      out.kind = 'hours';
+      out.hours = n;
+    }
+  }
+  return out;
+}
 
 export default function AddBackupJobModal({ destinations, onClose, onSuccess, initialJob, mode = 'create' }: AddBackupJobModalProps) {
   const [destinationId, setDestinationId] = useState(initialJob?.destination || destinations[0]?.id || 0);
-  const [targetType, setTargetType] = useState<TargetType>(initialJob?.target_type || 'all-databases');
+  const [targetType, setTargetType] = useState<TargetType>(initialJob?.target_type || 'all-sites');
   const [targetId, setTargetId] = useState<number | ''>(initialJob?.target_id ?? '');
-  const [frequency, setFrequency] = useState(initialJob?.frequency || 'daily');
-  const [retentionDays, setRetentionDays] = useState(initialJob?.retention_days || 30);
+  const initialSchedule = parseFrequency(initialJob?.frequency);
+  const [kind, setKind] = useState<ScheduleKind>(initialSchedule.kind);
+  const [time, setTime] = useState(initialSchedule.time);
+  const [weekday, setWeekday] = useState(initialSchedule.weekday);
+  const [everyHours, setEveryHours] = useState(initialSchedule.hours);
+  const [keep, setKeep] = useState(initialSchedule.keep);
   const [enabled, setEnabled] = useState(initialJob ? initialJob.enabled === 1 : true);
 
   const [databases, setDatabases] = useState<any[]>([]);
@@ -56,10 +92,14 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
   useEffect(() => {
     if (!initialJob) return;
     setDestinationId(initialJob.destination || destinations[0]?.id || 0);
-    setTargetType(initialJob.target_type || 'all-databases');
+    setTargetType(initialJob.target_type || 'all-sites');
     setTargetId(initialJob.target_id ?? '');
-    setFrequency(initialJob.frequency || 'daily');
-    setRetentionDays(initialJob.retention_days || 30);
+    const sched = parseFrequency(initialJob.frequency);
+    setKind(sched.kind);
+    setTime(sched.time);
+    setWeekday(sched.weekday);
+    setEveryHours(sched.hours);
+    setKeep(sched.keep);
     setEnabled(initialJob.enabled === 1);
   }, [initialJob, destinations]);
 
@@ -113,8 +153,10 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
         destination_id: destinationId,
         target_type: targetType,
         target_id: targetType === 'database' || targetType === 'site' ? selectedTargetId : null,
-        frequency,
-        retention_days: retentionDays,
+        frequency:
+          (kind === 'daily' ? `daily@${time}` : kind === 'weekly' ? `weekly@${weekday}@${time}` : String(everyHours)) +
+          (keep > 0 ? `;keep=${keep}` : ''),
+        retention_days: 0, // old-backup cleanup is by count now ("keep the newest N"), not by age
         enabled: enabled ? 1 : 0,
       };
 
@@ -287,45 +329,69 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
+                  How often
+                </label>
+                <select value={kind} onChange={(e) => setKind(e.target.value as ScheduleKind)} className="input-vapor w-full" disabled={loading}>
+                  <option value="daily">Every day</option>
+                  <option value="weekly">Every week</option>
+                  <option value="hours">Every few hours</option>
+                </select>
+              </div>
+              {kind === 'weekly' && (
+                <div>
+                  <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
+                    On
+                  </label>
+                  <select value={weekday} onChange={(e) => setWeekday(e.target.value)} className="input-vapor w-full" disabled={loading}>
+                    {WEEKDAYS.map((d) => (
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {kind !== 'hours' ? (
+                <div>
+                  <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
+                    At (server time)
+                  </label>
+                  <input type="time" value={time} onChange={(e) => setTime(e.target.value || '03:00')} className="input-vapor w-full" required disabled={loading} />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
+                    Every
+                  </label>
+                  <select value={everyHours} onChange={(e) => setEveryHours(Number(e.target.value))} className="input-vapor w-full" disabled={loading}>
+                    {[1, 2, 3, 4, 6, 8, 12].map((h) => (
+                      <option key={h} value={h}>
+                        {h === 1 ? 'hour' : `${h} hours`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
             <div>
               <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
-                Frequency
+                Keep the newest
               </label>
-              <select
-                value={frequency}
-                onChange={(e) => setFrequency(e.target.value)}
-                className="input-vapor w-full"
-                required
-                disabled={loading}
-              >
-                {FREQUENCIES.map((f) => (
-                  <option key={f.value} value={f.value}>
-                    {f.label}
+              <select value={keep} onChange={(e) => setKeep(Number(e.target.value))} className="input-vapor w-full" disabled={loading}>
+                {[1, 3, 5, 7, 14, 30, 60, 90].map((n) => (
+                  <option key={n} value={n}>
+                    {n} {n === 1 ? 'backup' : 'backups'} of each
                   </option>
                 ))}
+                <option value={0}>All of them (never delete)</option>
               </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
-                Keep Backups For
-              </label>
-              <select
-                value={retentionDays}
-                onChange={(e) => setRetentionDays(Number(e.target.value))}
-                className="input-vapor w-full"
-                required
-                disabled={loading}
-              >
-                <option value={7}>7 days</option>
-                <option value={14}>14 days</option>
-                <option value={30}>30 days</option>
-                <option value={60}>60 days</option>
-                <option value={90}>90 days</option>
-                <option value={180}>180 days</option>
-                <option value={365}>1 year</option>
-              </select>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+                After each backup, older ones beyond this number are deleted so the disk doesn&apos;t fill up. If the server was off at the chosen time, the backup runs when it&apos;s back.
+              </p>
             </div>
           </div>
 

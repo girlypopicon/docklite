@@ -48,3 +48,27 @@ func ensureRelativePath(baseDir string, targetPath string) string {
 	}
 	return rel
 }
+
+// pruneKeepLast deletes the oldest successful backups of one site or database so that only the newest keep remain. Only
+// backups that finished are counted and removed, so failures never push a good backup out, and the newest is never touched.
+func pruneKeepLast(storeHandle *store.SQLiteStore, targetType string, targetID int64, keep int) {
+	if keep <= 0 {
+		return
+	}
+	records, err := storeHandle.GetBackupsByTarget(targetType, targetID, 1000) // newest first
+	if err != nil {
+		return
+	}
+	kept := 0
+	for _, r := range records {
+		if r.Status != "success" {
+			continue
+		}
+		kept++
+		if kept <= keep {
+			continue
+		}
+		_ = RemoveBackupArtifacts(r.BackupPath)
+		_ = storeHandle.DeleteBackup(r.ID)
+	}
+}

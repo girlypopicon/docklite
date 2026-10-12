@@ -69,6 +69,9 @@ up() {
     curl -sf -o /dev/null -H "Authorization: Bearer $token" "$API/api/containers" || die "the demo agent didn't start; see $DIR/logs/agent.log"
 
     DEMO_API="$API" DEMO_TOKEN="$token" DEMO_SITES="$SITES" python3 "$REPO/scripts/demo_seed.py"
+    # The first migration seeds the "Local Server" backup destination with the real default (/var/backups/docklite).
+    # The demo keeps its backups in its own folder, so point the destination there: the demo never writes to real paths.
+    sqlite3 "$DIR/data/docklite.db" "UPDATE backup_destinations SET config = json_object('path', '$DIR/backups') WHERE type = 'local'" 2>/dev/null || true
     status
 }
 
