@@ -5,6 +5,14 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.3.2 (2026-10-13)
+
+### Added
+- **A public demo of the dashboard** (for demo.docklite.net) that runs entirely in the visitor's browser on made-up data: every page
+  works, including restoring a backup, schedules, the terminal and DNS, and nothing real can be touched because nothing real is there.
+  Built as plain static files by `scripts/build-public-demo.sh` (it refuses to build if the output mentions anything private) and
+  attached to each release as `docklite-demo.tar.gz`. See `docs/PUBLIC_DEMO.md`.
+
 ## 1.3.1 (2026-10-12)
 
 ### Fixed

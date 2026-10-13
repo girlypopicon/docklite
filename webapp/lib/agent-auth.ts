@@ -2,6 +2,7 @@ import 'server-only';
 
 import { cookies, headers } from 'next/headers';
 import type { UserSession } from '@/types';
+import { DEMO } from '@/lib/demo/flag';
 
 const AGENT_URL =
   process.env.AGENT_URL ||
@@ -32,6 +33,8 @@ function buildCookieHeader(): string {
 }
 
 export async function getAgentUser(): Promise<UserSession | null> {
+  // The public demo has no server and no login: everyone is the demo admin.
+  if (DEMO) return { userId: 1, username: 'demo', isAdmin: true, role: 'super_admin' };
   try {
     const baseURL = resolveAgentURL();
     if (!baseURL) return null;

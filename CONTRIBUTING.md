@@ -22,6 +22,11 @@ whether it is running, and `down --wipe` removes it. Use it for screenshots and 
 server: root actions are simulated in memory and pages that reveal the host (network, server logs/services) are
 refused. Demo containers carry the label `docklite.demo=1`.
 
+## Public demo
+
+`scripts/build-public-demo.sh` builds the static, fake-data demo for demo.docklite.net (see `docs/PUBLIC_DEMO.md`). When
+you add a dashboard feature that calls a new `/api` endpoint, add a fake answer in `webapp/lib/demo/api.ts` too.
+
 ## Versioning
 
 Add a line under **Unreleased** in `CHANGELOG.md` for every user-visible change as you make it. Servers update from GitHub
