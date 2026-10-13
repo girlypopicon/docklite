@@ -274,26 +274,99 @@ on('DELETE', /^\/api\/users$/, (r, _m, s) => {
 on('POST', /^\/api\/users\/password$/, () => ok());
 
 // backups
-const backupRow = (b: DemoState['backups'][number]) => ({ id: b.id, job_id: b.jobId, destination_id: 1, target_type: b.targetType, target_id: b.targetId, backup_path: b.path, size_bytes: b.sizeBytes, status: b.status, error_message: null, created_at: iso(b.createdAt) });
-const jobRow = (j: DemoState['jobs'][number]) => ({ id: j.id, name: j.name, target_type: j.targetType, target_id: j.targetId, destination_id: 1, schedule: j.schedule, cron: j.schedule, enabled: j.enabled ? 1 : 0, created_at: iso(j.createdAt) });
-const addBackup = (s: DemoState, targetType: 'site' | 'database', targetId: number, jobId: number | null) => {
-  const name = targetType === 'site' ? s.sites.find((x) => x.id === targetId)?.domain ?? 'site' : s.dbs.find((x) => x.id === targetId)?.name ?? 'database';
-  const id = s.nextId++; const when = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
-  const b = { id, jobId, targetType, targetId, path: targetType === 'site' ? `site-${name}-${when}.dklpkg` : `db-${name}-${when}.dump.gz`, sizeBytes: 150_000 + Math.floor(Math.random() * 4_000_000), status: 'completed', createdAt: Date.now() };
-  s.backups.unshift(b); save(); return b;
-};
-on('GET', /^\/api\/backups$/, (_r, _m, s) => ok({ backups: s.backups.map(backupRow) }));
-on('GET', /^\/api\/backups\/local$/, () => ok({ backups: [] }));
-on('DELETE', /^\/api\/backups$/, (r, _m, s) => { s.backups = s.backups.filter((b) => String(b.id) !== r.query.get('id')); save(); return ok(); });
-on('POST', /^\/api\/backups\/export$/, (r, _m, s) => { const b = addBackup(s, r.body?.target_type === 'database' ? 'database' : 'site', Number(r.body?.target_id), null); return ok({ success: true, backup_id: b.id }); });
-on('GET', /^\/api\/backups\/jobs$/, (_r, _m, s) => ok({ jobs: s.jobs.map(jobRow) }));
-on('POST', /^\/api\/backups\/jobs$/, (r, _m, s) => {
-  const id = s.nextId++; s.jobs.push({ id, name: r.body?.name || 'Scheduled backup', targetType: r.body?.target_type === 'database' ? 'database' : 'site', targetId: Number(r.body?.target_id) || 1, schedule: r.body?.schedule || r.body?.cron || '0 2 * * *', enabled: true, createdAt: Date.now() });
-  save(); return { status: 201, body: { success: true, id } };
+const WEEKDAYS: Record<string, string> = { sun: 'Sunday', mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday' };
+// The schedule text, e.g. "daily@03:00;keep=7", in plain words (the real agent does the same in Go).
+function describeSchedule(freq: string): string {
+  const [main, opts = ''] = freq.split(';');
+  const keep = /keep=(\d+)/.exec(opts);
+  const parts = main.split('@');
+  let when: string;
+  if (parts[0] === 'daily') when = parts[1] ? `every day at ${parts[1]}` : 'every day';
+  else if (parts[0] === 'weekly') when = parts.length === 3 ? `every ${WEEKDAYS[parts[1]] ?? parts[1]} at ${parts[2]}` : 'every week';
+  else if (parts[0] === 'hourly') when = 'every hour';
+  else { const n = Number(parts[0].replace(/^every-/, '').replace(/-hours$/, '')); when = n > 0 ? `every ${n} hours` : freq; }
+  return keep && Number(keep[1]) > 0 ? `${when}, keeping the last ${keep[1]}` : when;
+}
+const keepOf = (freq: string) => Number(/keep=(\d+)/.exec(freq)?.[1] ?? 0);
+const backupRow = (b: DemoState['backups'][number]) => ({ id: b.id, job_id: b.jobId, destination_id: 1, target_type: b.targetType, target_id: b.targetId, backup_path: `/var/backups/docklite/${b.path}`, size_bytes: b.sizeBytes, status: b.status, error_message: null, created_at: iso(b.createdAt) });
+const jobRow = (j: DemoState['jobs'][number]) => ({
+  id: j.id, destination_id: 1, target_type: j.targetType, target_id: ['all-sites', 'all-databases'].includes(j.targetType) ? null : j.targetId,
+  frequency: j.schedule, retention_days: 0, enabled: j.enabled ? 1 : 0, last_run_at: iso(Date.now() - 9 * T.HOUR), next_run_at: iso(Date.now() + 15 * T.HOUR), created_at: iso(j.createdAt),
+  schedule_text: describeSchedule(j.schedule), schedule_valid: true, keep_last: keepOf(j.schedule),
 });
-on('PUT', /^\/api\/backups\/jobs$/, (r, _m, s) => { const j = s.jobs.find((x) => x.id === Number(r.body?.id)); if (j) { if (r.body?.enabled !== undefined) j.enabled = !!r.body.enabled; save(); } return ok(); });
+const stamp = () => new Date().toISOString().replace(/[-:T]/g, '').slice(0, 8) + '-' + new Date().toISOString().replace(/[-:T]/g, '').slice(8, 14);
+const targetName = (s: DemoState, targetType: string, targetId: number) =>
+  targetType === 'site' ? s.sites.find((x) => x.id === targetId)?.domain ?? 'site' : s.dbs.find((x) => x.id === targetId)?.name ?? 'database';
+const addBackup = (s: DemoState, targetType: 'site' | 'database', targetId: number, jobId: number | null, keep = 0) => {
+  const name = targetName(s, targetType, targetId);
+  const id = s.nextId++;
+  const b = { id, jobId, targetType, targetId, path: targetType === 'site' ? `sites/site-${name}-${stamp()}.tar.gz` : `databases/db-${name}-${stamp()}.dump.gz`, sizeBytes: 150_000 + Math.floor(Math.random() * 4_000_000), status: 'success', createdAt: Date.now() };
+  s.backups.unshift(b);
+  if (keep > 0) { // "keep the newest N" of this site/database
+    const same = s.backups.filter((x) => x.targetType === targetType && x.targetId === targetId && x.status === 'success');
+    const drop = new Set(same.slice(keep).map((x) => x.id));
+    s.backups = s.backups.filter((x) => !drop.has(x.id));
+  }
+  save(); return b;
+};
+const siteBackupFiles = (s: DemoState) => s.backups.filter((b) => b.status === 'success' || b.status === 'completed').map((b) => ({ name: b.path, size: b.sizeBytes, modified_at: iso(b.createdAt) }));
+const fileCount = (sizeBytes: number) => 24 + (sizeBytes % 260);
+on('GET', /^\/api\/backups$/, (_r, _m, s) => ok({ backups: s.backups.map(backupRow) }));
+on('GET', /^\/api\/backups\/local$/, (_r, _m, s) => ok({ path: '/var/backups/docklite', files: siteBackupFiles(s) }));
+on('DELETE', /^\/api\/backups\/local$/, (r, _m, s) => { s.backups = s.backups.filter((b) => b.path !== r.query.get('file')); save(); return ok(); });
+on('DELETE', /^\/api\/backups$/, (r, _m, s) => { s.backups = s.backups.filter((b) => String(b.id) !== r.query.get('id')); save(); return ok(); });
+on('GET', /^\/api\/backups\/inspect$/, (r, _m, s) => {
+  const b = s.backups.find((x) => x.path === r.query.get('file') && x.targetType === 'site');
+  if (!b) return err(400, "that isn't a site backup file");
+  return ok({ domain: targetName(s, 'site', b.targetId), files: fileCount(b.sizeBytes), bytes: b.sizeBytes * 2, verified: true, skipped: [], created_at: iso(b.createdAt) });
+});
+on('POST', /^\/api\/backups\/restore$/, (r, _m, s) => {
+  const b = s.backups.find((x) => x.path === r.body?.file && x.targetType === 'site');
+  if (!b) return err(422, "that isn't a site backup file");
+  const domain = targetName(s, 'site', b.targetId);
+  const safety = `safety/before-restore-${domain}-${stamp()}.tar.gz`;
+  s.backups.unshift({ id: s.nextId++, jobId: null, targetType: 'site', targetId: b.targetId, path: safety, sizeBytes: Math.round(b.sizeBytes * 0.9), status: 'success', createdAt: Date.now() });
+  save();
+  return ok({ domain, files: fileCount(b.sizeBytes), bytes: b.sizeBytes * 2, safety_backup: `/var/backups/docklite/${safety}`, skipped: [], message: `Restored ${domain}. What was there before was saved first, so this can be undone.` });
+});
+on('POST', /^\/api\/backups\/export$/, (r, _m, s) => {
+  const domain = String(r.body?.domain ?? '').toLowerCase();
+  const targetType = r.body?.target_type === 'database' ? 'database' : 'site';
+  const targetId = domain ? s.sites.find((x) => x.domain === domain)?.id ?? 0 : Number(r.body?.target_id);
+  if (!targetId) return err(404, `there is no site called ${domain}`);
+  const b = addBackup(s, targetType, targetId, null);
+  return ok({ success: true, backup_id: b.id });
+});
+on('GET', /^\/api\/backups\/jobs$/, (_r, _m, s) => ok({ jobs: s.jobs.map(jobRow) }));
+const VALID_FREQ = /^(hourly|daily(@([01]\d|2[0-3]):[0-5]\d)?|weekly(@(sun|mon|tue|wed|thu|fri|sat)@([01]\d|2[0-3]):[0-5]\d)?|every-3-days|monthly|\d+|every-\d+-hours)(;keep=\d+)?$/;
+on('POST', /^\/api\/backups\/jobs$/, (r, _m, s) => {
+  const freq = String(r.body?.frequency ?? '');
+  if (!VALID_FREQ.test(freq)) return err(400, `unrecognised schedule "${freq}"`);
+  const id = s.nextId++; const t = r.body?.target_type;
+  const targetType = ['database', 'all-sites', 'all-databases'].includes(t) ? t : 'site';
+  s.jobs.push({ id, name: 'Scheduled backup', targetType, targetId: Number(r.body?.target_id) || 1, schedule: freq, enabled: r.body?.enabled !== 0, createdAt: Date.now() });
+  save(); return ok({ id, message: 'Backup job created successfully' });
+});
+on('PUT', /^\/api\/backups\/jobs$/, (r, _m, s) => {
+  const j = s.jobs.find((x) => x.id === Number(r.body?.id)); if (!j) return err(404, 'schedule not found');
+  if (r.body?.frequency !== undefined) { if (!VALID_FREQ.test(String(r.body.frequency))) return err(400, `unrecognised schedule "${r.body.frequency}"`); j.schedule = String(r.body.frequency); }
+  if (r.body?.enabled !== undefined) j.enabled = !!r.body.enabled;
+  if (r.body?.target_type) j.targetType = r.body.target_type;
+  if (r.body?.target_id !== undefined && r.body.target_id !== null) j.targetId = Number(r.body.target_id);
+  save(); return ok();
+});
 on('DELETE', /^\/api\/backups\/jobs$/, (r, _m, s) => { s.jobs = s.jobs.filter((j) => String(j.id) !== r.query.get('id')); save(); return ok(); });
-on('POST', /^\/api\/backups\/trigger$/, (r, _m, s) => { const j = s.jobs.find((x) => x.id === Number(r.body?.job_id)); if (!j) return err(404, 'schedule not found'); addBackup(s, j.targetType, j.targetId, j.id); return ok(); });
+on('POST', /^\/api\/backups\/trigger$/, (r, _m, s) => {
+  const j = s.jobs.find((x) => x.id === Number(r.body?.job_id)); if (!j) return err(404, 'schedule not found');
+  const keep = keepOf(j.schedule);
+  if (j.targetType === 'all-sites') s.sites.forEach((x) => addBackup(s, 'site', x.id, j.id, keep));
+  else if (j.targetType === 'all-databases') s.dbs.forEach((x) => addBackup(s, 'database', x.id, j.id, keep));
+  else addBackup(s, j.targetType as 'site' | 'database', j.targetId, j.id, keep);
+  return ok({ message: 'Backup job triggered successfully' });
+});
+// Automatic HTTPS (the real agent waits for DNS, then asks Let's Encrypt); the demo has nothing pending.
+on('GET', /^\/api\/ssl\/auto$/, () => ok({ jobs: [], email: '' }));
+on('POST', /^\/api\/ssl\/auto$/, () => ok({ started: [], jobs: [] }));
 on('GET', /^\/api\/backups\/destinations$/, () => ok({ destinations: [{ id: 1, name: 'Local Server', type: 'local', config: '{"path":"/var/backups/docklite"}', enabled: 1, created_at: iso(Date.now() - 60 * T.DAY) }] }));
 
 // SSL + nginx

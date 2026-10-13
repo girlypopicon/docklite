@@ -13,7 +13,7 @@ export interface DemoDb {
   running: boolean; startedAt: number; createdAt: number; tables: DemoTable[];
 }
 export interface DemoBackup { id: number; jobId: number | null; targetType: 'site' | 'database'; targetId: number; path: string; sizeBytes: number; status: string; createdAt: number }
-export interface DemoJob { id: number; name: string; targetType: 'site' | 'database'; targetId: number; schedule: string; enabled: boolean; createdAt: number }
+export interface DemoJob { id: number; name: string; targetType: 'site' | 'database' | 'all-sites' | 'all-databases'; targetId: number; schedule: string; enabled: boolean; createdAt: number }
 export interface DemoState {
   nextId: number; nextDbId: number; users: DemoUser[]; sites: DemoSite[]; dbs: DemoDb[]; backups: DemoBackup[]; jobs: DemoJob[];
   nginx: Record<string, { enabled: boolean; config: string }>;
@@ -92,10 +92,11 @@ export function seedState(now = Date.now()): DemoState {
     ],
     dbs: [mkDb(1, 'shop_db', 'shop_db_user', 3 * DAY), mkDb(2, 'blog_db', 'blog_db_user', 27 * DAY), mkDb(3, 'analytics', 'analytics_user', 9 * DAY)],
     backups: [
-      { id: 1, jobId: null, targetType: 'site', targetId: 4, path: 'site-shop.example.com-20261003-020000.dklpkg', sizeBytes: 4_812_345, status: 'completed', createdAt: now - 3 * DAY },
-      { id: 2, jobId: null, targetType: 'database', targetId: 1, path: 'db-shop_db-20261003-020500.dump.gz', sizeBytes: 182_330, status: 'completed', createdAt: now - 3 * DAY },
+      { id: 1, jobId: null, targetType: 'site', targetId: 4, path: 'sites/site-shop.example.com-20261003-020000.tar.gz', sizeBytes: 4_812_345, status: 'success', createdAt: now - 3 * DAY },
+      { id: 3, jobId: 1, targetType: 'site', targetId: 5, path: 'sites/site-blog.example.com-20261004-020000.tar.gz', sizeBytes: 2_104_221, status: 'success', createdAt: now - 2 * DAY },
+      { id: 2, jobId: null, targetType: 'database', targetId: 1, path: 'databases/db-shop_db-20261003-020500.dump.gz', sizeBytes: 182_330, status: 'success', createdAt: now - 3 * DAY },
     ],
-    jobs: [{ id: 1, name: 'Nightly shop backup', targetType: 'site', targetId: 4, schedule: '0 2 * * *', enabled: true, createdAt: now - 20 * DAY }],
+    jobs: [{ id: 1, name: 'Nightly shop backup', targetType: 'site', targetId: 4, schedule: 'daily@02:00;keep=7', enabled: true, createdAt: now - 20 * DAY }],
     nginx: {},
     certs: {},
     logs: {},

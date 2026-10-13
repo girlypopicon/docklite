@@ -18,21 +18,37 @@ visitor sees is made up and lives only in their browser tab; closing the tab thr
 ## Build
 
 ```bash
-scripts/build-public-demo.sh            # writes dist/demo (about 220 files, 13 MB)
-scripts/build-public-demo.sh --serve    # also serves it on http://127.0.0.1:3300 to look at
+scripts/build-public-demo.sh              # writes dist/demo (about 230 files, 13 MB)
+scripts/build-public-demo.sh --package    # also writes dist/docklite-demo.tar.gz (7 MB) to hand to a web server
+scripts/build-public-demo.sh --serve      # also serves it on http://127.0.0.1:3300 to look at
 ```
 
-The build runs in a scratch copy of `webapp/`, so it never touches an installed build. It needs `npm install` to
-have been run in `webapp/` once.
+The build runs in a scratch copy of `webapp/`, so it never touches an installed build. It needs `npm install` to have been run
+in `webapp/` once. Before it finishes it scans the output and **refuses to produce it** if it finds this machine's username, a
+`/home/` path, a public-looking IP address or a real email address (add your own words with `DEMO_FORBIDDEN='word|other'`).
 
-## Serve it with nginx
+Each release publishes the packaged demo as `docklite-demo.tar.gz` on its GitHub release, so a web server never needs Node or a build.
 
-Copy `dist/demo/` to the server and point a virtual host at it:
+## Put it on a web server (nginx)
+
+No Node, no database: it is static files. On the server that hosts `demo.docklite.net`:
+
+```bash
+sudo mkdir -p /var/www/demo.docklite.net
+curl -fsSL https://github.com/girlypopicon/docklite/releases/latest/download/docklite-demo.tar.gz \
+  | sudo tar -xz -C /var/www/demo.docklite.net
+```
+
+and a server block that answers only for that name (never `default_server`, so other hostnames can't reach it):
 
 ```nginx
 server {
-    listen 80;
+    listen 443 ssl;
+    http2 on;
     server_name demo.docklite.net;
+    ssl_certificate     /etc/letsencrypt/live/<your-cert-name>/fullchain.pem;   # the certificate that covers demo.docklite.net
+    ssl_certificate_key /etc/letsencrypt/live/<your-cert-name>/privkey.pem;
+
     root /var/www/demo.docklite.net;
     index index.html;
 
@@ -44,8 +60,12 @@ server {
 }
 ```
 
-Behind Cloudflare, use SSL mode "Full" with a certificate on the origin, or "Flexible" if the origin only speaks
-HTTP. Any static host (Cloudflare Pages, GitHub Pages, S3) also works: upload the folder as is.
+Test with `sudo nginx -t`, then `sudo systemctl reload nginx` (a reload, not a restart: other sites keep serving). Behind
+Cloudflare, the SSL mode **Full** works with any valid or self-signed origin certificate, and **Full (strict)** needs one that
+covers `demo.docklite.net` (a `*.docklite.net` certificate does). A 525 from Cloudflare means nothing on the origin answers
+TLS for that name yet; this server block fixes it. To update the demo, run the `curl | tar` line again (it overwrites the files).
+
+Any static host (Cloudflare Pages, GitHub Pages, S3) also works: upload the unpacked folder as is.
 
 ## Keeping it current
 
