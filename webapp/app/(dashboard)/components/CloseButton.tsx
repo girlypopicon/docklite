@@ -25,9 +25,9 @@ export default function CloseButton({ onClick, label = 'Close', disabled, classN
       disabled={disabled}
       aria-label={label}
       title={label}
-      className={`btn-neon inline-flex items-center justify-center w-11 h-11 rounded-full shrink-0 transition-transform hover:scale-110 disabled:opacity-50 ${className}`}
+      className={`btn-neon inline-flex items-center justify-center w-12 h-12 rounded-full shrink-0 transition-transform hover:scale-110 disabled:opacity-50 ${className}`}
     >
-      <X size={22} weight="bold" />
+      <X size={28} weight="bold" />
     </button>
   );
 }
