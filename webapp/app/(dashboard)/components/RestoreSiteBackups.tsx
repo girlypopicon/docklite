@@ -166,7 +166,7 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
 
       {picked && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="card-vapor max-w-lg w-full p-6 rounded-2xl border-2 border-neon-purple/40">
+          <div className="card-vapor max-w-lg w-full p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)', border: '2px solid var(--modal-border)', boxShadow: '0 0 30px var(--modal-shadow)' }}>
             <h3 className="text-xl font-bold text-accent-cyan">Restore {siteName(picked.name)}?</h3>
             <div className="mt-3 text-sm text-ink-muted space-y-2">
               {!inspection && !inspectError && <div>Checking the backup…</div>}

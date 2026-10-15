@@ -126,7 +126,15 @@ export default function AddContainerModal({ onClose, onCreated }: AddContainerMo
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
-      <div className="card-vapor max-w-2xl w-full p-6 rounded-2xl border-2 border-neon-purple/40">
+      <div
+        className="card-vapor max-w-2xl w-full p-6 rounded-2xl max-h-[90vh] overflow-y-auto"
+        style={{
+          // opaque, like the other dialogs: a see-through dialog lets the blurred page show through its text
+          background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)',
+          border: '2px solid var(--modal-border)',
+          boxShadow: '0 0 30px var(--modal-shadow)',
+        }}
+      >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
                           <div className="text-xs uppercase tracking-[0.2em] text-accent-purple/70">Create Container</div>            <div className="text-2xl font-bold text-accent-cyan">New Site</div>

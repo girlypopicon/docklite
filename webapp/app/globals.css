@@ -362,6 +362,13 @@
     box-shadow: 0 12px 30px rgba(10, 7, 20, 0.5), 0 0 16px rgba(var(--neon-purple-rgb), 0.2) !important;
   }
 
+  /* Dialogs: a solid cream surface. The rainbow card gradient above is see-through, which lets the blurred page show
+     through a dialog's text. (A dialog is a .card-vapor inside a full-screen fixed overlay.) */
+  [data-theme='unicorn'] .fixed.inset-0 .card-vapor {
+    background: linear-gradient(160deg, #fff4e6 0%, #ffe9f5 55%, #f1eaff 100%) !important;
+    border-color: rgba(var(--neon-pink-rgb), 0.5) !important;
+  }
+
   [data-theme='unicorn'] nav .bg-gradient-to-r {
     background: var(--spectrum-gradient) !important;
   }
