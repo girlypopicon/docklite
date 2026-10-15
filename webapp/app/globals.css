@@ -369,6 +369,14 @@
     border-color: rgba(var(--neon-pink-rgb), 0.5) !important;
   }
 
+  /* Log windows are terminals: a solid dark surface with light text in every theme. (A see-through pane turns the page
+     behind it into noise, and the glass look is for panels, not for text you have to read.) */
+  .log-pane {
+    background: #0c0914 !important;
+    color: #d9f2d9 !important;
+    border: 1px solid rgba(var(--neon-purple-rgb), 0.35);
+  }
+
   [data-theme='unicorn'] nav .bg-gradient-to-r {
     background: var(--spectrum-gradient) !important;
   }

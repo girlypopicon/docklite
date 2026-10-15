@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import CloseButton from './CloseButton';
 import { X } from '@phosphor-icons/react';
 
 interface AddFolderModalProps {
@@ -51,12 +52,7 @@ export default function AddFolderModal({ onClose, onSuccess, parentFolderId, par
           <h2 className="text-2xl font-bold neon-text-pink">
             {parentFolderId ? `New Subfolder in "${parentFolderName}"` : 'New Folder'}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-ink-muted hover:text-accent-cyan transition-colors"
-          >
-            <X size={24} weight="bold" />
-          </button>
+          <CloseButton onClick={onClose} />
         </div>
 
         <form onSubmit={handleSubmit}>
