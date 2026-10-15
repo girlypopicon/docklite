@@ -20,6 +20,13 @@ export function installDemo(): void {
     let body: any = undefined;
     const rawBody = init?.body;
     if (typeof rawBody === 'string' && rawBody) { try { body = JSON.parse(rawBody); } catch { body = rawBody; } }
+    else if (typeof FormData !== 'undefined' && rawBody instanceof FormData) {
+      // File uploads: keep the name, size and (for small text files) the contents.
+      const f = rawBody.get('file');
+      let file: { name: string; size: number; text?: string } | undefined;
+      if (f && typeof f !== 'string') file = { name: f.name, size: f.size, text: f.size <= 20_000 && /^(text\/|application\/(json|xml|javascript))/.test(f.type) ? await f.text() : undefined };
+      body = { file, path: rawBody.get('path') };
+    }
     await new Promise((r) => setTimeout(r, 60 + Math.random() * 140)); // feels like a real server
     const res = await handleDemoRequest({ method, path: url.pathname.replace(/\/+$/, '') || '/', query: url.searchParams, body });
     const isText = typeof res!.body === 'string';

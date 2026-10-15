@@ -5,6 +5,10 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Fixed
+- The public demo's **File Browser** (the FILES tab) was empty and showed errors. It now has a pretend disk: browse each user's and
+  site's folders, open and edit files, create, upload, move, copy, download and delete, all inside the visitor's tab.
+
 ## 1.3.2 (2026-10-13)
 
 ### Added
