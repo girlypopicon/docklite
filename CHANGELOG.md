@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.3.4 (2026-10-15)
+
 ### Fixed
 - **Dialogs in the Unicorn theme were see-through**, so the blurred page showed through their text (New Container, Restore, the
   certificate dialog). They are now a solid surface, and the New Container dialog's headings and labels use the theme's readable text
