@@ -917,8 +917,8 @@ export default function DatabasesPage() {
               CONNECTION INFO
             </p>
             <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
-              Connect to your PostgreSQL databases using <span className="font-bold" style={{ color: 'var(--text-pink)' }}>localhost</span> as the host and the port shown on each card.
-              Default username is <span className="font-bold" style={{ color: 'var(--text-pink)' }}>docklite</span>. Password is generated randomly during creation.
+              From this server, connect using <span className="font-bold" style={{ color: 'var(--text-pink)' }}>localhost</span> and the port on each card. From one of your sites, use the database&apos;s container name and the engine&apos;s own port (shown when you create it).
+              Default username is <span className="font-bold" style={{ color: 'var(--text-pink)' }}>docklite</span> (Redis has only a password). Passwords are generated randomly during creation.
             </p>
           </div>
         </div>
