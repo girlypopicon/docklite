@@ -2,6 +2,7 @@
 // answered from lib/demo/state.ts. Nothing leaves the browser; nothing is real.
 import { fakeHex, getState, save, T, type DemoDb, type DemoSite, type DemoState } from './state';
 import { hostApi } from './host';
+import { filesApi } from './files';
 
 export interface DemoRequest { method: string; path: string; query: URLSearchParams; body: any }
 export interface DemoResponse { status: number; body: any }
@@ -413,6 +414,8 @@ export async function handleDemoRequest(req: DemoRequest): Promise<DemoResponse 
     const m = req.path.match(re);
     if (m) return handler(req, m, s);
   }
+  const files = filesApi(req, s);
+  if (files) return files;
   const host = hostApi(req, s);
   if (host) return host;
   if (typeof console !== 'undefined') console.warn('[demo] not implemented:', req.method, req.path);

@@ -14,12 +14,16 @@ export interface DemoDb {
 }
 export interface DemoBackup { id: number; jobId: number | null; targetType: 'site' | 'database'; targetId: number; path: string; sizeBytes: number; status: string; createdAt: number }
 export interface DemoJob { id: number; name: string; targetType: 'site' | 'database' | 'all-sites' | 'all-databases'; targetId: number; schedule: string; enabled: boolean; createdAt: number }
+export type FsNode = { dir: true } | { dir: false; content: string };
 export interface DemoState {
   nextId: number; nextDbId: number; users: DemoUser[]; sites: DemoSite[]; dbs: DemoDb[]; backups: DemoBackup[]; jobs: DemoJob[];
   nginx: Record<string, { enabled: boolean; config: string }>;
   certs: Record<string, { issuedAt: number; expiresAt: number }>;
   logs: Record<string, string[]>;
   shellUsers: string[];
+  // The fake disk behind the file browser (lib/demo/files.ts); filled in on first use.
+  fs?: Record<string, FsNode>;
+  fsSites?: string[];
 }
 
 const KEY = 'docklite-demo-state-v1';

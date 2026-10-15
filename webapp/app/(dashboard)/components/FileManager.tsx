@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import FileEditorModal from './FileEditorModal';
 import { useToast } from '@/lib/hooks/useToast';
 import { Folder, File as FileIcon } from '@phosphor-icons/react';
+import { DEMO } from '@/lib/demo/flag';
 
 interface FileEntry {
   name: string;
@@ -202,8 +203,26 @@ export default function FileManager({ userSession, embedded = false }: FileManag
     }
   };
 
-  const handleDownloadClick = (file: FileEntry) => {
-    window.location.href = `/api/files/download?path=${encodeURIComponent(`${currentPath}/${file.name}`)}`;
+  const handleDownloadClick = async (file: FileEntry) => {
+    const url = `/api/files/download?path=${encodeURIComponent(`${currentPath}/${file.name}`)}`;
+    if (!DEMO) {
+      window.location.href = url;
+      return;
+    }
+    // The public demo has no server to navigate to, so fetch the (fake) file and save it from the page.
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await res.text());
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(await res.blob());
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
 
   const handleContextMenu = (event: React.MouseEvent, file: FileEntry) => {
