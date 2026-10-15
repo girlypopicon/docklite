@@ -93,6 +93,9 @@ down() {
     done
     local ids; ids="$(demo_containers)"
     [[ -n "$ids" ]] && docker rm -f $ids >/dev/null
+    # the demo's databases keep their data in labelled volumes: remove those with the containers
+    local vols; vols="$(docker volume ls -q --filter label=docklite.demo=1)"
+    [[ -n "$vols" ]] && docker volume rm $vols >/dev/null 2>&1 || true
     echo "Demo stopped; demo containers removed."
     if [[ "${1:-}" == "--wipe" ]]; then rm -rf "$DIR" "$(dirname "$SITES")"; echo "Demo data deleted."; fi
 }

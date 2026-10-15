@@ -560,3 +560,35 @@ func TestBackupsScheduleCommands(t *testing.T) {
 		t.Fatal("unschedule must need --yes")
 	}
 }
+
+func TestDatabasesCommands(t *testing.T) {
+	agent := newFakeAgent(t)
+	agent.json("GET", "/api/databases/stats", 200, `{"databases":[{"id":7,"name":"wordpress","type":"mariadb","port":32854,"size":16384},{"id":2,"name":"shop_db","type":"","port":32780,"size":0}]}`)
+	code, out, _ := runCLI(t, agent, "", "databases", "list")
+	if code != 0 || !strings.Contains(out, "mariadb") || !strings.Contains(out, "postgres") || !strings.Contains(out, "16.0 KB") {
+		t.Fatalf("list should show each database's type (old ones are postgres): exit %d\n%s", code, out)
+	}
+	agent.json("POST", "/api/databases", 201, `{"connection":{"type":"mongodb","port":32855,"url":"mongodb://app:pw@localhost:32855/events?authSource=admin","container_url":"mongodb://app:pw@docklite-db-events:27017/events?authSource=admin"}}`)
+	code, out, _ = runCLI(t, agent, "", "databases", "create", "events", "--type", "MongoDB")
+	body := agent.calls("POST", "/api/databases")[0].Body
+	if code != 0 || !strings.Contains(body, `"type":"mongodb"`) || !strings.Contains(out, "mongodb://app:pw@localhost:32855") || !strings.Contains(out, "docklite-db-events") {
+		t.Fatalf("create: exit %d body %s\n%s", code, body, out)
+	}
+	if code, _, _ = runCLI(t, agent, "", "databases", "create", "x", "--type", "oracle"); code != exitUsage {
+		t.Fatalf("an unknown type must be a usage error, exit %d", code)
+	}
+	agent.json("DELETE", "/api/databases/7", 200, `{"success":true}`)
+	if code, _, _ = runCLI(t, agent, "", "databases", "delete", "wordpress"); code == 0 {
+		t.Fatal("delete must need --yes")
+	}
+	if n := len(agent.calls("DELETE", "/api/databases/7")); n != 0 {
+		t.Fatalf("nothing may be deleted without confirmation, got %d", n)
+	}
+	code, out, _ = runCLI(t, agent, "", "databases", "delete", "wordpress", "--yes")
+	if code != 0 || len(agent.calls("DELETE", "/api/databases/7")) != 1 {
+		t.Fatalf("delete by name: exit %d\n%s", code, out)
+	}
+	if code, _, _ = runCLI(t, agent, "", "databases", "delete", "nope", "--yes"); code == 0 {
+		t.Fatal("deleting a database that doesn't exist must fail")
+	}
+}

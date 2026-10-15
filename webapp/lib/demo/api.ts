@@ -201,9 +201,9 @@ on('DELETE', /^\/api\/folders/, () => err(400, 'Folders are read-only in the dem
 // databases
 const sizeOf = (db: DemoDb) => db.tables.reduce((n, t) => n + t.rows.length, 0) * 8192 + 262144;
 const category = (n: number) => (n < 100_000 ? 'empty' : n < 5_000_000 ? 'small' : n < 100_000_000 ? 'medium' : 'large');
-on('GET', /^\/api\/databases$/, (_r, _m, s) => ok({ databases: s.dbs.map((d) => ({ id: d.containerId, name: d.name, type: '', port: d.port, username: d.username, password: d.password, status: dockerStatus(d.running, d.startedAt) })) }));
+on('GET', /^\/api\/databases$/, (_r, _m, s) => ok({ databases: s.dbs.map((d) => ({ id: d.containerId, name: d.name, type: d.type ?? 'postgres', port: d.port, username: d.username, password: d.password, status: dockerStatus(d.running, d.startedAt) })) }));
 on('GET', /^\/api\/databases\/stats$/, (_r, _m, s) => ok({
-  databases: s.dbs.map((d) => ({ container_id: d.containerId, created_at: iso(d.createdAt), id: d.id, name: d.name, postgres_port: d.port, size: sizeOf(d), sizeCategory: category(sizeOf(d)), username: d.username })),
+  databases: s.dbs.map((d) => ({ container_id: d.containerId, created_at: iso(d.createdAt), id: d.id, name: d.name, type: d.type ?? 'postgres', port: d.port, postgres_port: d.port, container_host: `docklite-db-${d.name.replace(/_/g, '-')}`, size: sizeOf(d), sizeCategory: category(sizeOf(d)), username: d.username })),
   dockliteDb: { path: '/opt/docklite/data/docklite.db', size: 184320, tables: 15 },
 }));
 on('POST', /^\/api\/databases$/, (r, _m, s) => {
@@ -213,20 +213,32 @@ on('POST', /^\/api\/databases$/, (r, _m, s) => {
   if (s.dbs.length >= 12) return err(400, 'The demo is limited to a few databases. Delete one first.');
   if ((s.nextDbId ?? 4) > 60) return err(400, 'The demo has made enough databases. Press Reset to start fresh.');
   const id = (s.nextDbId = (s.nextDbId ?? 4) + 1) - 1;
-  const db: DemoDb = { id, containerId: fakeHex(100 + id), name, username: r.body?.username || `${name}_user`, password: r.body?.password || fakeHex(id, 20), port: 32780 + id, running: true, startedAt: Date.now(), createdAt: Date.now(), tables: [] };
+  const type = (['postgres', 'mariadb', 'mongodb', 'redis'].includes(String(r.body?.type)) ? r.body.type : 'postgres') as NonNullable<DemoDb['type']>;
+  const db: DemoDb = { id, containerId: fakeHex(100 + id), name, username: type === 'redis' ? 'default' : r.body?.username || `${name}_user`, password: r.body?.password || fakeHex(id, 20), port: 32780 + id, running: true, startedAt: Date.now(), createdAt: Date.now(), tables: [], type };
   s.dbs.push(db); save();
-  return { status: 201, body: { database: { id, name, port: db.port, username: db.username, password: db.password } } };
+  const inner = { postgres: 5432, mariadb: 3306, mongodb: 27017, redis: 6379 }[type];
+  const host = `docklite-db-${name.replace(/_/g, '-')}`;
+  const url = (h: string, port: number) =>
+    type === 'redis' ? `redis://:${db.password}@${h}:${port}`
+    : type === 'mongodb' ? `mongodb://${db.username}:${db.password}@${h}:${port}/${name}?authSource=admin`
+    : `${type === 'mariadb' ? 'mysql' : 'postgresql'}://${db.username}:${db.password}@${h}:${port}/${name}`;
+  return { status: 201, body: {
+    database: { id, name, type, port: db.port, username: db.username, password: db.password },
+    connection: { type, host: 'localhost', port: db.port, database: name, username: db.username, password: db.password, url: url('localhost', db.port), container_host: host, container_port: inner, container_url: url(host, inner) },
+  } };
 });
+const LABELS = { postgres: 'PostgreSQL', mariadb: 'MariaDB', mongodb: 'MongoDB', redis: 'Redis' } as const;
+const notBrowsable = (d: DemoDb) => err(400, `browsing and editing data isn't available for ${LABELS[d.type ?? 'postgres']} yet: connect with your own client using the connection details`);
 const dbById = (s: DemoState, id: string) => s.dbs.find((d) => String(d.id) === id);
-on('GET', new RegExp(`^/api/databases/${ID}$`), (_r, m, s) => { const d = dbById(s, m[1]); return d ? ok({ database: { id: d.id, name: d.name, type: 'postgres', container_id: d.containerId, postgres_port: d.port, created_at: iso(d.createdAt) } }) : err(400, 'invalid database id'); });
+on('GET', new RegExp(`^/api/databases/${ID}$`), (_r, m, s) => { const d = dbById(s, m[1]); return d ? ok({ database: { id: d.id, name: d.name, type: d.type ?? 'postgres', container_id: d.containerId, postgres_port: d.port, created_at: iso(d.createdAt) } }) : err(400, 'invalid database id'); });
 on('DELETE', new RegExp(`^/api/databases/${ID}$`), (_r, m, s) => { const d = dbById(s, m[1]); if (!d) return err(404, 'database not found'); s.dbs = s.dbs.filter((x) => x !== d); save(); return ok(); });
 on('PUT', new RegExp(`^/api/databases/${ID}$`), () => ok({ success: true, message: 'Database credentials updated (demo)' }));
-on('POST', new RegExp(`^/api/databases/${ID}/schema$`), (_r, m, s) => { const d = dbById(s, m[1]); return d ? ok({ tables: d.tables.map((t) => ({ name: t.name, columns: t.columns })) }) : err(404, 'database not found'); });
+on('POST', new RegExp(`^/api/databases/${ID}/schema$`), (_r, m, s) => { const d = dbById(s, m[1]); if (d && d.type && d.type !== 'postgres') return notBrowsable(d); return d ? ok({ tables: d.tables.map((t) => ({ name: t.name, columns: t.columns })) }) : err(404, 'database not found'); });
 on('POST', new RegExp(`^/api/databases/${ID}/table$`), (r, m, s) => {
   const d = dbById(s, m[1]); const t = d?.tables.find((x) => x.name === r.body?.table);
   return t ? ok({ columns: t.columns.map(({ name, type, nullable }) => ({ name, type, nullable })), rows: t.rows }) : err(404, 'table not found');
 });
-on('POST', new RegExp(`^/api/databases/${ID}/query$`), (r, m, s) => { const d = dbById(s, m[1]); return d ? runSql(d, String(r.body?.sql ?? '')) : err(404, 'database not found'); });
+on('POST', new RegExp(`^/api/databases/${ID}/query$`), (r, m, s) => { const d = dbById(s, m[1]); if (d && d.type && d.type !== 'postgres') return notBrowsable(d); return d ? runSql(d, String(r.body?.sql ?? '')) : err(404, 'database not found'); });
 on('POST', new RegExp(`^/api/databases/${ID}/update-rows$`), (r, m, s) => {
   const d = dbById(s, m[1]); const t = d?.tables.find((x) => x.name === r.body?.table);
   if (!t) return err(404, 'table not found');

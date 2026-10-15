@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"docklite-agent/internal/demo"
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -14,10 +13,6 @@ import (
 	"strings"
 
 	"docklite-agent/internal/models"
-
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/go-connections/nat"
 )
 
 const (
@@ -25,85 +20,7 @@ const (
 )
 
 func (c *Client) CreateDatabaseContainer(ctx context.Context, name string, username string, password string, port int) (string, int, string, string, error) {
-	if err := c.ensureNetwork(ctx, dockliteNetworkName); err != nil {
-		return "", 0, "", "", err
-	}
-	if err := c.pullImage(ctx, databaseImageName); err != nil {
-		return "", 0, "", "", err
-	}
-
-	if username == "" {
-		username = "docklite"
-	}
-	if password == "" {
-		password = generatePassword(24)
-	}
-
-	hostPort := ""
-	if port > 0 {
-		hostPort = strconv.Itoa(port)
-	}
-
-	labels := map[string]string{
-		"docklite.managed":  "true",
-		"docklite.database": name,
-		"docklite.type":     "postgres",
-		"docklite.username": username,
-		"docklite.password": password,
-	}
-	if port > 0 {
-		labels["docklite.db.port"] = strconv.Itoa(port)
-	}
-	if demo.On {
-		labels[demo.Label] = "1"
-	}
-
-	portKey := nat.Port("5432/tcp")
-	config := &container.Config{
-		Image: databaseImageName,
-		Env: []string{
-			fmt.Sprintf("POSTGRES_DB=%s", name),
-			fmt.Sprintf("POSTGRES_USER=%s", username),
-			fmt.Sprintf("POSTGRES_PASSWORD=%s", password),
-			"POSTGRES_INITDB_ARGS=--auth-local=scram-sha-256 --auth-host=scram-sha-256",
-		},
-		ExposedPorts: nat.PortSet{portKey: struct{}{}},
-		Labels:       labels,
-	}
-	hostConfig := &container.HostConfig{
-		PortBindings: nat.PortMap{
-			portKey: []nat.PortBinding{{HostPort: hostPort}},
-		},
-		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
-		NetworkMode:   container.NetworkMode(dockliteNetworkName),
-	}
-
-	containerName := fmt.Sprintf("docklite-db-%s", sanitizeDomain(name))
-	resp, err := c.Client.ContainerCreate(ctx, config, hostConfig, &network.NetworkingConfig{}, nil, containerName)
-	if err != nil && strings.Contains(err.Error(), "Conflict.") {
-		containerName = fmt.Sprintf("docklite-db-%s-%d", sanitizeDomain(name), randomSuffix())
-		resp, err = c.Client.ContainerCreate(ctx, config, hostConfig, &network.NetworkingConfig{}, nil, containerName)
-	}
-	if err != nil {
-		return "", 0, "", "", err
-	}
-	if err := c.Client.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		return "", 0, "", "", err
-	}
-
-	if port == 0 {
-		inspected, err := c.Client.ContainerInspect(ctx, resp.ID)
-		if err != nil {
-			return resp.ID, 0, username, password, nil
-		}
-		if bindings, ok := inspected.NetworkSettings.Ports[portKey]; ok && len(bindings) > 0 {
-			if parsed, err := strconv.Atoi(bindings[0].HostPort); err == nil {
-				port = parsed
-			}
-		}
-	}
-
-	return resp.ID, port, username, password, nil
+	return c.CreateDatabaseOfType(ctx, "postgres", name, username, password, port)
 }
 
 func (c *Client) ListDatabases(ctx context.Context) ([]models.DatabaseInfo, error) {
@@ -114,7 +31,11 @@ func (c *Client) ListDatabases(ctx context.Context) ([]models.DatabaseInfo, erro
 
 	results := make([]models.DatabaseInfo, 0)
 	for _, item := range containers {
-		if item.Labels["docklite.type"] != "postgres" && item.Labels["docklite.database"] == "" {
+		if item.Labels["docklite.type"] == "" && item.Labels["docklite.database"] == "" {
+			continue
+		}
+		engine, known := EngineFor(item.Labels["docklite.type"])
+		if !known || item.Labels["docklite.database"] == "" && item.Labels["docklite.type"] != "postgres" {
 			continue
 		}
 		name := item.Labels["docklite.database"]
@@ -131,7 +52,7 @@ func (c *Client) ListDatabases(ctx context.Context) ([]models.DatabaseInfo, erro
 		}
 		if port == 0 {
 			for _, p := range item.Ports {
-				if p.PrivatePort == 5432 && p.PublicPort != 0 {
+				if int(p.PrivatePort) == engine.Port && p.PublicPort != 0 {
 					port = int(p.PublicPort)
 					break
 				}
@@ -141,6 +62,7 @@ func (c *Client) ListDatabases(ctx context.Context) ([]models.DatabaseInfo, erro
 		results = append(results, models.DatabaseInfo{
 			ID:       item.ID,
 			Name:     name,
+			Type:     engine.Type,
 			Port:     port,
 			Username: username,
 			Password: password,

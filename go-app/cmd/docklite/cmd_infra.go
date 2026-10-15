@@ -255,7 +255,29 @@ func init() {
 	// ---- databases ----
 	register(command{
 		Path: []string{"databases", "list"}, Summary: "Database containers DockLite manages", Usage: "databases list",
-		Run: func(a *app, args []string) error { return a.getAndEmit("/api/databases") },
+		Run: func(a *app, args []string) error {
+			if a.opts.JSON {
+				return a.getAndEmit("/api/databases/stats")
+			}
+			rows, err := a.databaseRows()
+			if err != nil {
+				return err
+			}
+			if len(rows) == 0 {
+				a.say("No databases yet. Create one with: docklite databases create <name> --type mariadb")
+				return nil
+			}
+			out := [][]string{}
+			for _, r := range rows {
+				t := r.Type
+				if t == "" {
+					t = "postgres"
+				}
+				out = append(out, []string{fmt.Sprint(r.ID), r.Name, t, fmt.Sprint(r.Port), humanSize(r.Size)})
+			}
+			a.table([]string{"ID", "NAME", "TYPE", "PORT", "SIZE"}, out)
+			return nil
+		},
 	})
 
 	// ---- backups ----

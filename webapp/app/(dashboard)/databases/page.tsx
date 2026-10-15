@@ -32,6 +32,18 @@ import {
 } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 
+type DbType = 'postgres' | 'mariadb' | 'mongodb' | 'redis' | 'sqlite';
+
+// What each kind of database is for, in plain words (shown under the picker).
+const DB_ENGINES: { id: DbType; label: string; blurb: string; hasUser: boolean }[] = [
+  { id: 'postgres', label: 'PostgreSQL', hasUser: true, blurb: 'Tables of rows and columns, like a spreadsheet with rules. A strong all-round choice for most apps.' },
+  { id: 'mariadb', label: 'MariaDB', hasUser: true, blurb: 'Also tables of rows and columns (MySQL-compatible). What WordPress and most PHP sites expect.' },
+  { id: 'mongodb', label: 'MongoDB', hasUser: true, blurb: 'Stores flexible "documents" instead of tables, like contact cards that can each have different fields. NoSQL.' },
+  { id: 'redis', label: 'Redis', hasUser: false, blurb: 'Very fast key-and-value storage held in memory. Used for caching, logins and queues. NoSQL.' },
+  { id: 'sqlite', label: 'SQLite', hasUser: false, blurb: 'A single file inside one of your sites. No separate server needed.' },
+];
+const dbLabel = (t?: string) => DB_ENGINES.find((e) => e.id === (t || 'postgres'))?.label ?? 'Database';
+
 interface DatabaseWithSize extends DatabaseType {
   size: number;
   sizeCategory: 'empty' | 'tiny' | 'small' | 'medium' | 'large' | 'huge';
@@ -54,7 +66,7 @@ export default function DatabasesPage() {
   const [newDbName, setNewDbName] = useState('');
   const [newDbUsername, setNewDbUsername] = useState('docklite');
   const [newDbPassword, setNewDbPassword] = useState('');
-  const [dbType, setDbType] = useState<'postgres' | 'sqlite'>('postgres');
+  const [dbType, setDbType] = useState<DbType>('postgres');
   const [availableContainers, setAvailableContainers] = useState<any[]>([]);
   const [selectedContainerId, setSelectedContainerId] = useState('');
   const [sqlitePath, setSqlitePath] = useState('/app/data/db.sqlite');
@@ -128,8 +140,8 @@ export default function DatabasesPage() {
         type: dbType,
       };
 
-      if (dbType === 'postgres') {
-        payload.username = newDbUsername;
+      if (dbType !== 'sqlite') {
+        if (dbType !== 'redis') payload.username = newDbUsername;
         payload.password = newDbPassword || undefined;
       } else {
         payload.container_id = selectedContainerId;
@@ -402,20 +414,24 @@ export default function DatabasesPage() {
               </span>
               <span>{connectionInfo.port}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-                <Database size={14} weight="duotone" />
-                DATABASE:
-              </span>
-              <span>{connectionInfo.database}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-                <UserCircle size={14} weight="duotone" />
-                USERNAME:
-              </span>
-              <span>{connectionInfo.username}</span>
-            </div>
+            {connectionInfo.type !== 'redis' && (
+              <div className="flex justify-between">
+                <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
+                  <Database size={14} weight="duotone" />
+                  DATABASE:
+                </span>
+                <span>{connectionInfo.database}</span>
+              </div>
+            )}
+            {connectionInfo.type !== 'redis' && (
+              <div className="flex justify-between">
+                <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
+                  <UserCircle size={14} weight="duotone" />
+                  USERNAME:
+                </span>
+                <span>{connectionInfo.username}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
                 <Key size={14} weight="duotone" />
@@ -424,6 +440,20 @@ export default function DatabasesPage() {
               <span className="font-bold" style={{ color: 'var(--text-pink)' }}>{connectionInfo.password}</span>
             </div>
           </div>
+          {connectionInfo.url && (
+            <div className="mt-4 space-y-2 text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
+              <div>
+                <div style={{ color: 'var(--text-cyan)' }}>From this server:</div>
+                <div className="break-all select-all" style={{ color: 'var(--text-primary)' }}>{connectionInfo.url}</div>
+              </div>
+              {connectionInfo.container_url && (
+                <div>
+                  <div style={{ color: 'var(--text-cyan)' }}>From one of your sites (another container on DockLite&apos;s network):</div>
+                  <div className="break-all select-all" style={{ color: 'var(--text-primary)' }}>{connectionInfo.container_url}</div>
+                </div>
+              )}
+            </div>
+          )}
           <p className="mt-4 text-xs font-mono flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
             <WarningCircle size={14} weight="duotone" />
             Save these credentials - the password will not be shown again!
@@ -449,31 +479,36 @@ export default function DatabasesPage() {
           <form onSubmit={handleCreate} className="space-y-4">
             
             {/* DB Type Selection */}
-            <div className="flex gap-4 mb-4">
-              <button
-                type="button"
-                onClick={() => setDbType('postgres')}
-                className={`flex-1 p-3 rounded-lg border-2 font-bold transition-all flex items-center justify-center gap-2 ${
-                  dbType === 'postgres'
-                    ? 'border-[var(--neon-cyan)] bg-[rgba(var(--neon-cyan-rgb),0.1)] text-[var(--neon-cyan)]'
-                    : 'border-transparent bg-[var(--surface-dim)] text-[var(--text-secondary)] hover:bg-[var(--surface-highlight)]'
-                }`}
-              >
-                <Database size={20} weight={dbType === 'postgres' ? 'duotone' : 'regular'} />
-                PostgreSQL
-              </button>
-              <button
-                type="button"
-                onClick={() => setDbType('sqlite')}
-                className={`flex-1 p-3 rounded-lg border-2 font-bold transition-all flex items-center justify-center gap-2 ${
-                  dbType === 'sqlite'
-                    ? 'border-[var(--neon-purple)] bg-[rgba(var(--neon-purple-rgb),0.1)] text-[var(--neon-purple)]'
-                    : 'border-transparent bg-[var(--surface-dim)] text-[var(--text-secondary)] hover:bg-[var(--surface-highlight)]'
-                }`}
-              >
-                <Package size={20} weight={dbType === 'sqlite' ? 'duotone' : 'regular'} />
-                SQLite
-              </button>
+            <div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {DB_ENGINES.map((eng) => (
+                  <button
+                    key={eng.id}
+                    type="button"
+                    onClick={() => setDbType(eng.id)}
+                    className={`p-3 rounded-lg border-2 font-bold transition-all flex items-center justify-center gap-2 ${
+                      dbType === eng.id
+                        ? 'border-[var(--neon-cyan)] bg-[rgba(var(--neon-cyan-rgb),0.1)] text-[var(--text-cyan)]'
+                        : 'border-transparent bg-[var(--surface-dim)] text-[var(--text-secondary)] hover:bg-[var(--surface-highlight)]'
+                    }`}
+                  >
+                    {eng.id === 'sqlite' ? (
+                      <Package size={20} weight={dbType === eng.id ? 'duotone' : 'regular'} />
+                    ) : (
+                      <Database size={20} weight={dbType === eng.id ? 'duotone' : 'regular'} />
+                    )}
+                    {eng.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                {DB_ENGINES.find((e) => e.id === dbType)?.blurb}
+              </p>
+              {(dbType === 'mariadb' || dbType === 'mongodb' || dbType === 'redis') && (
+                <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Only reachable from this server and from your sites (it isn&apos;t open to the internet).
+                </p>
+              )}
             </div>
 
             <div>
@@ -495,8 +530,9 @@ export default function DatabasesPage() {
               </p>
             </div>
 
-            {dbType === 'postgres' ? (
+            {dbType !== 'sqlite' ? (
               <>
+                {dbType !== 'redis' && (
                 <div>
                   <label htmlFor="username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
                     <UserCircle size={16} weight="duotone" />
@@ -515,6 +551,7 @@ export default function DatabasesPage() {
                     Default: docklite
                   </p>
                 </div>
+                )}
 
                 <div>
                   <label htmlFor="password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
@@ -600,7 +637,7 @@ export default function DatabasesPage() {
               ) : (
                 <span className="inline-flex items-center gap-2">
                   <Sparkle size={16} weight="duotone" />
-                  Create {dbType === 'postgres' ? 'PostgreSQL' : 'SQLite'} Database
+                  Create {dbLabel(dbType)} Database
                 </span>
               )}
             </button>
@@ -612,14 +649,14 @@ export default function DatabasesPage() {
       <div className="mt-8">
         <h2 className="text-2xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
           <Database size={20} weight="duotone" />
-          PostgreSQL Databases
+          Databases
         </h2>
 
         {databases.length === 0 ? (
           <div className="text-center py-12 card-vapor">
             <p className="text-lg font-bold mb-2 flex items-center justify-center gap-2" style={{ color: 'var(--text-pink)' }}>
               <Package size={20} weight="duotone" />
-              No PostgreSQL databases yet!
+              No databases yet!
             </p>
             <p className="text-sm font-mono flex items-center justify-center gap-2" style={{ color: 'var(--text-secondary)' }}>
               <Sparkle size={14} weight="duotone" />
@@ -696,6 +733,7 @@ export default function DatabasesPage() {
                           onClick={(e) => e.stopPropagation()}
                           onMouseDown={stopMenu}
                         >
+                          {(!db.type || db.type === 'postgres' || db.type === 'sqlite') && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -712,6 +750,8 @@ export default function DatabasesPage() {
                             <PencilSimpleLine size={16} weight="duotone" />
                             Edit Credentials
                           </button>
+                          )}
+                          {(!db.type || db.type === 'postgres' || db.type === 'sqlite') && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -728,6 +768,7 @@ export default function DatabasesPage() {
                             <SignIn size={16} weight="duotone" />
                             Edit Database Mode
                           </button>
+                          )}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -771,6 +812,9 @@ export default function DatabasesPage() {
                   <h3 className="docklite-db-title text-xl font-bold neon-text truncate" style={{ color: 'var(--text-cyan)' }}>
                     {db.name}
                   </h3>
+                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: 'rgba(var(--neon-purple-rgb), 0.15)', color: 'var(--text-purple)', border: '1px solid var(--neon-purple)' }}>
+                    {dbLabel(db.type)}
+                  </span>
                   <div className="mt-3 flex justify-center pointer-events-none">
                     <Database
                       size={46}
