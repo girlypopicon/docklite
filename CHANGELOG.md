@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.4.0 (2026-10-17)
+
 ### Added
 - **More kinds of database: MariaDB, MongoDB and Redis**, alongside PostgreSQL and SQLite. The Create Database form has a picker that says in
   plain words what each is for (MongoDB and Redis are the NoSQL ones). Each gets its own container, a password, and a persistent data
