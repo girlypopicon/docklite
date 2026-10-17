@@ -1,6 +1,7 @@
 'use client';
 
 import { X, Warning } from '@phosphor-icons/react';
+import CloseButton from './CloseButton';
 
 interface ConfirmDeleteModalProps {
   title: string;
@@ -30,17 +31,7 @@ export default function ConfirmDeleteModal({
         }}
       >
         {/* Close button */}
-        <button
-          onClick={onCancel}
-          disabled={loading}
-          className="absolute top-4 right-4 p-2 rounded-lg transition-all hover:scale-110"
-          style={{
-            background: 'rgba(var(--text-muted-rgb), 0.1)',
-            border: '1px solid rgba(var(--text-muted-rgb), 0.2)',
-          }}
-        >
-          <X size={20} color="#fff" weight="bold" />
-        </button>
+        <CloseButton onClick={onCancel} disabled={loading} className="absolute top-4 right-4" />
 
         {/* Header */}
         <div className="mb-6">

@@ -5,6 +5,18 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.3.4 (2026-10-15)
+
+### Fixed
+- **Dialogs in the Unicorn theme were see-through**, so the blurred page showed through their text (New Container, Restore, the
+  certificate dialog). They are now a solid surface, and the New Container dialog's headings and labels use the theme's readable text
+  colours in every theme.
+- **Log windows are readable in every theme.** They are solid terminal-style panes instead of see-through glass (in Unicorn the page
+  behind showed through the text). The glass look stays on panels; it just isn't used where you have to read.
+- **A proper Close button.** Dialogs had a tiny, plain ×; they now share one round, clearly visible button in the theme's own button colours.
+- **Container logs no longer start every line with garbage characters** on containers that have no terminal attached (most of them).
+  Docker wraps those logs in a binary frame that DockLite printed as text; it is now decoded.
+
 ## 1.3.3 (2026-10-15)
 
 ### Fixed

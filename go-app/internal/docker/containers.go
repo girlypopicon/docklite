@@ -5,6 +5,7 @@ import (
 	"docklite-agent/internal/demo"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/docker/pkg/stdcopy"
 	"io"
 	"os"
 	"strconv"
@@ -99,11 +100,26 @@ func (c *Client) ContainerLogs(ctx context.Context, id string, tail string) (str
 		return "", err
 	}
 	defer reader.Close()
-	bytes, err := io.ReadAll(reader)
-	if err != nil {
-		return "", err
+	// Without a terminal attached, Docker frames the log (an 8-byte header before each chunk); with one, it is plain text.
+	tty := false
+	if inspected, ierr := c.Client.ContainerInspect(ctx, id); ierr == nil && inspected.Config != nil {
+		tty = inspected.Config.Tty
 	}
-	return string(bytes), nil
+	return readLogStream(reader, tty)
+}
+
+// readLogStream turns a Docker log stream into text: plain for a container with a terminal, de-framed (stdout and
+// stderr kept in the order they arrived) for one without.
+func readLogStream(r io.Reader, tty bool) (string, error) {
+	if tty {
+		raw, err := io.ReadAll(r)
+		return string(raw), err
+	}
+	var out strings.Builder
+	if _, err := stdcopy.StdCopy(&out, &out, r); err != nil && err != io.EOF {
+		return out.String(), err
+	}
+	return out.String(), nil
 }
 
 func (c *Client) ContainerStats(ctx context.Context, id string) (*models.ContainerStats, error) {

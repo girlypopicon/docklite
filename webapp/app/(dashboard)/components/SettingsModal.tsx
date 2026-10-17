@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import CloseButton from './CloseButton';
 import { Cloud, Gear, Lock, Palette, Rows, SidebarSimple, UsersThree, Wrench, X } from '@phosphor-icons/react';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import {
@@ -134,9 +135,7 @@ function SettingsModal({
             <Gear size={22} weight="duotone" />
             Settings
           </h1>
-          <button type="button" onClick={onClose} aria-label="Close settings" className="p-2 rounded-lg hover:bg-white/10">
-            <X size={20} weight="bold" />
-          </button>
+          <CloseButton onClick={onClose} label="Close settings" />
         </div>
 
         <div className="flex-1 min-h-0 flex flex-col md:flex-row">

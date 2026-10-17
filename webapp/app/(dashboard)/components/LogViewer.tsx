@@ -74,8 +74,7 @@ export default function LogViewer({ text, loading, emptyText = 'No logs yet.', o
       <pre
         ref={ref}
         onScroll={onScroll}
-        className={`text-xs p-3 rounded-lg overflow-auto whitespace-pre-wrap break-words ${className}`}
-        style={{ background: 'var(--surface-muted)', color: 'var(--text-primary)' }}
+        className={`log-pane text-xs p-3 rounded-lg overflow-auto whitespace-pre-wrap break-words ${className}`}
       >
         {text || (loading ? 'Loading logs...' : emptyText)}
       </pre>
