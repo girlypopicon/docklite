@@ -1192,52 +1192,6 @@ func ensureDefaultSiteFiles(sitePath string, domain string, templateType string)
 	}
 }
 
-func staticTemplate(sitePath string, domain string) string {
-	return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>` + domain + `</title>
-    <style>
-        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-        h1 { color: #333; }
-        .info { background: #f0f0f0; padding: 15px; border-radius: 5px; }
-    </style>
-</head>
-<body>
-    <h1>Welcome to ` + domain + `</h1>
-    <div class="info">
-        <p>This is a static site managed by DockLite.</p>
-        <p><strong>Site Path:</strong> <code>` + sitePath + `</code></p>
-        <p>You can edit this file to customize your site.</p>
-    </div>
-</body>
-</html>`
-}
-
-func phpTemplate(sitePath string, domain string) string {
-	return `<?php
-/**
- * ` + domain + `
- * PHP site managed by DockLite
- * Site path: ` + sitePath + `
- */
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo '` + domain + `'; ?></title>
-</head>
-<body>
-    <h1>Welcome to <?php echo '` + domain + `'; ?></h1>
-    <p>This is a PHP site managed by DockLite.</p>
-</body>
-</html>`
-}
-
 func nodePackageJSON(domain string) string {
 	payload := map[string]any{
 		"name":        strings.ReplaceAll(domain, ".", "-"),
@@ -1253,33 +1207,6 @@ func nodePackageJSON(domain string) string {
 		return "{}"
 	}
 	return string(data)
-}
-
-func nodeTemplate(sitePath string, domain string) string {
-	return `const http = require('http');
-
-const hostname = '0.0.0.0';
-const port = process.env.PORT || 3000;
-
-const server = http.createServer((req, res) => {
-  res.statusCode = 200;
-  res.setHeader('Content-Type', 'text/html');
-  res.end(` + "`" + `
-    <!DOCTYPE html>
-    <html>
-      <head><title>` + domain + `</title></head>
-      <body>
-        <h1>Welcome to ` + domain + `</h1>
-        <p>Node.js site managed by DockLite</p>
-        <p>Site path: ` + sitePath + `</p>
-      </body>
-    </html>
-  ` + "`" + `);
-});
-
-server.listen(port, hostname, () => {
-  console.log(` + "`" + `Server running at http://${hostname}:${port}/` + "`" + `);
-});`
 }
 
 // auditedContainerActions are the container operations that change something.

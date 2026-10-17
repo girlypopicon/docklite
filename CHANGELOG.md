@@ -5,6 +5,10 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Changed
+- **The page a brand-new site shows is now DockLite-themed** (dark, rainbow-edged, readable on a phone) instead of plain white, for static, PHP
+  and Node sites alike. It also stops printing the server's folder path to the public, which the old page did. It loads nothing from other
+  websites, asks search engines not to index it, and only appears on sites that have no page yet; existing sites are untouched.
 ## 1.3.4 (2026-10-15)
 
 ### Fixed
