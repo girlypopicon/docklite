@@ -5,10 +5,29 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.4.0 (2026-10-17)
+
+### Added
+- **More kinds of database: MariaDB, MongoDB and Redis**, alongside PostgreSQL and SQLite. The Create Database form has a picker that says in
+  plain words what each is for (MongoDB and Redis are the NoSQL ones). Each gets its own container, a password, and a persistent data
+  volume. The new three listen on this server only (never the open internet) and your sites reach them by name over DockLite's private
+  network; the form shows ready-to-paste connection URLs for both. Cards show a type badge and size.
+- **Backups for the new types.** MariaDB, MongoDB and Redis dumps use each engine's own tool, and every dump is read back and checked
+  before it counts as a backup (a cut-off dump is refused). Restoring databases is the next release.
+- **From the terminal:** `docklite databases types | create <name> --type mariadb|mongodb|redis|postgres | delete <name> --yes`, and
+  `databases list` now shows each database's type and size.
+
 ### Changed
 - **The page a brand-new site shows is now DockLite-themed** (dark, rainbow-edged, readable on a phone) instead of plain white, for static, PHP
   and Node sites alike. It also stops printing the server's folder path to the public, which the old page did. It loads nothing from other
   websites, asks search engines not to index it, and only appears on sites that have no page yet; existing sites are untouched.
+
+### Fixed
+- **A database whose container had been removed couldn't be deleted** (error 500, and the entry stayed in the list forever). It now clears
+  the entry and any leftover data.
+- Creating a MariaDB or MongoDB database with the same name as one whose data was left behind used to silently reuse the old data and
+  ignore the new password. It now says so and refuses.
+
 ## 1.3.4 (2026-10-15)
 
 ### Fixed

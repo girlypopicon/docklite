@@ -213,3 +213,43 @@ func TestCheckAgainstManifest(t *testing.T) {
 		t.Fatal("a changed file must be caught")
 	}
 }
+
+func TestDumpCommandsAndShapeChecks(t *testing.T) {
+	for _, e := range []string{"postgres", "mariadb", "mongodb", "redis"} {
+		cmd, env, err := DumpCommand(e, "shop", "app", "s3cret")
+		if err != nil || len(cmd) == 0 {
+			t.Fatalf("%s: %v", e, err)
+		}
+		for _, a := range cmd {
+			if e != "mongodb" && a == "s3cret" {
+				t.Errorf("%s: the password must go in the environment, not the command line: %v", e, cmd)
+			}
+		}
+		if e != "mongodb" && len(env) == 0 {
+			t.Errorf("%s: expected the password in the environment", e)
+		}
+	}
+	if _, _, err := DumpCommand("oracle", "x", "u", "p"); err == nil {
+		t.Error("an unknown engine must be refused")
+	}
+	good := map[string][2][]byte{
+		"mariadb": {[]byte("/*M!999999\\- enable the sandbox mode */"), []byte("...\n-- Dump completed on 2026-10-15 1:00:00\n")}, // real dumps start with a /* comment
+		"mongodb": {{0x6d, 0xe2, 0x99, 0x81, 1, 2}, nil},
+		"redis":   {[]byte("REDIS0011"), nil},
+	}
+	for e, c := range good {
+		if err := checkDumpShape(e, c[0], append(c[0], c[1]...)); err != nil {
+			t.Errorf("%s: a complete dump was rejected: %v", e, err)
+		}
+	}
+	bad := map[string][2][]byte{
+		"mariadb": {[]byte("-- MariaDB dump"), []byte("INSERT INTO t VALUES (1")}, // cut off
+		"mongodb": {[]byte("not an archive"), nil},
+		"redis":   {[]byte("<html>"), nil},
+	}
+	for e, c := range bad {
+		if err := checkDumpShape(e, c[0], append(c[0], c[1]...)); err == nil {
+			t.Errorf("%s: a bad dump was accepted", e)
+		}
+	}
+}

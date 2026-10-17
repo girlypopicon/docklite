@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"docklite-agent/internal/docker"
 	"net/http"
 	"regexp"
 	"strings"
@@ -106,6 +107,12 @@ func (h *Handlers) createDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	engine, ok := docker.EngineFor(req.Type)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "unsupported database type (use postgres, mariadb, mongodb, redis or sqlite)")
+		return
+	}
+
 	port := 0
 	if req.Port != nil {
 		port = *req.Port
@@ -115,31 +122,39 @@ func (h *Handlers) createDatabase(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	id, assignedPort, username, password, err := h.docker.CreateDatabaseContainer(ctx, sanitized, req.Username, req.Password, port)
+	id, assignedPort, username, password, err := h.docker.CreateDatabaseOfType(ctx, engine.Type, sanitized, req.Username, req.Password, port)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if _, err := h.store.UpsertDatabase(sanitized, "postgres", id, assignedPort, ""); err != nil {
+	if _, err := h.store.UpsertDatabase(sanitized, engine.Type, id, assignedPort, ""); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	host := docker.ContainerNameFor(sanitized)
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"database": map[string]any{
 			"id":       id,
 			"name":     sanitized,
+			"type":     engine.Type,
 			"port":     assignedPort,
 			"username": username,
 			"password": password,
 		},
 		"connection": map[string]any{
+			"type":     engine.Type,
 			"host":     "localhost",
 			"port":     assignedPort,
 			"database": sanitized,
 			"username": username,
 			"password": password,
+			"url":      engine.ConnectionURL("localhost", assignedPort, sanitized, username, password),
+			// From another container on DockLite's network (a site, for example): the container's name and the engine's own port.
+			"container_host": host,
+			"container_port": engine.Port,
+			"container_url":  engine.ConnectionURL(host, engine.Port, sanitized, username, password),
 		},
 	})
 }

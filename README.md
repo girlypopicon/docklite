@@ -17,7 +17,7 @@ all. It is built to be safe to run on a server that already hosts live sites.
 
 - Create a **static, PHP or Node** site for a domain in a couple of clicks. Each one gets its own container,
   nginx config and Let's Encrypt certificate (plain HTTP validation or a Cloudflare API token).
-- **Postgres databases** in containers, with an in-dashboard inspector and per-user permissions.
+- **Databases in containers**: PostgreSQL, MariaDB, MongoDB and Redis (plus SQLite files inside sites), each with its own password and a connection string for your sites. PostgreSQL also has an in-dashboard inspector and per-user permissions.
 - **Backups** of sites and databases with live progress and verification.
 - **DNS and SSL** controls for Cloudflare zones.
 - **Users and roles** (super admin, admin, user); each person sees only their own sites.
@@ -33,7 +33,7 @@ all. It is built to be safe to run on a server that already hosts live sites.
 <table>
   <tr>
     <td width="50%"><img src="docs/img/container-details.jpg" alt="Container details with live CPU and memory, HTTPS status and mounts"><br><sub><b>Container details</b>: live resources, HTTPS status, mounts, logs</sub></td>
-    <td width="50%"><img src="docs/img/databases.jpg" alt="PostgreSQL databases as glowing cards"><br><sub><b>Databases</b>: Postgres in a container, with an inspector</sub></td>
+    <td width="50%"><img src="docs/img/databases.jpg" alt="PostgreSQL databases as glowing cards"><br><sub><b>Databases</b>: PostgreSQL, MariaDB, MongoDB and Redis, each in a container</sub></td>
   </tr>
   <tr>
     <td><img src="docs/img/terminal.jpg" alt="A web terminal connected to a site container"><br><sub><b>Web terminal</b> into any container</sub></td>

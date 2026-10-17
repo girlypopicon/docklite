@@ -11,6 +11,7 @@ export interface DemoTable { name: string; columns: DemoColumn[]; rows: Record<s
 export interface DemoDb {
   id: number; containerId: string; name: string; username: string; password: string; port: number;
   running: boolean; startedAt: number; createdAt: number; tables: DemoTable[];
+  type?: 'postgres' | 'mariadb' | 'mongodb' | 'redis';
 }
 export interface DemoBackup { id: number; jobId: number | null; targetType: 'site' | 'database'; targetId: number; path: string; sizeBytes: number; status: string; createdAt: number }
 export interface DemoJob { id: number; name: string; targetType: 'site' | 'database' | 'all-sites' | 'all-databases'; targetId: number; schedule: string; enabled: boolean; createdAt: number }
@@ -74,13 +75,13 @@ export function seedState(now = Date.now()): DemoState {
     id, domain, userId, template, running, startedAt: now - ageMs, stoppedAt: running ? null : now - 2 * HOUR, createdAt: now - ageMs - HOUR, includeWww: true,
     internalPort: template === 'node' ? 3000 : 80, hostPort: 32770 + id, containerId: fakeHex(id), tracked: true,
   });
-  const mkDb = (id: number, name: string, username: string, ageMs: number): DemoDb => ({
+  const mkDb = (id: number, name: string, username: string, ageMs: number, type: DemoDb['type'] = 'postgres'): DemoDb => ({
     id, containerId: fakeHex(100 + id), name, username, password: fakeHex(200 + id, 24), port: 32780 + id, running: true,
-    startedAt: now - ageMs, createdAt: now - ageMs - HOUR, tables: seedTables(name),
+    startedAt: now - ageMs, createdAt: now - ageMs - HOUR, tables: type === 'postgres' ? seedTables(name) : [], type,
   });
   return {
     nextId: 20,
-    nextDbId: 4,
+    nextDbId: 7,
     users: [
       { id: 1, username: 'demo', role: 'super_admin', managedBy: null, createdAt: now - 60 * DAY },
       { id: 2, username: 'alice', role: 'user', managedBy: 1, createdAt: now - 40 * DAY },
@@ -94,7 +95,8 @@ export function seedState(now = Date.now()): DemoState {
       mkSite(5, 'blog.example.com', 2, 'static', true, 27 * DAY),
       mkSite(6, 'status.example.org', 1, 'static', false, 40 * DAY),
     ],
-    dbs: [mkDb(1, 'shop_db', 'shop_db_user', 3 * DAY), mkDb(2, 'blog_db', 'blog_db_user', 27 * DAY), mkDb(3, 'analytics', 'analytics_user', 9 * DAY)],
+    dbs: [mkDb(1, 'shop_db', 'shop_db_user', 3 * DAY), mkDb(2, 'blog_db', 'blog_db_user', 27 * DAY), mkDb(3, 'analytics', 'analytics_user', 9 * DAY),
+      mkDb(4, 'wordpress', 'wp_user', 12 * DAY, 'mariadb'), mkDb(5, 'events', 'events_user', 5 * DAY, 'mongodb'), mkDb(6, 'cache', 'default', 20 * DAY, 'redis')],
     backups: [
       { id: 1, jobId: null, targetType: 'site', targetId: 4, path: 'sites/site-shop.example.com-20261003-020000.tar.gz', sizeBytes: 4_812_345, status: 'success', createdAt: now - 3 * DAY },
       { id: 3, jobId: 1, targetType: 'site', targetId: 5, path: 'sites/site-blog.example.com-20261004-020000.tar.gz', sizeBytes: 2_104_221, status: 'success', createdAt: now - 2 * DAY },

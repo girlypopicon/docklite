@@ -11,25 +11,27 @@ Fixes found by running DockLite on a live server, plus proving the update path.
 - Safer site transfer (never delete outside `/var/www/sites`, keep the old folder until the new container is confirmed).
 - Anything else that breaks on a real server.
 
-## 1.3.0: take over an existing server, and backups that work
-- **Adopt** existing containers and site folders (no `.dkl` needed), without touching a running site; relabel old containers to their real owner.
-- A **Site folders** tab (strays, orphans, move to trash) and the cleanup tools.
-- **Backups you can trust:** back up several sites and databases at once, a real scheduler (daily/weekly, keep the last N, per site or all),
-  portable `.dklpkg` packages (recipe → files → image → databases), and a working **restore**.
-- Everything the safe-install work promised on SMOLL: nothing moved or re-owned without an explicit step.
+## 1.3.x: backups you can restore, and a public demo (shipped)
+- Restore a site from a backup (safety copy first, checked before and after), schedules with a time of day and "keep the newest N",
+  `docklite backups ...`, and the browser-only public demo at `demo.docklite.net`.
 
-## 1.4.0: simpler and friendlier
-- Declutter the dashboard; rewrite the Network page in plain language (visitors → front door → site).
-- An activity log viewer with filters (what to show, what to record), login/logout and idle-session handling.
-- A branded "back soon" page for sites that are down, and `docklite nginx maintenance on|off`.
-- A browser-only public demo (`demo.docklite.net`): fake data, nothing saved, nothing real runs.
-- Terminal improvements: tabs, persistent sessions, one-click `psql`.
+## 1.4.x: more databases, and backups that cover them
+- **1.4.0: MariaDB, MongoDB and Redis** beside PostgreSQL and SQLite (each in its own container, loopback-only, with connection strings
+  for your sites), and a dump of each that is checked before it counts as a backup.
+- **1.4.1: restore databases** (all engines, with a safety dump first) and **one-domain backups**: a site AND its databases together,
+  everything at once, or just one domain's database. Needs a link between a site and its databases. Replaces the checkbox grid with
+  three plain choices.
+- **1.4.2: off-site backups** to any S3-compatible storage (Amazon S3, Backblaze B2, Cloudflare R2, Wasabi, MinIO).
+- **1.4.3: take over an existing server.** Adopt existing containers and site folders (no `.dkl` needed) without touching a running
+  site, plus a Site folders tab (strays, orphans, move to trash).
 
 ## 1.5.0: production-ready
+- Simpler and friendlier: declutter the dashboard; the Network page in plain language (visitors → front door → site); an activity log
+  viewer; a branded "back soon" page (`docklite nginx maintenance on|off`); terminal tabs and persistent sessions.
 - Security review and dependency/licence audit; documented backup-and-restore drill.
 - Every flow tested on a clean server and on a server that already hosts sites.
 - Docs complete; the TUI brought up to the same level as the dashboard.
 
 ## Later
-Other server types beside websites (media servers and similar), more database types (MongoDB), shareable templates ("Capsules"),
+Other server types beside websites (media servers and similar), more database types (MySQL proper, others on request), shareable templates ("Capsules"),
 a packaged installer.

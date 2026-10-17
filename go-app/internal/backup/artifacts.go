@@ -35,6 +35,7 @@ type ManifestSource struct {
 	DatabaseID  *int64 `json:"database_id,omitempty"`
 	Name        string `json:"name,omitempty"`
 	ContainerID string `json:"container_id,omitempty"`
+	Engine      string `json:"engine,omitempty"` // postgres (the default), mariadb, mongodb, redis
 }
 
 type Manifest struct {
@@ -146,10 +147,15 @@ func CreateDatabaseBackup(ctx context.Context, storeHandle *store.SQLiteStore, d
 		return nil, fmt.Errorf("database container not found")
 	}
 
+	engine := database.Type
+	if engine == "" {
+		engine = "postgres"
+	}
 	source := ManifestSource{
 		DatabaseID:  &database.ID,
 		Name:        database.Name,
 		ContainerID: database.ContainerID,
+		Engine:      engine,
 	}
 
 	username, password, err := resolveDatabaseCredentials(ctx, dockerClient, database.ContainerID)
@@ -157,10 +163,20 @@ func CreateDatabaseBackup(ctx context.Context, storeHandle *store.SQLiteStore, d
 		return nil, err
 	}
 
-	return CreateDatabaseExport(ctx, dockerClient, baseDir, subDir, database.Name, database.ContainerID, username, password, source, notes)
+	return CreateDatabaseExportOfType(ctx, dockerClient, engine, baseDir, subDir, database.Name, database.ContainerID, username, password, source, notes)
 }
 
+// CreateDatabaseExport exports a PostgreSQL database (what every export was before other engines existed).
 func CreateDatabaseExport(ctx context.Context, dockerClient *docker.Client, baseDir string, subDir string, dbName string, containerID string, username string, password *string, source ManifestSource, notes string) (*ArtifactResult, error) {
+	return CreateDatabaseExportOfType(ctx, dockerClient, "postgres", baseDir, subDir, dbName, containerID, username, password, source, notes)
+}
+
+// CreateDatabaseExportOfType dumps a database of any supported engine into one gzip file, checks the file by reading it
+// back, and only then gives it its real name and writes its manifest.
+func CreateDatabaseExportOfType(ctx context.Context, dockerClient *docker.Client, engine string, baseDir string, subDir string, dbName string, containerID string, username string, password *string, source ManifestSource, notes string) (*ArtifactResult, error) {
+	if source.Engine == "" {
+		source.Engine = engine
+	}
 	timestamp := time.Now().UTC().Format("20060102-150405")
 	dbSlug := sanitizeFilename(dbName)
 	filename := fmt.Sprintf("db-%s-%s.dump.gz", dbSlug, timestamp)
@@ -188,10 +204,15 @@ func CreateDatabaseExport(ctx context.Context, dockerClient *docker.Client, base
 
 	gzipWriter := gzip.NewWriter(file)
 
-	cmd := []string{"pg_dump", "-U", username, "-d", dbName, "-F", "c"}
-	var env []string
-	if password != nil && *password != "" {
-		env = append(env, fmt.Sprintf("PGPASSWORD=%s", *password))
+	pass := ""
+	if password != nil {
+		pass = *password
+	}
+	cmd, env, err := DumpCommand(engine, dbName, username, pass)
+	if err != nil {
+		_ = gzipWriter.Close()
+		_ = os.Remove(tempPath)
+		return nil, err
 	}
 	if err := dockerClient.ExecCommandToWriter(ctx, containerID, cmd, env, progressWriter{w: gzipWriter, rep: rep}); err != nil {
 		_ = gzipWriter.Close()
@@ -210,7 +231,7 @@ func CreateDatabaseExport(ctx context.Context, dockerClient *docker.Client, base
 		_ = os.Remove(tempPath)
 		return nil, err
 	}
-	sha, size, err := verifyDatabaseDump(tempPath, rep)
+	sha, size, err := verifyDatabaseDumpOfType(tempPath, engine, rep)
 	if err != nil {
 		_ = os.Remove(tempPath)
 		return nil, err

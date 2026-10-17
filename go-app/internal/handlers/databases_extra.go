@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"docklite-agent/internal/backup"
+	"docklite-agent/internal/docker"
 	"docklite-agent/internal/store"
 )
 
@@ -40,7 +41,7 @@ func (h *Handlers) DatabaseStats(w http.ResponseWriter, r *http.Request) {
 			if db.ID != "" && db.Password != "" {
 				dockerPasswords[db.ID] = db.Password
 			}
-			_, _ = h.store.UpsertDatabase(db.Name, "postgres", db.ID, db.Port, "")
+			_, _ = h.store.UpsertDatabase(db.Name, db.Type, db.ID, db.Port, "")
 		}
 	}
 
@@ -90,8 +91,16 @@ func (h *Handlers) DatabaseStats(w http.ResponseWriter, r *http.Request) {
 				dockerCtx, dockerCancel := dockerContext(r.Context())
 				dbUser := dockerUsers[database.ContainerID]
 				dbPassword := dockerPasswords[database.ContainerID]
-				if dbUser != "" && dbPassword != "" {
-					output, err := h.docker.ExecPostgres(dockerCtx, database.ContainerID, dbUser, database.Name, dbPassword, query, false)
+				if dbPassword != "" && (dbUser != "" || database.Type == "redis") {
+					var output string
+					var err error
+					if database.Type == "" || database.Type == "postgres" {
+						output, err = h.docker.ExecPostgres(dockerCtx, database.ContainerID, dbUser, database.Name, dbPassword, query, false)
+					} else {
+						var n int64
+						n, err = h.docker.EngineSize(dockerCtx, database.ContainerID, database.Type, database.Name, dbUser, dbPassword)
+						output = strconv.FormatInt(n, 10)
+					}
 					if err == nil {
 						if parsed, parseErr := strconv.ParseInt(strings.TrimSpace(output), 10, 64); parseErr == nil {
 							size = parsed
@@ -117,14 +126,17 @@ func (h *Handlers) DatabaseStats(w http.ResponseWriter, r *http.Request) {
 		}
 
 		withSize = append(withSize, map[string]any{
-			"id":            database.ID,
-			"name":          database.Name,
-			"container_id":  database.ContainerID,
-			"postgres_port": database.PostgresPort,
-			"created_at":    database.CreatedAt,
-			"size":          size,
-			"sizeCategory":  sizeCategory,
-			"username":      dockerUsers[database.ContainerID],
+			"id":             database.ID,
+			"name":           database.Name,
+			"container_id":   database.ContainerID,
+			"type":           databaseTypeOrDefault(database.Type),
+			"postgres_port":  database.PostgresPort,
+			"port":           database.PostgresPort,
+			"container_host": docker.ContainerNameFor(database.Name),
+			"created_at":     database.CreatedAt,
+			"size":           size,
+			"sizeCategory":   sizeCategory,
+			"username":       dockerUsers[database.ContainerID],
 		})
 	}
 
@@ -157,6 +169,14 @@ func (h *Handlers) DatabaseRoutes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	switch parts[1] {
+	case "query", "schema", "table", "update-rows":
+		if rec, err := h.store.GetDatabaseByID(dbID); err == nil && rec != nil && rec.Type != "" && rec.Type != "postgres" && rec.Type != "sqlite" {
+			e, _ := docker.EngineFor(rec.Type)
+			writeError(w, http.StatusBadRequest, "browsing and editing data isn't available for "+e.Label+" yet: connect with your own client using the connection details")
+			return
+		}
+	}
 	switch parts[1] {
 	case "query":
 		h.DatabaseQuery(w, r, dbID)
@@ -220,7 +240,7 @@ func (h *Handlers) deleteDatabase(w http.ResponseWriter, r *http.Request, databa
 
 	if database.ContainerID != "" {
 		dockerCtx, dockerCancel := dockerContext(r.Context())
-		if err := h.docker.RemoveContainer(dockerCtx, database.ContainerID); err != nil {
+		if err := h.docker.RemoveDatabaseContainer(dockerCtx, database.ContainerID, database.Name); err != nil {
 			dockerCancel()
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -260,6 +280,11 @@ func (h *Handlers) updateDatabaseCredentials(w http.ResponseWriter, r *http.Requ
 	}
 	if database == nil || database.ContainerID == "" {
 		writeError(w, http.StatusNotFound, "database not found")
+		return
+	}
+	if database.Type != "" && database.Type != "postgres" {
+		e, _ := docker.EngineFor(database.Type)
+		writeError(w, http.StatusBadRequest, "changing the password isn't available for "+e.Label+" yet; delete and recreate it, or change it from your own client")
 		return
 	}
 
@@ -816,10 +841,6 @@ func (h *Handlers) DatabaseDownload(w http.ResponseWriter, r *http.Request, data
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if body.Username == "" || body.Password == "" {
-		writeError(w, http.StatusBadRequest, "username and password are required")
-		return
-	}
 	database, err := h.store.GetDatabaseByID(databaseID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -829,11 +850,22 @@ func (h *Handlers) DatabaseDownload(w http.ResponseWriter, r *http.Request, data
 		writeError(w, http.StatusNotFound, "database not found")
 		return
 	}
+	// Redis has a password but no user name.
+	if body.Password == "" || (body.Username == "" && database.Type != "redis") {
+		writeError(w, http.StatusBadRequest, "username and password are required")
+		return
+	}
 
 	dockerCtx, dockerCancel := dockerContext(r.Context())
 	defer dockerCancel()
 
-	if _, err := h.docker.ExecPostgres(dockerCtx, database.ContainerID, body.Username, database.Name, body.Password, "SELECT 1", false); err != nil {
+	engine := databaseTypeOrDefault(database.Type)
+	if engine == "postgres" {
+		if _, err := h.docker.ExecPostgres(dockerCtx, database.ContainerID, body.Username, database.Name, body.Password, "SELECT 1", false); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid database credentials")
+			return
+		}
+	} else if _, err := h.docker.EngineSize(dockerCtx, database.ContainerID, engine, database.Name, body.Username, body.Password); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid database credentials")
 		return
 	}
@@ -843,8 +875,9 @@ func (h *Handlers) DatabaseDownload(w http.ResponseWriter, r *http.Request, data
 		DatabaseID:  &database.ID,
 		Name:        database.Name,
 		ContainerID: database.ContainerID,
+		Engine:      engine,
 	}
-	artifact, err := backup.CreateDatabaseExport(dockerCtx, h.docker, h.backupBaseDir, "databases", database.Name, database.ContainerID, body.Username, &body.Password, source, notes)
+	artifact, err := backup.CreateDatabaseExportOfType(dockerCtx, h.docker, engine, h.backupBaseDir, "databases", database.Name, database.ContainerID, body.Username, &body.Password, source, notes)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create database dump")
 		return
@@ -1014,4 +1047,11 @@ func formatSQLValue(value any) (string, error) {
 		escaped := strings.ReplaceAll(string(serialized), "'", "''")
 		return "'" + escaped + "'", nil
 	}
+}
+
+func databaseTypeOrDefault(t string) string {
+	if t == "" {
+		return "postgres"
+	}
+	return t
 }
