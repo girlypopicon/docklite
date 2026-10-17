@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import CloseButton from './CloseButton';
 import {
   Lightning,
   WarningCircle,
@@ -251,13 +252,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
             >
               {isRunning ? '● RUNNING' : '○ STOPPED'}
             </span>
-            <button
-              onClick={onClose}
-              className="text-3xl hover:scale-110 transition-transform"
-              style={{ color: 'var(--text-pink)' }}
-            >
-              ×
-            </button>
+            <CloseButton onClick={onClose} />
           </div>
         </div>
 
@@ -470,10 +465,10 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                 </div>
               </div>
               <div
-                className="bg-black/50 p-4 rounded-lg font-mono text-xs overflow-x-auto"
+                className="log-pane p-4 rounded-lg font-mono text-xs overflow-x-auto"
                 style={{ maxHeight: '500px', overflowY: 'auto' }}
               >
-                <pre className="whitespace-pre-wrap" style={{ color: 'var(--text-green)' }}>
+                <pre className="whitespace-pre-wrap">
                   {logs || 'No logs available'}
                 </pre>
               </div>

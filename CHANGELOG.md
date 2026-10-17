@@ -9,6 +9,17 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - **The page a brand-new site shows is now DockLite-themed** (dark, rainbow-edged, readable on a phone) instead of plain white, for static, PHP
   and Node sites alike. It also stops printing the server's folder path to the public, which the old page did. It loads nothing from other
   websites, asks search engines not to index it, and only appears on sites that have no page yet; existing sites are untouched.
+## 1.3.4 (2026-10-15)
+
+### Fixed
+- **Dialogs in the Unicorn theme were see-through**, so the blurred page showed through their text (New Container, Restore, the
+  certificate dialog). They are now a solid surface, and the New Container dialog's headings and labels use the theme's readable text
+  colours in every theme.
+- **Log windows are readable in every theme.** They are solid terminal-style panes instead of see-through glass (in Unicorn the page
+  behind showed through the text). The glass look stays on panels; it just isn't used where you have to read.
+- **A proper Close button.** Dialogs had a tiny, plain ×; they now share one round, clearly visible button in the theme's own button colours.
+- **Container logs no longer start every line with garbage characters** on containers that have no terminal attached (most of them).
+  Docker wraps those logs in a binary frame that DockLite printed as text; it is now decoded.
 
 ## 1.3.3 (2026-10-15)
 

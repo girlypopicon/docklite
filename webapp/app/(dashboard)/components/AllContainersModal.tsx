@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import CloseButton from './CloseButton';
 import ConfirmModal from './ConfirmModal';
 import { useToast } from '@/lib/hooks/useToast';
 import {
@@ -240,7 +241,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
               Track, untrack, and manage .dkl manifests for all Docker containers.
             </p>
           </div>
-          <button onClick={onClose} style={{ color: 'var(--text-secondary)' }}><X size={20} /></button>
+          <CloseButton onClick={onClose} />
         </div>
 
         {/* Legend */}

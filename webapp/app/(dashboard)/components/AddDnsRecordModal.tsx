@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import CloseButton from './CloseButton';
 import { Globe, X, Info, Cloud } from '@phosphor-icons/react';
 
 interface AddDnsRecordModalProps {
@@ -119,16 +120,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
         }}
       >
         {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-lg transition-all hover:scale-110"
-          style={{
-            background: 'rgba(var(--status-error-rgb), 0.2)',
-            border: '1px solid var(--status-error)',
-          }}
-        >
-          <X size={20} color="var(--status-error)" weight="bold" />
-        </button>
+        <CloseButton onClick={onClose} className="absolute top-4 right-4" />
 
         {/* Header */}
         <div className="mb-6">

@@ -346,7 +346,7 @@ function IssueSslModal({ onClose, onIssue, loading }: { onClose: () => void; onI
       style={{ backgroundColor: 'var(--modal-backdrop, rgba(0, 0, 0, 0.8))' }}
       onClick={onClose}
     >
-      <div className="card-vapor max-w-lg w-full p-6 rounded-2xl border-2 border-neon-purple/40" onClick={(e) => e.stopPropagation()}>
+      <div className="card-vapor max-w-lg w-full p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)', border: '2px solid var(--modal-border)', boxShadow: '0 0 30px var(--modal-shadow)' }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <div className="text-xs uppercase tracking-[0.2em]" style={{ color: 'var(--text-purple)' }}>SSL Certificate</div>

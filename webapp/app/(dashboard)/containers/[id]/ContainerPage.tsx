@@ -402,10 +402,10 @@ export default function ContainerDetailPage() {
             </div>
           </div>
           <div
-            className="bg-black/50 p-4 rounded-lg font-mono text-xs overflow-x-auto"
+            className="log-pane p-4 rounded-lg font-mono text-xs overflow-x-auto"
             style={{ maxHeight: '600px', overflowY: 'auto' }}
           >
-            <pre className="whitespace-pre-wrap" style={{ color: 'var(--text-green)' }}>
+            <pre className="whitespace-pre-wrap">
               {logs || 'No logs available'}
             </pre>
           </div>

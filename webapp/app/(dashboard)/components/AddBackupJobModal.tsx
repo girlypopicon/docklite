@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import CloseButton from './CloseButton';
 import { ClockCounterClockwise, X, WarningCircle } from '@phosphor-icons/react';
 
 interface AddBackupJobModalProps {
@@ -195,16 +196,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
           boxShadow: '0 0 30px var(--modal-shadow)',
         }}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-lg transition-all hover:scale-110"
-          style={{
-            background: 'rgba(var(--status-error-rgb), 0.2)',
-            border: '1px solid var(--status-error)',
-          }}
-        >
-          <X size={20} color="var(--status-error)" weight="bold" />
-        </button>
+        <CloseButton onClick={onClose} className="absolute top-4 right-4" />
 
         <div className="mb-6">
           <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
