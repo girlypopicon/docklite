@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.4.1 (2026-10-26)
+
 ### Fixed
 - **Servers on 1.2.6 or 1.3.0 can update with the Update button again.** Those versions' updater sends the installer's output through a
   log filter that fails on common locales ("Invalid collation character"), so the installer stopped at once and the update rolled back
