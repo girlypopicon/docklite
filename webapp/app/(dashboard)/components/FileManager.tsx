@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import FileEditorModal from './FileEditorModal';
 import { useToast } from '@/lib/hooks/useToast';
-import { Folder, File as FileIcon } from '@phosphor-icons/react';
+import { Folder, File as FileIcon, DotsThree } from '@phosphor-icons/react';
 import { DEMO } from '@/lib/demo/flag';
 
 interface FileEntry {
@@ -225,20 +225,33 @@ export default function FileManager({ userSession, embedded = false }: FileManag
     }
   };
 
-  const handleContextMenu = (event: React.MouseEvent, file: FileEntry) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const openMenuAt = (clientX: number, clientY: number, file: FileEntry) => {
     const menuWidth = 180;
+    const menuHeight = 150;
     const padding = 12;
     const maxX = window.innerWidth - menuWidth - padding;
-    const maxY = window.innerHeight - padding;
-    const x = Math.max(padding, Math.min(event.clientX, maxX));
-    const y = Math.max(padding, Math.min(event.clientY, maxY));
+    const maxY = window.innerHeight - menuHeight - padding;
+    const x = Math.max(padding, Math.min(clientX, maxX));
+    const y = Math.max(padding, Math.min(clientY, maxY));
     setContextMenu({
       x,
       y,
       file,
     });
+  };
+
+  const handleContextMenu = (event: React.MouseEvent, file: FileEntry) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openMenuAt(event.clientX, event.clientY, file);
+  };
+
+  // The same menu from a button, for touch screens (no right-click there).
+  const handleMenuButton = (event: React.MouseEvent<HTMLButtonElement>, file: FileEntry) => {
+    // Otherwise this same click reaches the window listener that closes the menu, and it shuts at once.
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    openMenuAt(rect.right - 180, rect.bottom + 4, file);
   };
 
   const loadPickerEntries = async (pathToLoad: string) => {
@@ -341,13 +354,14 @@ export default function FileManager({ userSession, embedded = false }: FileManag
   };
 
   return (
-    <div className={`docklite-file-browser flex flex-col h-full ${embedded ? '' : 'w-full'}`}>
-      <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.2)' }}>
-        <div>
+    <div className={`docklite-file-browser flex flex-col flex-1 min-h-0 ${embedded ? '' : 'w-full'}`}>
+      {/* Wraps onto two lines in a narrow panel instead of pushing the buttons out of sight. */}
+      <div className="p-4 border-b flex flex-wrap items-center justify-between gap-x-3 gap-y-2" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.2)' }}>
+        <div className="whitespace-nowrap">
           <div className="docklite-file-header text-sm font-bold">File Browser</div>
           <div className="docklite-file-subtitle text-[10px] uppercase tracking-[0.2em]">Local Sites</div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" multiple />
           <button onClick={() => handleCreateItem('folder')} className="btn-neon px-3 py-1 text-xs font-bold">
             New Folder
@@ -371,7 +385,7 @@ export default function FileManager({ userSession, embedded = false }: FileManag
         <div className="text-[11px] truncate mt-2" style={{ color: 'var(--text-muted)' }}>{currentPath}</div>
       </div>
       <div
-        className="flex-1 p-3 overflow-y-auto"
+        className="flex-1 min-h-0 p-3 overflow-y-auto overscroll-contain docklite-scroll"
         onContextMenu={(event) => {
           event.preventDefault();
           setContextMenu(null);
@@ -397,7 +411,7 @@ export default function FileManager({ userSession, embedded = false }: FileManag
               >
                 <button
                   onClick={() => handleFileClick(file)}
-                  className="flex items-center gap-2 text-left min-w-0"
+                  className="flex flex-1 items-center gap-2 text-left min-w-0"
                 >
                   <span>
                     {file.isDirectory ? (
@@ -408,14 +422,26 @@ export default function FileManager({ userSession, embedded = false }: FileManag
                   </span>
                   <span className="docklite-file-name text-sm truncate">{file.name}</span>
                 </button>
-                {!file.isDirectory && (
+                <div className="flex shrink-0 items-center gap-1">
+                  {!file.isDirectory && (
+                    <button
+                      onClick={() => handleDownloadClick(file)}
+                      className="btn-neon px-2 py-1 text-[11px] font-bold"
+                    >
+                      Download
+                    </button>
+                  )}
                   <button
-                    onClick={() => handleDownloadClick(file)}
-                    className="btn-neon px-2 py-1 text-[11px] font-bold"
+                    type="button"
+                    onClick={(event) => handleMenuButton(event, file)}
+                    className="rounded-md p-1"
+                    style={{ color: 'var(--text-secondary)' }}
+                    title={`More for ${file.name}`}
+                    aria-label={`More for ${file.name}`}
                   >
-                    Download
+                    <DotsThree size={18} weight="bold" />
                   </button>
-                )}
+                </div>
               </li>
             ))}
           </ul>

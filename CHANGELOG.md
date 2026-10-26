@@ -17,6 +17,13 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - **Your theme and other Appearance settings stay put.** They used to live only in the browser, so they could be lost (after an update,
   cleared site data, another browser or computer). They are now saved to your DockLite account and follow you everywhere. Pick your look
   once more after updating to 1.4.1 and it stays from then on.
+- **The File Browser works on phones.** It used to open a fifth of the screen wide, with its buttons pushed out of sight. On a phone it now
+  takes the screen (tap outside it, or the arrow, to close), its buttons wrap onto a second line, and each file has a "⋯" button for
+  Move, Copy and Delete, which were right-click only before.
+- **Long folders in the File Browser scroll to the end.** The panel used to run under a phone browser's toolbar, hiding the last files, and
+  its layout relied on sizing some browsers handle differently. The list now scrolls on its own, below a header that stays in view.
+- **The dashboard fits a phone screen.** The top bar was wider than a phone, so every page loaded zoomed out, and the page links were
+  hidden with no other way to reach them. On phones the bar is compact (Log out is in the account menu) and the pages get a row of their own.
 
 ## 1.4.0 (2026-10-17)
 
