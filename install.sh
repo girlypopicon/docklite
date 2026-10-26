@@ -8,6 +8,18 @@ if [[ -z "${HOME:-}" ]]; then
     HOME="$(getent passwd "$(id -u)" 2>/dev/null | cut -d: -f6 || true)"
     export HOME="${HOME:-/root}"
 fi
+# The Update button on DockLite 1.2.6 to 1.3.0 pipes this installer through a log filter that fails on common locales
+# ("Invalid collation character"). The pipe then closes, and the installer stopped at its first line of output, so
+# those servers could never update. When an update job running one of those helpers starts us, write straight to the
+# update log instead. (Newer helpers' filter works; they keep it.)
+# --- old-helper-log ---
+UPDATE_LOG_FILE="${DOCKLITE_UPDATE_LOG:-/var/log/docklite/update.log}"
+if [[ -n "${DOCKLITE_UPDATE_COPY:-}" && ! -t 1 && -w "$UPDATE_LOG_FILE" ]] \
+    && grep -qF 'LC_ALL=C.UTF-8 sed' "$DOCKLITE_UPDATE_COPY" 2>/dev/null; then
+    exec >>"$UPDATE_LOG_FILE" 2>&1
+    echo "(This update was started by an older DockLite; the installer writes to the log directly.)"
+fi
+# --- end old-helper-log ---
 # If the installer ever stops unexpectedly, say where, instead of just disappearing.
 # (Only the installer's own shell reports: harmless misses inside sub-commands stay quiet.)
 on_unexpected_stop() {
