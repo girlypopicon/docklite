@@ -105,6 +105,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/tokens/revoke", handlers.Auth(hnd.CSRFMiddleware(handlers.TokenRevoke)))
 	mux.HandleFunc("/api/auth/login", handlers.AuthLogin)
 	mux.HandleFunc("/api/auth/me", handlers.Auth(handlers.AuthMe))
+	mux.HandleFunc("/api/auth/appearance", handlers.Auth(hnd.CSRFMiddleware(handlers.AuthAppearance)))
 	mux.HandleFunc("/api/auth/logout", handlers.Auth(hnd.CSRFMiddleware(handlers.AuthLogout)))
 	mux.HandleFunc("/api/csrf-token", handlers.Auth(handlers.CSRFToken))
 

@@ -6,6 +6,7 @@ import ContainerCard from '../../components/ContainerCard';
 import { useToast } from '@/lib/hooks/useToast';
 import type { ContainerInfo } from '@/types';
 import {
+  APPEARANCE_EVENT,
   DEFAULT_APPEARANCE,
   FONT_SCALES,
   applyAppearance,
@@ -91,6 +92,10 @@ export default function AppearanceSettingsPage() {
 
   useEffect(() => {
     setAppearance(loadAppearance());
+    // The user's saved look can arrive from the server after this page opened.
+    const onSynced = (e: Event) => setAppearance((e as CustomEvent<Appearance>).detail);
+    window.addEventListener(APPEARANCE_EVENT, onSynced);
+    return () => window.removeEventListener(APPEARANCE_EVENT, onSynced);
   }, []);
 
   const resetToDefaults = () => update(DEFAULT_APPEARANCE);

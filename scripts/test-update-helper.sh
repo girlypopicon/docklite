@@ -28,14 +28,16 @@ mkdir -p "$T/api" "$T/login"; echo ok > "$T/api/health"; echo ok > "$T/login/ind
 sleep 1
 
 # the helper with its fixed paths pointed into the sandbox
-H="$T/helper.sh"
+sandbox_helper() { # source dest
 sed -e "s#^UPDATE_STATE=.*#UPDATE_STATE=$T/state/update-state#" -e "s#^UPDATE_LOG=.*#UPDATE_LOG=$T/log/update.log#" \
     -e "s#^UPDATE_SRC=.*#UPDATE_SRC=$T/src#" -e "s#^UPDATE_REPO=.*#UPDATE_REPO=file://$R#" -e "s#^INSTALL_DIR=.*#INSTALL_DIR=$T/opt#" \
     -e "s#/var/lib/docklite#$T/state#g" -e "s#/var/log/docklite#$T/log#g" -e "s#/var/backups/docklite#$T/backups#g" \
     -e "s#/var/lock/docklite-update.lock#$T/lock#g" -e "s#/var/lock#$T#g" \
-    -e 's#chown docklite:docklite#true #g' -e 's#sleep 5; waited=$((waited + 5))#sleep 1; waited=$((waited + 1))#' "$HELPER" > "$H"
+    -e 's#chown docklite:docklite#true #g' -e 's#sleep 5; waited=$((waited + 5))#sleep 1; waited=$((waited + 1))#' "$1" > "$2"
 # the real helper wants "/login" to answer 200; the python server serves the folder
-sed -i 's#/login"#/login/"#' "$H"
+sed -i 's#/login"#/login/"#' "$2"
+}
+H="$T/helper.sh"; sandbox_helper "$HELPER" "$H"
 mkdir -p "$T/opt/data" "$T/state" "$T/log"; echo "1.1.0" > "$T/opt/VERSION"; echo "AGENT_PORT=$PORT" > "$T/opt/.docklite.conf"; echo db > "$T/opt/data/docklite.db"
 export INSTALL_DIR="$T/opt"
 
@@ -85,5 +87,24 @@ for loc in C C.UTF-8 en_US.utf8 POSIX; do
 done
 got="$(bash -c "source <(sed -n '/^CLEAN_SED=/,/^}/p' '$H'); sed() { return 1; }; printf 'plain\n' | clean_installer_output" 2>&1)"
 check "a broken filter passes the text through" "$got" "plain"
+
+echo "7. an old (1.2.6) helper, whose log filter breaks, can still install a new release"
+OLD="$T/helper-1.2.6.sh"
+if git -C "$(dirname "$HELPER")" show v1.2.6:docklite-helper > "$T/orig-1.2.6" 2>/dev/null; then
+    sandbox_helper "$T/orig-1.2.6" "$OLD"
+    # the new release's real "write straight to the log" block, then plenty of output, as the real installer has
+    fix="$(sed -n '/^# --- old-helper-log ---/,/^# --- end old-helper-log ---/p' "$(dirname "$HELPER")/install.sh")"
+    mkrelease 1.4.0 "set -Eeuo pipefail
+$fix
+for i in \$(seq 1 20000); do echo \"installer step \$i\"; done
+cp \"\$(dirname \"\$0\")/VERSION\" \"\$INSTALL_DIR/VERSION\""
+    echo "1.2.0" > "$T/opt/VERSION"
+    DOCKLITE_UPDATE_LOG="$T/log/update.log" LC_ALL=C.UTF-8 bash "$OLD" update-job v1.4.0; check "exit code" "$?" "0"
+    check "state" "$(state)" "success v1.4.0"
+    check "version installed" "$(cat "$T/opt/VERSION")" "1.4.0"
+    check "installer output reached the log" "$(grep -c '^installer step' "$T/log/update.log")" "20000"
+else
+    echo "  skip (no v1.2.6 tag in this checkout)"
+fi
 
 echo; echo "$pass passed, $failn failed"; [[ $failn -eq 0 ]]

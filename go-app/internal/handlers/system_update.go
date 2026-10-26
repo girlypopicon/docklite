@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"docklite-agent/internal/demo"
@@ -32,6 +33,9 @@ const (
 	updateStateFile  = "/var/lib/docklite/update-state"
 	updateLogTail    = 150
 	updateStaleAfter = 45 * time.Minute
+	updateLockFile   = "/var/lock/docklite-update.lock"
+	// A job writes "running" a moment before it takes its lock; until then, believe the note.
+	updateStartGrace = time.Minute
 	defaultRepoSlug  = "girlypopicon/docklite"
 )
 
@@ -220,6 +224,40 @@ func readUpdateState(path string) (state, tag string, at time.Time, msg string) 
 	return f[0], f[1], at, msg
 }
 
+// updateJobAlive says whether an update job holds its lock: 1 yes, 0 no, -1 can't tell (no lock file to look at).
+func updateJobAlive(path string) int {
+	f, err := os.Open(path)
+	if err != nil {
+		return -1
+	}
+	defer f.Close()
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+		if err == syscall.EWOULDBLOCK {
+			return 1
+		}
+		return -1
+	}
+	_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	return 0
+}
+
+// settleUpdateState turns a "running" note that no job stands behind into how things actually ended. A job that was
+// killed, or DockLite reinstalled by hand (`docklite update` from a shell, the one-line installer), leaves "running"
+// behind, and the dashboard would show a spinner for the next 45 minutes.
+func settleUpdateState(state, tag string, at time.Time, msg, installed string, alive int) (string, string) {
+	if state != "running" {
+		return state, msg
+	}
+	switch {
+	case time.Since(at) > updateStaleAfter, alive == 0 && time.Since(at) > updateStartGrace:
+		if v := strings.TrimPrefix(tag, "v"); v != "" && v == strings.TrimPrefix(installed, "v") {
+			return "success", "now running " + v
+		}
+		return "failed", "the update seems to have stopped without finishing"
+	}
+	return state, msg
+}
+
 func (h *Handlers) SystemUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -232,10 +270,7 @@ func (h *Handlers) SystemUpdateStatus(w http.ResponseWriter, r *http.Request) {
 	resp := updateStatusResponse{Version: readVersion(installDir()), State: "idle", Log: tailLog(updateLogFile, updateLogTail)}
 
 	state, tag, at, msg := readUpdateState(updateStateFile)
-	if state == "running" && time.Since(at) > updateStaleAfter {
-		state = "failed"
-		msg = "the update seems to have stopped without finishing"
-	}
+	state, msg = settleUpdateState(state, tag, at, msg, resp.Version, updateJobAlive(updateLockFile))
 	resp.State, resp.StateTag, resp.StateMessage = state, tag, msg
 	resp.UpdateRunning = state == "running"
 	resp.LastUpdated = lastModified(updateLogFile)

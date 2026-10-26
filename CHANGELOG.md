@@ -5,6 +5,19 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.4.1 (2026-10-26)
+
+### Fixed
+- **Servers on 1.2.6 or 1.3.0 can update with the Update button again.** Those versions' updater sends the installer's output through a
+  log filter that fails on common locales ("Invalid collation character"), so the installer stopped at once and the update rolled back
+  or left DockLite stopped. The installer now notices it was started by one of those updaters and writes straight to the update log.
+- **The Update card no longer spins forever after an update from the command line.** If an update job was stopped, or DockLite was
+  reinstalled by hand, the card believed the old "running" note for 45 minutes. It now checks whether an update is really running, and
+  shows the update as finished (or as not finished) as soon as it isn't.
+- **Your theme and other Appearance settings stay put.** They used to live only in the browser, so they could be lost (after an update,
+  cleared site data, another browser or computer). They are now saved to your DockLite account and follow you everywhere. Pick your look
+  once more after updating to 1.4.1 and it stays from then on.
+
 ## 1.4.0 (2026-10-17)
 
 ### Added
