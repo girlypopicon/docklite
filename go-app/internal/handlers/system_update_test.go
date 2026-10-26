@@ -6,7 +6,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"docklite-agent/internal/testhelpers"
 )
@@ -105,6 +107,43 @@ func TestReadUpdateState(t *testing.T) {
 	testhelpers.AssertEqual(t, state, "failed")
 	testhelpers.AssertEqual(t, tag, "v1.2.0")
 	testhelpers.AssertEqual(t, msg, "build did not finish")
+}
+
+func TestSettleUpdateState(t *testing.T) {
+	old, fresh := time.Now().Add(-10*time.Minute), time.Now()
+	cases := []struct {
+		name, state, tag, installed string
+		at                          time.Time
+		alive                       int
+		want                        string
+	}{
+		{"job alive", "running", "v1.4.1", "1.4.0", old, 1, "running"},
+		{"just started, lock not taken yet", "running", "v1.4.1", "1.4.0", fresh, 0, "running"},
+		{"no job, new version is installed", "running", "v1.4.1", "1.4.1", old, 0, "success"},
+		{"no job, old version still installed", "running", "v1.4.1", "1.4.0", old, 0, "failed"},
+		{"no lock file, not stale yet", "running", "v1.4.1", "1.4.1", old, -1, "running"},
+		{"no lock file, stale", "running", "v1.4.1", "1.4.0", time.Now().Add(-time.Hour), -1, "failed"},
+		{"lock held far too long", "running", "v1.4.1", "1.4.0", time.Now().Add(-time.Hour), 1, "failed"},
+		{"finished states are left alone", "rolled-back", "v1.4.1", "1.4.0", old, 0, "rolled-back"},
+	}
+	for _, c := range cases {
+		got, _ := settleUpdateState(c.state, c.tag, c.at, "", c.installed, c.alive)
+		if got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+func TestUpdateJobAlive(t *testing.T) {
+	path := t.TempDir() + "/lock"
+	testhelpers.AssertEqual(t, updateJobAlive(path), -1)
+	testhelpers.AssertNoError(t, writeFileForTest(path, ""))
+	testhelpers.AssertEqual(t, updateJobAlive(path), 0)
+	f, err := os.OpenFile(path, os.O_WRONLY, 0)
+	testhelpers.AssertNoError(t, err)
+	defer f.Close()
+	testhelpers.AssertNoError(t, syscall.Flock(int(f.Fd()), syscall.LOCK_EX))
+	testhelpers.AssertEqual(t, updateJobAlive(path), 1)
 }
 
 func writeFileForTest(path, content string) error { return os.WriteFile(path, []byte(content), 0o644) }

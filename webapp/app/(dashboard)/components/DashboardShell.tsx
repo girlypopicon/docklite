@@ -6,6 +6,7 @@ import DashboardNav from '../nav';
 import SidebarPanel from './SidebarPanel';
 import { SettingsModalProvider } from './SettingsModal';
 import { useNavOffset } from '@/lib/hooks/useNavOffset';
+import { syncAppearance } from '@/lib/appearance';
 import { UserSession } from '@/types';
 
 const XtermDrawer = dynamic(() => import('./XtermDrawer'), { ssr: false });
@@ -19,6 +20,11 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
   useNavOffset();
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [terminalTarget, setTerminalTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // This user's saved look (it lasts across browsers and updates; this browser only keeps a copy).
+  useEffect(() => {
+    syncAppearance();
+  }, []);
 
   useEffect(() => {
     const handler = (event: Event) => {

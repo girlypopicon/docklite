@@ -84,5 +84,17 @@ func (s *SQLiteStore) InitializeAgentTables() error {
 			role TEXT
 		)
 	`)
+	if err != nil {
+		return err
+	}
+
+	// Each user's dashboard look (theme, text size...), so it follows them to every browser and survives updates
+	_, err = s.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS user_preferences (
+			user_id INTEGER PRIMARY KEY,
+			appearance TEXT,
+			updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
 	return err
 }
