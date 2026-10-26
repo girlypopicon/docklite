@@ -178,7 +178,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
           <button
             key={id}
             onClick={onToggleTerminal}
-            className="docklite-terminal-btn px-4 py-2 text-sm font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2"
+            className="docklite-terminal-btn px-2.5 sm:px-4 py-2 text-sm font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2"
             style={{
               background: terminalOpen
                 ? 'linear-gradient(135deg, var(--status-success) 0%, var(--status-info) 100%)'
@@ -200,7 +200,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
             onClick={() => openSettings()}
             aria-label="Settings"
             title="Settings"
-            className="flex items-center justify-center p-2 transition-all hover:scale-105 card-vapor rounded-xl border text-accent-pink/70 hover:text-accent-pink border-neon-pink/20 hover:border-neon-pink/40"
+            className="flex items-center justify-center p-1.5 sm:p-2 transition-all hover:scale-105 card-vapor rounded-xl border text-accent-pink/70 hover:text-accent-pink border-neon-pink/20 hover:border-neon-pink/40"
           >
             <Gear size={22} weight="duotone" />
           </button>
@@ -211,7 +211,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
           <button
             key={id}
             onClick={handleLogout}
-            className="px-4 py-2 text-sm font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2"
+            className="hidden sm:flex px-4 py-2 text-sm font-bold rounded-xl transition-all hover:scale-105 items-center gap-2"
             style={{
               background: 'linear-gradient(135deg, var(--status-error) 0%, var(--neon-pink) 100%)',
               color: 'var(--button-text)',
@@ -231,7 +231,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               aria-label="Account menu"
               aria-expanded={isDropdownOpen}
-              className={`flex items-center justify-center p-2 transition-all hover:scale-105 card-vapor rounded-xl border ${
+              className={`flex items-center justify-center p-1.5 sm:p-2 transition-all hover:scale-105 card-vapor rounded-xl border ${
                 isDropdownOpen
                   ? 'text-accent-pink border-neon-pink/60 bg-neon-pink/10'
                   : 'text-accent-pink/70 hover:text-accent-pink border-neon-pink/20 hover:border-neon-pink/40'
@@ -331,8 +331,8 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 relative">
-        <div className="max-w-[1400px] mx-auto flex items-center gap-3 h-20">
-          <div className="flex-shrink-0 flex items-center gap-2 group">
+        <div className="max-w-[1400px] mx-auto flex items-center gap-2 sm:gap-3 h-16 sm:h-20">
+          <div className="flex-shrink-0 flex items-center gap-1.5 sm:gap-2 group">
             <Image
               src="/dockliteiconL.png"
               alt="DockLite logo"
@@ -341,7 +341,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
               className="group-hover:scale-110 transition-transform"
               style={{ filter: 'drop-shadow(0 0 6px rgba(var(--neon-cyan-rgb), 0.6))' }}
             />
-            <h1 className="docklite-logo text-4xl font-bold neon-text group-hover:scale-105 transition-transform">
+            <h1 className="docklite-logo hidden min-[400px]:block text-2xl sm:text-4xl font-bold neon-text group-hover:scale-105 transition-transform">
               <span className="docklite-logo-dock">Dock</span>
               <span className="docklite-logo-lite">Lite</span>
             </h1>
@@ -349,7 +349,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
               size={24}
               weight="duotone"
               color="var(--neon-pink)"
-              className="opacity-70 group-hover:opacity-100 transition-opacity"
+              className="hidden sm:block opacity-70 group-hover:opacity-100 transition-opacity"
               style={{ filter: 'drop-shadow(0 0 6px rgba(var(--neon-pink-rgb), 0.6))' }}
             />
           </div>
@@ -384,6 +384,30 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
             <div className="flex-1 min-w-0 flex items-center gap-2 sm:gap-1">{prefs.topBar.map(renderItem)}</div>
           )}
         </div>
+        {/* Phones: the page links don't fit in the bar, so they get a row of their own (it scrolls sideways if needed). */}
+        {!editingTopBar && (
+          <div className="sm:hidden -mx-4 px-4 pb-3 flex items-center gap-2 overflow-x-auto">
+            {prefs.topBar.filter((id) => TOP_BAR_LINKS[id]).map((id) => {
+              const href = TOP_BAR_LINKS[id];
+              const active = isActive(href);
+              return (
+                <Link
+                  key={`phone-${id}`}
+                  href={href}
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold ${active ? 'neon-glow' : ''}`}
+                  style={
+                    active
+                      ? { background: 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%)', color: 'var(--button-text)' }
+                      : { color: 'var(--text-cyan)' }
+                  }
+                >
+                  {TOP_BAR_ICONS[id](16)}
+                  {LABELS[id]}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
       {editingTopBar && (
         <div
