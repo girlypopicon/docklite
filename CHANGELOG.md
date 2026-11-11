@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.4.2 (2026-11-11)
+
 ### Changed
 - **Container cards are smaller and named the way you know them.** A site's card is titled with its domain (`example.com`) instead of
   Docker's name (`docklite-site-example-com`), and a database's with its database name. Each card is about a third of its old height, so
