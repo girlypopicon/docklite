@@ -37,6 +37,7 @@ LAVENDER='\033[38;2;199;164;255m'
 step()  { echo -e "\n${BOLD}── $* ──${NC}"; }
 ok()    { echo -e "  ${GREEN}✓${NC} $*"; }
 warn()  { echo -e "  ${YELLOW}⚠${NC}  $*"; }
+info()  { echo -e "  ${DIM}$*${NC}"; }
 die()   { echo -e "  ${RED}✗${NC}  $*" >&2; exit 1; }
 
 find_available_port() {
@@ -239,17 +240,17 @@ JSEOF
 }
 
 pm2_start_agent() {
-    cd "$SCRIPT_DIR" && sudo_pm2 start "$ECOSYSTEM" --only docklite-agent 2>/dev/null
+    cd "$SCRIPT_DIR" && sudo_pm2 start "$ECOSYSTEM" --only docklite-agent >/dev/null 2>&1
 }
 
 pm2_start_gui() {
-    cd "$SCRIPT_DIR" && sudo_pm2 start "$ECOSYSTEM" --only docklite-gui 2>/dev/null
+    cd "$SCRIPT_DIR" && sudo_pm2 start "$ECOSYSTEM" --only docklite-gui >/dev/null 2>&1
 }
 
 pm2_start_all() {
-    cd "$SCRIPT_DIR" && sudo_pm2 start "$ECOSYSTEM" 2>/dev/null
+    cd "$SCRIPT_DIR" && sudo_pm2 start "$ECOSYSTEM" >/dev/null 2>&1
     if [[ "$MODE" == "headless" ]]; then
-        sudo_pm2 stop docklite-gui 2>/dev/null || true
+        sudo_pm2 stop docklite-gui >/dev/null 2>&1 || true
     fi
 }
 
@@ -620,6 +621,11 @@ check_site_layout() {
     local out
     out="$("${SCRIPT_DIR}/bin/docklite-cli" sites layout 2>/dev/null)" || return 0
     if grep -qE "unregistered:|(^| )move( |$)" <<<"$out"; then
+        # In an update log (no terminal) the full table is noise on every update: one line is enough.
+        if [[ ! -t 1 ]]; then
+            echo -e "  ${DIM}Some site folders are not in the standard layout (nothing was moved). Details: ${NC}docklite sites layout"
+            return 0
+        fi
         echo -e "  ${YELLOW}Some sites are not in the standard /var/www/sites/<user>/<domain> layout:${NC}"
         echo "$out" | sed 's/^/    /'
         echo ""
