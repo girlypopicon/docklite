@@ -34,9 +34,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next-demo/types/**/*.ts",
-    ".next-check/types/**/*.ts",
-    ".next-phone/types/**/*.ts",
-    ".next-prod/types/**/*.ts"
+    ".next-check/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
