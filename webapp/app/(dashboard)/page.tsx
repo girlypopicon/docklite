@@ -518,17 +518,17 @@ export default function DashboardPage() {
             </span>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           <button
             onClick={() => setShowAddContainerModal(true)}
-            className="btn-neon inline-flex items-center gap-2"
+            className="btn-neon inline-flex items-center gap-2 whitespace-nowrap"
           >
             <PlusCircle size={20} weight="duotone" />
             New Container
           </button>
           <button
             onClick={() => setShowAddFolderModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all hover:scale-105"
+            className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 text-sm font-bold rounded-lg transition-all hover:scale-105"
             style={{
               background: 'linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 100%)',
               color: 'var(--button-text)',
@@ -540,7 +540,7 @@ export default function DashboardPage() {
           </button>
           <button
             onClick={() => setShowAllContainersModal(true)}
-            className="btn-neon inline-flex items-center gap-2"
+            className="btn-neon inline-flex items-center gap-2 whitespace-nowrap"
           >
             <Package size={20} weight="duotone" />
             All Containers

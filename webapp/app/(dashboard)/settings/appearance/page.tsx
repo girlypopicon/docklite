@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Palette, TextT, Sparkle, Eye, Database } from '@phosphor-icons/react';
+import { Palette, TextT, Sparkle, Eye } from '@phosphor-icons/react';
 import ContainerCard from '../../components/ContainerCard';
 import { useToast } from '@/lib/hooks/useToast';
 import type { ContainerInfo } from '@/types';
@@ -229,7 +229,7 @@ export default function AppearanceSettingsPage() {
           These are the same cards you see on the Containers page, filled with made-up data. They update live as you
           change the settings above, and their buttons don’t do anything.
         </p>
-        {/* Same proportions as the real pages: a site card is narrow (many per row); a database card is wide (three per row). */}
+        {/* Same proportions as the real pages. */}
         <div className="flex flex-wrap items-start gap-8">
           <div className="w-[254px] max-w-full">
             <ContainerCard
@@ -242,34 +242,23 @@ export default function AppearanceSettingsPage() {
               A site, as on the Containers page
             </div>
           </div>
-          <div className="flex-1 min-w-[280px] max-w-[460px]">
+          <div className="w-[254px] max-w-full">
             <div
-              className="docklite-neon docklite-neon-green p-6 rounded-xl relative"
+              className="docklite-neon docklite-neon-green p-3 rounded-xl relative"
               style={{ background: 'var(--surface-dim)', backdropFilter: 'blur(12px)' }}
             >
-              <h3 className="docklite-db-title text-xl font-bold neon-text truncate" style={{ color: 'var(--text-cyan)' }}>
+              <h3 className="docklite-db-title text-base font-bold leading-snug truncate" style={{ color: 'var(--text-cyan)' }}>
                 preview_db
               </h3>
-              <div className="mt-3 mb-4 flex justify-center">
-                <Database
-                  size={46}
-                  weight="duotone"
-                  style={{
-                    color: 'var(--text-cyan)',
-                    filter: 'drop-shadow(0 0 8px rgba(var(--neon-cyan-rgb), 0.7)) drop-shadow(0 0 14px rgba(var(--neon-cyan-rgb), 0.45))',
-                  }}
-                />
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: 'rgba(var(--neon-purple-rgb), 0.15)', color: 'var(--text-purple)', border: '1px solid var(--neon-purple)' }}>
+                  PostgreSQL
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: 'rgba(var(--status-success-rgb), 0.2)', color: 'var(--text-green)', border: '1px solid var(--neon-green)' }}>
+                  7.3 MB
+                </span>
               </div>
-              <span
-                className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-4"
-                style={{ background: 'rgba(var(--status-success-rgb), 0.2)', color: 'var(--text-green)', border: '1px solid var(--neon-green)' }}
-              >
-                ● 7.3 MB Small
-              </span>
-              <div className="space-y-2 text-sm font-mono">
-                <div><span className="opacity-60" style={{ color: 'var(--text-secondary)' }}>Port: </span><span className="font-bold" style={{ color: 'var(--text-purple)' }}>5432</span></div>
-                <div><span className="opacity-60" style={{ color: 'var(--text-secondary)' }}>Connect: </span><span>localhost:5432</span></div>
-              </div>
+              <div className="mt-3 text-xs font-mono" style={{ color: 'var(--text-purple)' }}>localhost:5432</div>
             </div>
             <div className="text-xs opacity-60 mt-3 text-center" style={{ color: 'var(--text-secondary)' }}>
               A database, as on the Databases page

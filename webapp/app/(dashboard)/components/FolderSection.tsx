@@ -69,9 +69,10 @@ function SortableContainer({
   const dragProps = menuOpen ? {} : { ...attributes, ...listeners };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div ref={setNodeRef} style={style} className="relative h-full">
       <div
         {...dragProps}
+        className="h-full"
         style={{ cursor: menuOpen ? 'default' : 'grab' }}
       >
         <ContainerCard
@@ -198,7 +199,7 @@ export default function FolderSection({
         <SortableContext items={localContainers.map(c => c.id)} strategy={rectSortingStrategy}>
           <div
             ref={setDroppableRef}
-            className={`grid min-h-[120px] grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 p-4 rounded-xl border-2 ${
+            className={`grid min-h-[120px] grid-cols-[repeat(auto-fill,minmax(min(100%,220px),1fr))] gap-3 p-2 sm:p-3 rounded-xl border-2 ${
               isOver ? 'drag-over' : 'border-transparent'
             }`}
           >

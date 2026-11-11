@@ -241,12 +241,12 @@ export default function UpdateCard() {
               </button>
             )}
             {status.releaseUrl && (
-              <a href={status.releaseUrl} target="_blank" rel="noreferrer" className="text-xs underline flex items-center gap-1" style={{ color: 'var(--text-cyan)' }}>
+              <a href={status.releaseUrl} target="_blank" rel="noreferrer" className="text-xs underline flex items-center gap-1 py-2" style={{ color: 'var(--text-cyan)' }}>
                 Release notes <ArrowSquareOut size={12} />
               </a>
             )}
             {status.log && status.log.length > 0 && (
-              <button type="button" className="text-xs underline" style={{ color: 'var(--text-secondary)' }} onClick={() => setShowLog((v) => !v)}>
+              <button type="button" className="text-xs underline py-2" style={{ color: 'var(--text-secondary)' }} onClick={() => setShowLog((v) => !v)}>
                 {showLog ? 'Hide update log' : 'Show update log'}
               </button>
             )}

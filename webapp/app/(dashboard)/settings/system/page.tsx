@@ -47,9 +47,9 @@ export default function SystemSettingsPage() {
           <Cube size={20} weight="duotone" />
           Docker Connection
         </h2>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
-            <div className="w-4 h-4 rounded-full animate-pulse bg-green-500"></div>
+            <div className="w-4 h-4 shrink-0 rounded-full animate-pulse bg-green-500"></div>
             <div>
               <div className="font-bold text-lg">Connected</div>
               <div className="text-sm opacity-70" style={{ color: 'var(--text-secondary)' }}>
@@ -57,8 +57,8 @@ export default function SystemSettingsPage() {
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-sm font-mono opacity-70">Socket: /var/run/docker.sock</div>
+          <div className="sm:text-right min-w-0">
+            <div className="text-sm font-mono opacity-70 break-all">Socket: /var/run/docker.sock</div>
             <div className="text-xs opacity-50">Version: API 1.41+</div>
           </div>
         </div>

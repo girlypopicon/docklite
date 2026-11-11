@@ -19,6 +19,7 @@ import {
 } from '@phosphor-icons/react';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import SiteHttpsCard from './SiteHttpsCard';
+import { containerDisplayName } from '@/lib/container-names';
 
 interface ContainerStats {
   cpu: number;
@@ -229,15 +230,16 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 pb-4 border-b" style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.2)' }}>
-          <div className="flex items-center gap-4">
-            <div>
-              <h2 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-                <Package size={22} weight="duotone" />
-                {details.name}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b" style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.2)' }}>
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)', overflowWrap: 'anywhere' }}>
+                <Package size={22} weight="duotone" className="shrink-0" />
+                {containerDisplayName(details)}
               </h2>
-              <p className="text-sm font-mono mt-1" style={{ color: 'var(--text-secondary)' }}>
-                {details.image}
+              {/* The Docker name is what you type in a terminal, so it stays visible here */}
+              <p className="text-sm font-mono mt-1" style={{ color: 'var(--text-secondary)', overflowWrap: 'anywhere' }}>
+                {containerDisplayName(details) !== details.name ? `${details.name} · ` : ''}{details.image}
               </p>
             </div>
           </div>
