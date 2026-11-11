@@ -57,18 +57,20 @@ export default function DashboardShell({ user, children }: DashboardShellProps) 
       {/* Main content area - keeps existing width */}
       {/* The edit-database page pushes content aside via --sidebar-push-* so sidebars never cover its data. */}
       <main
-        className="p-8 relative"
+        className="relative [--page-pad:0.75rem] sm:[--page-pad:2rem]"
         style={{
-          paddingLeft: 'calc(2rem + var(--sidebar-push-left, 0px))',
-          paddingRight: 'calc(2rem + var(--sidebar-push-right, 0px))',
+          padding: 'var(--page-pad)',
+          paddingLeft: 'calc(var(--page-pad) + var(--sidebar-push-left, 0px))',
+          paddingRight: 'calc(var(--page-pad) + var(--sidebar-push-right, 0px))',
+          paddingBottom: 'calc(var(--page-pad) + env(safe-area-inset-bottom, 0px))',
           transition: 'padding 0.2s ease',
         }}
       >
         {children}
       </main>
 
-      {/* Footer with system info */}
-      <footer className="fixed bottom-4 right-4 text-xs font-mono opacity-40 hover:opacity-70 transition-opacity z-50">
+      {/* Footer with system info (not on phones, where it would sit on top of the page; Settings shows the version) */}
+      <footer className="hidden sm:block fixed bottom-4 right-4 text-xs font-mono opacity-40 hover:opacity-70 transition-opacity z-50">
         <div className="card-vapor px-3 py-2 rounded-lg">
           <div style={{ color: 'var(--text-cyan)' }}>DockLite v{process.env.NEXT_PUBLIC_DOCKLITE_VERSION}</div>
           <div style={{ color: 'var(--text-secondary)' }}>System Ready</div>

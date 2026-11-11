@@ -258,16 +258,16 @@ export default function ManageUsersPage() {
           <table className="min-w-full divide-y divide-neon-purple/20">
           <thead className="bg-surface-muted">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-accent-cyan">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-accent-cyan">
                 Username
               </th>
-              <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-accent-cyan">
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-accent-cyan">
                 Role
               </th>
-              <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-accent-cyan">
+              <th className="hidden sm:table-cell px-3 sm:px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-accent-cyan">
                 Created
               </th>
-              <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-accent-cyan">
+              <th className="px-3 sm:px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-accent-cyan">
                 Actions
               </th>
             </tr>
@@ -275,10 +275,10 @@ export default function ManageUsersPage() {
           <tbody className="divide-y divide-neon-purple/20">
             {users.map((user) => (
               <tr key={user.id} className="relative">
-                <td className="px-6 py-4 whitespace-nowrap font-bold text-accent-cyan">
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap font-bold text-accent-cyan">
                   {user.username}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                   {user.is_admin === 1 ? (
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-neon-purple/20 text-accent-pink">
                       {user.role === 'super_admin' ? 'Superadmin' : 'Admin'}
@@ -289,16 +289,16 @@ export default function ManageUsersPage() {
                     </span>
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-ink-muted">
+                <td className="hidden sm:table-cell px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-ink-muted">
                   {new Date(user.created_at).toLocaleDateString()}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
+                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right">
                   <div className="relative inline-flex">
                     <button
                       type="button"
                       data-user-menu
                       onClick={(e) => toggleMenu(user.id, e)}
-                      className="group inline-flex flex-col items-center justify-center gap-1"
+                      className="group inline-flex flex-col items-center justify-center gap-1 w-10 h-10 rounded-lg"
                       aria-label="User actions"
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-neon-cyan group-hover:bg-neon-pink transition-colors" />

@@ -5,6 +5,30 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.4.2 (2026-11-11)
+
+### Changed
+- **Container cards are smaller and named the way you know them.** A site's card is titled with its domain (`example.com`) instead of
+  Docker's name (`docklite-site-example-com`), and a database's with its database name. Each card is about a third of its old height, so
+  far more fit on a screen. The Docker name is still there: hover the title, open Details, or use "Copy name".
+- **Database cards are smaller too**, with the type, size, address and date on two short lines.
+
+### Fixed
+- **The dashboard fits a phone screen.** The top bar was wider than a phone, so every page loaded zoomed out, and the page links were
+  hidden with no other way to reach them. On phones the bar is compact (Log out is in the account menu) and the pages get a row of their
+  own. Pages use the full width of the screen instead of wide margins, header buttons no longer cut off their labels, and the
+  Files / Panel side tabs sit low on the screen edge as small icons instead of covering the page's filters.
+- **The File Browser works on phones.** It used to open a fifth of the screen wide, with its buttons pushed out of sight. On a phone it now
+  takes the screen (tap outside it, or the arrow, to close), its buttons wrap onto a second line, and each file has a "⋯" button for
+  Move, Copy and Delete, which were right-click only before.
+- **Long folders in the File Browser scroll to the end.** The panel used to run under a phone browser's toolbar, hiding the last files, and
+  its layout relied on sizing some browsers handle differently. The list now scrolls on its own, below a header that stays in view.
+- **Settings on a phone:** the Users list shows its actions button without scrolling sideways (and the button is big enough to tap), the
+  Docker Connection and Top bar rows no longer squash their text, and the Update card's links are easier to hit.
+- **A cleaner update log.** Updating no longer prints a stray "info: No menu item" error, PM2's process table, or the whole
+  site-folder report into the update log (one line now points to `docklite sites layout`).
+- **A container's port is listed once**, not twice (Docker reports it for IPv4 and IPv6).
+
 ## 1.4.1 (2026-10-26)
 
 ### Fixed

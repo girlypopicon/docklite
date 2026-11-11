@@ -492,7 +492,7 @@ export default function ServerPage() {
 
       {accessDenied && (
         <div className="card-vapor p-6 rounded-xl flex items-center gap-3 mb-6" style={{ borderColor: 'rgba(var(--text-muted-rgb), 0.15)' }}>
-          <ShieldCheck size={22} weight="duotone" style={{ color: 'var(--text-cyan)' }} />
+          <ShieldCheck size={22} weight="duotone" className="shrink-0" style={{ color: 'var(--text-cyan)' }} />
           <div>
             <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Admin access required</div>
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>

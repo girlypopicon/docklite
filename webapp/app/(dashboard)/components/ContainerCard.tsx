@@ -4,8 +4,9 @@ import { ContainerInfo } from '@/types';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { Package, Clock, Plug, IdentificationCard, Eye, Trash, Play, ArrowsClockwise, Stop, DotsThree, Copy, UserCircle, Folder, TerminalWindow } from '@phosphor-icons/react';
+import { Clock, Plug, Eye, Trash, Play, ArrowsClockwise, Stop, DotsThree, Copy, UserCircle, Folder, TerminalWindow } from '@phosphor-icons/react';
 import { useToast } from '@/lib/hooks/useToast';
+import { containerDisplayName } from '@/lib/container-names';
 
 interface ContainerCardProps {
   container: ContainerInfo;
@@ -42,20 +43,14 @@ export default function ContainerCard({
 
   const isRunning = container.state === 'running';
   const statusColor = isRunning ? 'var(--neon-green)' : 'var(--status-error)';
-  const statusIcon = isRunning ? '●' : '○';
-  const statusText = isRunning ? 'ONLINE' : 'OFFLINE';
+  const displayName = containerDisplayName(container);
+  // Docker lists a published port once per address family (IPv4 and IPv6); show each mapping once.
+  const ports = Array.from(new Set((container.ports || '').split(',').map((p) => p.trim()).filter(Boolean))).join(', ');
 
   // Determine container type from labels
   const containerType = container.labels?.['docklite.type'] || 'other';
   const isSite = ['static', 'php', 'node'].includes(containerType);
-  const isDatabase = containerType === 'postgres';
-
-  // Set border color based on type
-  const borderColor = isSite
-    ? 'var(--neon-pink)'
-    : isDatabase
-    ? 'var(--neon-green)'
-    : 'var(--neon-cyan)';
+  const isDatabase = ['postgres', 'mariadb', 'mongodb', 'redis'].includes(containerType);
 
   // The card's color. Glow comes from the .docklite-neon classes, which take an "r, g, b" so alpha works.
   const shadowColor = isSite
@@ -66,6 +61,12 @@ export default function ContainerCard({
   const neonClass = isSite ? 'docklite-neon-pink' : isDatabase ? 'docklite-neon-green' : 'docklite-neon-cyan';
   const textColor = isSite ? 'var(--text-pink)' : isDatabase ? 'var(--text-green)' : 'var(--text-cyan)';
   const rgbVar = isSite ? 'var(--neon-pink-rgb)' : isDatabase ? 'var(--neon-green-rgb)' : 'var(--neon-cyan-rgb)';
+  const actionStyle = {
+    background: 'transparent',
+    border: `1px solid ${shadowColor}`,
+    color: textColor,
+    boxShadow: `0 0 4px rgba(${rgbVar}, 0.45)`,
+  };
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -97,7 +98,7 @@ export default function ContainerCard({
 
   return (
     <div
-      className={`docklite-container-card docklite-neon ${neonClass} p-4 rounded-xl transition-all hover:scale-[1.02] group relative h-[340px] flex flex-col`}
+      className={`docklite-container-card docklite-neon ${neonClass} p-3 rounded-xl transition-all group relative min-h-[132px] h-full flex flex-col`}
       style={{
         background: 'var(--surface-dim)',
         backdropFilter: 'blur(12px)',
@@ -106,7 +107,7 @@ export default function ContainerCard({
     >
       {/* 3-Dot Menu - Top right */}
       <div
-        className="absolute top-3 right-3 z-20 pointer-events-auto"
+        className="absolute top-2 right-2 z-20 pointer-events-auto"
         ref={menuRef}
         onPointerDown={stopDnd}
         onPointerDownCapture={stopDnd}
@@ -120,10 +121,10 @@ export default function ContainerCard({
             onMenuOpenChange?.(nextOpen);
           }}
           onPointerDown={stopDnd}
-          className="p-2 rounded-lg text-sm font-bold transition-all hover:scale-105"
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-all"
           style={{
             background: 'transparent',
-            border: `2px solid ${shadowColor}`,
+            border: `1px solid ${shadowColor}`,
             color: textColor,
             boxShadow: `
               0 0 5px rgba(${rgbVar}, 0.85),
@@ -132,6 +133,7 @@ export default function ContainerCard({
             `
           }}
           title="More options"
+          aria-label="More options"
         >
           <DotsThree size={16} weight="bold" />
         </button>
@@ -318,80 +320,49 @@ export default function ContainerCard({
       </div>
 
 
-      {/* Status Crate - Top center */}
-      <div
-        className="absolute top-3 left-1/2"
-        style={{ transform: 'translate(-52%, 0.25rem)' }}
-      >
-        <div className={isRunning ? 'animate-float' : ''} style={{ opacity: isRunning ? 1 : 0.6 }}>
-          <Package
-            size={48}
-            weight="duotone"
-            style={{
-              color: isRunning ? 'var(--text-cyan)' : 'var(--text-muted)',
-              filter: isRunning
-                ? 'drop-shadow(0 0 8px var(--neon-cyan)) drop-shadow(0 0 12px var(--neon-cyan)) drop-shadow(0 0 16px var(--neon-cyan)80)'
-                : 'drop-shadow(0 0 2px var(--text-muted)40)',
-            }}
-          />
+      {/* Title: status dot, then the name people know it by (a site's domain), then what it runs */}
+      <div className="flex items-start gap-2 pr-10 min-w-0">
+        <span
+          className="mt-1.5 shrink-0 w-2.5 h-2.5 rounded-full"
+          role="img"
+          aria-label={isRunning ? 'Running' : 'Stopped'}
+          title={isRunning ? 'Running' : 'Stopped'}
+          style={{ background: statusColor, boxShadow: isRunning ? `0 0 8px ${statusColor}` : 'none' }}
+        />
+        <div className="min-w-0 flex-1">
+          <h3
+            className="docklite-container-name font-bold text-base leading-snug line-clamp-2"
+            style={{ color: 'var(--text-cyan)', overflowWrap: 'anywhere' }}
+            title={container.name}
+          >
+            {/* Let a long domain wrap at its dots rather than mid-word */}
+            {displayName.split('.').map((part, i) => (
+              <span key={i}>{i > 0 && <><wbr />.</>}{part}</span>
+            ))}
+          </h3>
+          <p className="text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>
+            {container.image.split(':')[0]}
+            {container.owner_username ? ` · ${container.owner_username}` : ''}
+          </p>
         </div>
       </div>
 
-      {/* Container Name - Better typography */}
-      <div className="mb-2 text-center mt-14 relative z-20" style={{ overflow: 'visible', background: 'transparent' }}>
-        <h3
-          className="docklite-container-name font-bold text-lg neon-text mb-1 leading-tight line-clamp-3"
-          style={{
-            color: 'var(--text-cyan)',
-            height: '4.5rem',
-            background: 'transparent',
-            border: 'none',
-            padding: '12px 8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {container.name}
-        </h3>
-        <p className="text-xs font-mono opacity-75 truncate" style={{ color: 'var(--text-secondary)' }}>
-          {container.image.split(':')[0]}
-        </p>
+      {/* Uptime and port on one line */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 mb-3 text-xs font-mono min-w-0">
+        <span className="flex items-center gap-1 min-w-0" style={{ color: isRunning ? 'var(--text-secondary)' : 'var(--status-error)' }}>
+          <Clock size={14} weight="duotone" className="shrink-0" />
+          <span className="truncate">{isRunning ? container.uptime || 'Running' : 'Stopped'}</span>
+        </span>
+        {ports && (
+          <span className="flex items-center gap-1 min-w-0" style={{ color: 'var(--text-purple)' }}>
+            <Plug size={14} weight="duotone" className="shrink-0" />
+            <span className="truncate">{ports}</span>
+          </span>
+        )}
       </div>
 
-      {/* Container Info - Better organized */}
-      <div className="space-y-1 mb-2">
-        {container.owner_username && (
-          <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--text-green)' }}>
-            <UserCircle size={16} weight="duotone" />
-            <span className="truncate">Owner: {container.owner_username}</span>
-          </div>
-        )}
-        {/* Uptime */}
-        {container.uptime && (
-          <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-            <Clock size={16} weight="duotone" />
-            <span>{container.uptime}</span>
-          </div>
-        )}
-
-        {/* Ports */}
-        {container.ports && (
-          <div className="flex items-center gap-2 text-xs font-mono" style={{ color: 'var(--text-purple)' }}>
-            <Plug size={16} weight="duotone" />
-            <span className="truncate">{container.ports}</span>
-          </div>
-        )}
-
-        {/* ID - Truncated */}
-        <div className="flex items-center gap-2 text-xs font-mono opacity-60" style={{ color: 'var(--text-secondary)' }}>
-          <IdentificationCard size={16} weight="duotone" />
-          <span className="truncate">{container.id.substring(0, 12)}</span>
-        </div>
-      </div>
-
-      {/* Actions - Better button layout with tooltips */}
-      <div className="flex gap-2 mt-auto pt-2 border-t" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.2)' }}>
+      {/* Actions */}
+      <div className="flex gap-2 mt-auto">
         {!isRunning ? (
           <button
             onClick={(e) => {
@@ -399,21 +370,12 @@ export default function ContainerCard({
               onAction(container.id, 'start');
             }}
             onPointerDown={stopDnd}
-            className="flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105 group/btn flex items-center justify-center gap-1"
-            style={{
-              background: 'transparent',
-              border: `2px solid ${shadowColor}`,
-              color: textColor,
-              boxShadow: `
-                0 0 3px rgba(${rgbVar}, 0.85),
-                0 0 6px rgba(${rgbVar}, 0.25),
-                inset 0 0 3px rgba(${rgbVar}, 0.19)
-              `
-            }}
+            className="flex-1 h-9 px-3 rounded-lg text-sm font-bold transition-all group/btn flex items-center justify-center gap-1"
+            style={actionStyle}
             title="Start container"
           >
-            <Play size={16} weight="duotone" className="group-hover/btn:scale-110 transition-transform" />
-            <span>START</span>
+            <Play size={16} weight="duotone" />
+            <span>Start</span>
           </button>
         ) : (
           <>
@@ -423,18 +385,10 @@ export default function ContainerCard({
                 onAction(container.id, 'restart');
               }}
               onPointerDown={stopDnd}
-              className="flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105 group/btn flex items-center justify-center"
-              style={{
-                background: 'transparent',
-                border: `2px solid ${shadowColor}`,
-                color: textColor,
-                boxShadow: `
-                  0 0 3px rgba(${rgbVar}, 0.85),
-                  0 0 6px rgba(${rgbVar}, 0.25),
-                  inset 0 0 3px rgba(${rgbVar}, 0.19)
-                `
-              }}
+              className="flex-1 h-9 px-3 rounded-lg text-sm font-bold transition-all group/btn flex items-center justify-center"
+              style={actionStyle}
               title="Restart container"
+              aria-label="Restart container"
             >
               <ArrowsClockwise size={16} weight="duotone" className="group-hover/btn:rotate-180 transition-transform duration-500" />
             </button>
@@ -444,20 +398,12 @@ export default function ContainerCard({
                 onAction(container.id, 'stop');
               }}
               onPointerDown={stopDnd}
-              className="flex-1 px-3 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105 group/btn flex items-center justify-center"
-              style={{
-                background: 'transparent',
-                border: `2px solid ${shadowColor}`,
-                color: textColor,
-                boxShadow: `
-                  0 0 3px rgba(${rgbVar}, 0.85),
-                  0 0 6px rgba(${rgbVar}, 0.25),
-                  inset 0 0 3px rgba(${rgbVar}, 0.19)
-                `
-              }}
+              className="flex-1 h-9 px-3 rounded-lg text-sm font-bold transition-all group/btn flex items-center justify-center"
+              style={actionStyle}
               title="Stop container"
+              aria-label="Stop container"
             >
-              <Stop size={16} weight="duotone" className="group-hover/btn:scale-110 transition-transform" />
+              <Stop size={16} weight="duotone" />
             </button>
           </>
         )}
@@ -467,20 +413,12 @@ export default function ContainerCard({
             onViewDetails?.(container.id, container.name);
           }}
           onPointerDown={stopDnd}
-          className="px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105 group/btn flex items-center justify-center"
-          style={{
-            background: 'transparent',
-            border: `2px solid ${shadowColor}`,
-            color: textColor,
-            boxShadow: `
-              0 0 3px rgba(${rgbVar}, 0.85),
-              0 0 6px rgba(${rgbVar}, 0.25),
-              inset 0 0 3px rgba(${rgbVar}, 0.19)
-            `
-          }}
+          className="flex-1 h-9 px-3 rounded-lg text-sm font-bold transition-all group/btn flex items-center justify-center"
+          style={actionStyle}
           title="View container details"
+          aria-label="View container details"
         >
-          <Eye size={16} weight="duotone" className="group-hover/btn:scale-110 transition-transform" />
+          <Eye size={16} weight="duotone" />
         </button>
       </div>
     </div>

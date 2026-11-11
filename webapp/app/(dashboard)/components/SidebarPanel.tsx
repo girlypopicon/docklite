@@ -8,10 +8,18 @@ import { ChartLine, Scroll, Database, MagnifyingGlass, CaretLeft, CaretRight, Pl
 import { useLayoutPrefs, type SidebarContent } from '@/lib/layout-prefs';
 import { useSettingsModal } from '@/lib/settings-modal';
 import DatabaseContextPanel from './DatabaseContextPanel';
+import { useIsNarrow } from '@/lib/hooks/useIsNarrow';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 
 // Fixed sidebars hug the bottom of the top bar while it's on screen and the
-// top of the screen once it has scrolled away (see useNavOffset).
-const BELOW_NAV = { top: 'var(--nav-offset, 5rem)', height: 'calc(100vh - var(--nav-offset, 5rem))' } as const;
+// top of the screen once it has scrolled away (see useNavOffset). They end at
+// the bottom of what's visible: 100vh would reach under a phone browser's
+// toolbar and hide the end of long lists.
+const BELOW_NAV = { top: 'var(--nav-offset, 5rem)', bottom: 0 } as const;
+
+// On a phone a fifth of the screen is far too narrow: the panel takes the
+// screen, leaving a strip to tap (and the close button) on the right.
+const NARROW_WIDTH = 'calc(100vw - 3rem)';
 
 interface SidebarPanelProps {
   side: 'left' | 'right';
@@ -38,9 +46,11 @@ export default function SidebarPanel({
   const selectedContent: SidebarContent = isFileBrowser ? 'none' : prefs.rightSidebar.content;
   const showTableDetails = isDbEditMode && side === 'right';
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const narrow = useIsNarrow();
 
   // Resize functionality
   const [width, setWidth] = useState<number>(20); // percentage (vw)
+  const panelWidth = narrow ? NARROW_WIDTH : `${width}vw`;
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartX = useRef<number>(0);
   const resizeStartWidth = useRef<number>(0);
@@ -123,6 +133,10 @@ export default function SidebarPanel({
     };
   }, [isDbEditMode, side, pushesContent, width]);
 
+  // A full-screen panel on a phone: the page behind shouldn't scroll along.
+  const coversPage = narrow && isOpen && enabled && !isDbEditMode;
+  useBodyScrollLock(coversPage);
+
   if (!enabled && !(isDbEditMode && side === 'left')) return null;
 
   if (isDbEditMode && side === 'left') {
@@ -130,14 +144,14 @@ export default function SidebarPanel({
       <div className="relative">
         <div
           className="docklite-sidebar-panel fixed left-0 bg-gradient-to-b from-purple-900/30 to-cyan-900/30 backdrop-blur-md border-r border-purple-500/20 flex flex-col z-40"
-          style={{ ...BELOW_NAV, width: `${width}vw` }}
+          style={{ ...BELOW_NAV, width: panelWidth }}
         >
-          <div className="flex-1 overflow-auto p-4 docklite-scroll">
+          <div className="flex-1 min-h-0 overflow-auto p-4 docklite-scroll">
             <SchemaBrowser />
           </div>
         </div>
         {/* Resize handle */}
-        <div
+        {!narrow && <div
           className="fixed w-1 cursor-col-resize hover:w-2 transition-all z-50 group"
           style={{
             ...BELOW_NAV,
@@ -155,7 +169,7 @@ export default function SidebarPanel({
               boxShadow: '0 0 8px rgba(var(--neon-pink-rgb), 0.6)',
             }}
           />
-        </div>
+        </div>}
       </div>
     );
   }
@@ -196,9 +210,19 @@ export default function SidebarPanel({
 
   return (
     <div className="relative">
+      {coversPage && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          className="fixed inset-0 z-[41] cursor-default"
+          style={{ background: 'rgba(0, 0, 0, 0.45)' }}
+          onClick={() => setIsOpen(false)}
+        />
+      )}
       <div
-        className={`docklite-sidebar-panel fixed ${side === 'left' ? 'left-0' : 'right-0'} bg-gradient-to-b from-purple-900/30 to-cyan-900/30 backdrop-blur-md border-${side === 'left' ? 'r' : 'l'} border-purple-500/20 flex flex-col z-40`}
-        style={{ ...BELOW_NAV, width: `${width}vw` }}
+        className={`docklite-sidebar-panel fixed ${side === 'left' ? 'left-0' : 'right-0'} bg-gradient-to-b from-purple-900/30 to-cyan-900/30 backdrop-blur-md border-${side === 'left' ? 'r' : 'l'} border-purple-500/20 flex flex-col ${coversPage ? 'z-[42]' : 'z-40'}`}
+        // Covering the page on a phone, it needs a solid base under its tint, or the page shows through.
+        style={{ ...BELOW_NAV, width: panelWidth, backgroundColor: coversPage ? 'var(--bg-darker)' : undefined }}
       >
         {/* Header: what's showing, and a way to change it in Settings */}
         {!isFileBrowser && (
@@ -220,7 +244,8 @@ export default function SidebarPanel({
         )}
 
         {/* Content Area - simple padding, no notch */}
-        <div className={`flex-1 overflow-auto docklite-scroll ${isFileBrowser ? 'p-0' : 'p-4'}`}>
+        {/* The file browser scrolls its own list (keeping its header in view); the rest scroll here. */}
+        <div className={`flex-1 min-h-0 ${isFileBrowser ? 'flex flex-col' : 'overflow-auto docklite-scroll p-4'}`}>
           {showTableDetails && <DatabaseContextPanel />}
           {isFileBrowser && (isDbEditMode ? <SchemaBrowser /> : <FileManager embedded userSession={userSession} />)}
           {!isFileBrowser && !showTableDetails && selectedContent === 'stats' && <StatsContent />}
@@ -231,7 +256,7 @@ export default function SidebarPanel({
       </div>
 
       {/* Resize handle with neon line on inner edge */}
-      <div
+      {!narrow && <div
         className="docklite-sidebar-edge fixed w-1 cursor-col-resize hover:w-2 transition-all z-50 group"
         style={{
           ...BELOW_NAV,
@@ -250,13 +275,13 @@ export default function SidebarPanel({
             boxShadow: '0 0 8px rgba(var(--neon-pink-rgb), 0.6)',
           }}
         />
-      </div>
+      </div>}
 
       {/* Close button - on inner edge (toward main content), centered vertically */}
       <button
         onClick={() => setIsOpen(false)}
         className={`docklite-sidebar-close fixed top-1/2 -translate-y-1/2 ${side === 'left' ? '-translate-x-1/2' : 'translate-x-1/2'} z-50`}
-        style={{ [side === 'left' ? 'left' : 'right']: `${width}vw` }}
+        style={{ [side === 'left' ? 'left' : 'right']: panelWidth }}
         aria-label="Close sidebar"
         title="Close sidebar"
       >
