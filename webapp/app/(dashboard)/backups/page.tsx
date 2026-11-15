@@ -16,6 +16,7 @@ import {
   Sparkle,
 } from '@phosphor-icons/react';
 import AddBackupJobModal from '../components/AddBackupJobModal';
+import CloseButton from '../components/CloseButton';
 import BackupPicker, { BackupSelection, selectionIsEmpty } from '../components/BackupPicker';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import { useToast } from '@/lib/hooks/useToast';
@@ -66,7 +67,9 @@ type BackupDestination = {
 };
 
 export default function BackupsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('backups');
+  // Most people set one schedule and leave it, so that is the first screen.
+  const [activeTab, setActiveTab] = useState<Tab>('schedules');
+  const [showRunNow, setShowRunNow] = useState(false);
   const [restoreFocus, setRestoreFocus] = useState<string | undefined>(undefined);
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [jobs, setJobs] = useState<BackupJob[]>([]);
@@ -75,7 +78,7 @@ export default function BackupsPage() {
 
   const [exportSites, setExportSites] = useState<Array<{ id: number; label: string }>>([]);
   const [exportDatabases, setExportDatabases] = useState<Array<{ id: number; label: string }>>([]);
-  const [exportSelection, setExportSelection] = useState<BackupSelection>({});
+  const [exportSelection, setExportSelection] = useState<BackupSelection>({ all_sites: true, all_databases: true });
   const [progress, setProgress] = useState<BackupProgress | null>(null);
   const [exportDelivery, setExportDelivery] = useState<'download' | 'local'>('download');
   const [exportRetentionDays, setExportRetentionDays] = useState<string>('7');
@@ -313,6 +316,7 @@ export default function BackupsPage() {
       } else {
         toast.success(`Backup complete${leftOut}`);
       }
+      setShowRunNow(false);
       loadBackups();
     } catch (error: any) {
       toast.error(error.message || 'Backup failed');
@@ -418,17 +422,21 @@ export default function BackupsPage() {
             Backups
           </h1>
           <p className="text-sm text-ink-muted mt-1">
-            Run instant backups, schedule regular protection, and manage restores.
+            Back up on a schedule, run one now, and restore.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <button onClick={() => setShowRunNow(true)} className="cyber-button flex items-center gap-2">
+            <Play size={18} weight="duotone" />
+            Run backup now
+          </button>
           {activeTab === 'backups' && (
             <button onClick={loadBackups} className="cyber-button-sm flex items-center gap-2">
               <ArrowsClockwise size={16} weight="duotone" />
               Refresh
             </button>
           )}
-          {activeTab === 'schedules' && (
+          {activeTab === 'schedules' && jobs.length > 0 && (
             <button
               onClick={() => {
                 setEditingSchedule(null);
@@ -438,38 +446,38 @@ export default function BackupsPage() {
               className="cyber-button flex items-center gap-2"
             >
               <ClockCounterClockwise size={18} weight="duotone" />
-              Create schedule
+              Add a schedule
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex gap-2 border-b border-neon-purple/30">
-        <button
-          onClick={() => setActiveTab('backups')}
-          className={`px-4 py-2 font-bold transition-colors ${
-            activeTab === 'backups'
-              ? 'border-b-2 border-neon-pink text-accent-pink'
-              : 'text-ink-muted hover:text-accent-cyan'
-          }`}
-        >
-          <HardDrives size={20} weight="duotone" className="inline mr-2" />
-          Backups
-        </button>
+      <div className="flex gap-1 sm:gap-2 overflow-x-auto border-b border-neon-purple/30">
         <button
           onClick={() => setActiveTab('schedules')}
-          className={`px-4 py-2 font-bold transition-colors ${
+          className={`px-3 sm:px-4 py-2 font-bold whitespace-nowrap transition-colors ${
             activeTab === 'schedules'
               ? 'border-b-2 border-neon-pink text-accent-pink'
               : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
           <ClockCounterClockwise size={20} weight="duotone" className="inline mr-2" />
-          Schedules
+          Schedule
+        </button>
+        <button
+          onClick={() => setActiveTab('backups')}
+          className={`px-3 sm:px-4 py-2 font-bold whitespace-nowrap transition-colors ${
+            activeTab === 'backups'
+              ? 'border-b-2 border-neon-pink text-accent-pink'
+              : 'text-ink-muted hover:text-accent-cyan'
+          }`}
+        >
+          <HardDrives size={20} weight="duotone" className="inline mr-2" />
+          Restore points
         </button>
         <button
           onClick={() => setActiveTab('restore')}
-          className={`px-4 py-2 font-bold transition-colors ${
+          className={`px-3 sm:px-4 py-2 font-bold whitespace-nowrap transition-colors ${
             activeTab === 'restore'
               ? 'border-b-2 border-neon-pink text-accent-pink'
               : 'text-ink-muted hover:text-accent-cyan'
@@ -480,7 +488,7 @@ export default function BackupsPage() {
         </button>
       </div>
 
-      <div className="cyber-card p-6">
+      <div className="cyber-card p-2 sm:p-6">
         {loading ? (
           <div className="text-center py-12 text-ink-muted">Loading...</div>
         ) : (
@@ -523,7 +531,11 @@ export default function BackupsPage() {
               />
             )}
 
-            {activeTab === 'schedules' && (
+            {activeTab === 'schedules' && jobs.length === 0 && (
+              <AddBackupJobModal inline destinations={destinations} onClose={() => {}} onSuccess={() => loadSchedules()} />
+            )}
+
+            {activeTab === 'schedules' && jobs.length > 0 && (
               <SchedulesTab
                 jobs={jobs}
                 destinations={destinations}
@@ -542,6 +554,23 @@ export default function BackupsPage() {
           </>
         )}
       </div>
+
+      {showRunNow && (
+        <RunBackupDialog
+          exportSelection={exportSelection}
+          progress={progress}
+          exportDelivery={exportDelivery}
+          exportRetentionDays={exportRetentionDays}
+          exportNotes={exportNotes}
+          exportLoading={exportLoading}
+          onSelectionChange={setExportSelection}
+          onDeliveryChange={(value: 'download' | 'local') => setExportDelivery(value)}
+          onRetentionDaysChange={setExportRetentionDays}
+          onNotesChange={setExportNotes}
+          onExport={handleExport}
+          onClose={() => !exportLoading && setShowRunNow(false)}
+        />
+      )}
 
       {showScheduleModal && (
         <AddBackupJobModal
@@ -616,79 +645,13 @@ function BackupsTab({
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 card-vapor p-6 border border-neon-purple/40">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-accent-cyan">Back up now</h2>
-              <p className="text-sm text-ink-muted mt-1">
-                Tick what you want. It all goes into one .litpkg file, kept on the server or downloaded.
-              </p>
-            </div>
-            <Sparkle size={28} weight="duotone" color="var(--status-success)" />
-          </div>
-
-          <div className="mt-6">
-            <BackupPicker value={exportSelection} onChange={onSelectionChange} disabled={exportLoading} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <div>
-              <label className="block text-sm text-ink-muted mb-2">Delivery</label>
-              <select
-                value={exportDelivery}
-                onChange={(e) => onDeliveryChange(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
-              >
-                <option value="download">Download</option>
-                <option value="local">Keep on this server</option>
-              </select>
-            </div>
-            {exportDelivery === 'local' && (
-              <div>
-                <label className="block text-sm text-ink-muted mb-2">Retention days</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={exportRetentionDays}
-                  onChange={(e) => onRetentionDaysChange(e.target.value)}
-                  className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
-                />
-              </div>
-            )}
-            <div className="md:col-span-2">
-              <label className="block text-sm text-ink-muted mb-2">Notes (optional)</label>
-              <input
-                type="text"
-                value={exportNotes}
-                onChange={(e) => onNotesChange(e.target.value)}
-                placeholder="Why this backup was created"
-                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={onExport}
-            disabled={exportLoading}
-            className="cyber-button mt-6 flex items-center gap-2"
-          >
-            <Play size={18} weight="duotone" />
-            {exportLoading ? 'Backing up...' : 'Back up now'}
-          </button>
-
-          {progress && exportLoading && <ProgressBar progress={progress} />}
-        </div>
-
-        <div className="card-vapor p-6 border border-neon-purple/30">
-          <h3 className="text-lg font-bold text-accent-pink mb-4">Filters</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs text-ink-muted mb-2">App</label>
-              <select
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <label className="block">
+          <span className="block text-xs text-ink-muted mb-1">App</span>
+          <select
                 value={filterApp}
                 onChange={(e) => onFilterApp(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-2 py-1.5 text-sm bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="all">All apps</option>
                 {appOptions.map((option) => (
@@ -697,50 +660,51 @@ function BackupsTab({
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-xs text-ink-muted mb-2">Type</label>
-              <select
+        </label>
+        <label className="block">
+          <span className="block text-xs text-ink-muted mb-1">Type</span>
+          <select
                 value={filterType}
                 onChange={(e) => onFilterType(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-2 py-1.5 text-sm bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="all">All types</option>
                 <option value="package">Package</option>
                 <option value="files">Files (older backups)</option>
                 <option value="db">Database (older backups)</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-xs text-ink-muted mb-2">Status</label>
-              <select
+        </label>
+        <label className="block">
+          <span className="block text-xs text-ink-muted mb-1">Status</span>
+          <select
                 value={filterStatus}
                 onChange={(e) => onFilterStatus(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-2 py-1.5 text-sm bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="all">All statuses</option>
                 <option value="success">Success</option>
                 <option value="failed">Failed</option>
                 <option value="in_progress">In progress</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-xs text-ink-muted mb-2">Date range</label>
-              <input
+        </label>
+        <label className="block">
+          <span className="block text-xs text-ink-muted mb-1">From</span>
+          <input
                 type="date"
                 value={filterStart}
                 onChange={(e) => onFilterStart(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100 mb-2"
+                className="w-full px-2 py-1.5 text-sm bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               />
-              <input
+        </label>
+        <label className="block">
+          <span className="block text-xs text-ink-muted mb-1">To</span>
+          <input
                 type="date"
                 value={filterEnd}
                 onChange={(e) => onFilterEnd(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
+                className="w-full px-2 py-1.5 text-sm bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               />
-            </div>
-          </div>
-        </div>
+        </label>
       </div>
 
       <div>
@@ -889,8 +853,8 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
                   </button>
                   <button
                     onClick={() => onDelete(job)}
-                    className="cyber-button-sm bg-red-500/20 hover:bg-red-500/30 border border-red-500/30"
-                    style={{ color: 'var(--status-error)' }}
+                    className="px-3 py-1.5 rounded-lg text-sm font-bold inline-flex items-center gap-1"
+                    style={{ color: 'var(--status-error)', background: 'transparent', border: '1px solid var(--status-error)' }}
                   >
                     <Trash size={14} weight="duotone" />
                     Delete
@@ -964,4 +928,96 @@ function statusBadge(status: string) {
     default:
       return 'bg-gray-500/20 text-ink-secondary';
   }
+}
+
+function RunBackupDialog({
+  exportSelection,
+  progress,
+  exportDelivery,
+  exportRetentionDays,
+  exportNotes,
+  exportLoading,
+  onSelectionChange,
+  onDeliveryChange,
+  onRetentionDaysChange,
+  onNotesChange,
+  onExport,
+  onClose,
+}: any) {
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div
+        className="card-vapor max-w-2xl w-full p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto"
+        style={{
+          background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)',
+          border: '2px solid var(--modal-border)',
+          boxShadow: '0 0 30px var(--modal-shadow)',
+        }}
+      >
+        <CloseButton onClick={onClose} className="absolute top-4 right-4" />
+        <div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-accent-cyan">Run a backup now</h2>
+              <p className="text-sm text-ink-muted mt-1">
+                Everything, all sites, all databases, or pick. It all goes into one .litpkg file, kept on the server or downloaded.
+              </p>
+            </div>
+            <Sparkle size={28} weight="duotone" color="var(--status-success)" />
+          </div>
+
+          <div className="mt-6">
+            <BackupPicker value={exportSelection} onChange={onSelectionChange} disabled={exportLoading} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div>
+              <label className="block text-sm text-ink-muted mb-2">Delivery</label>
+              <select
+                value={exportDelivery}
+                onChange={(e) => onDeliveryChange(e.target.value)}
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
+              >
+                <option value="download">Download</option>
+                <option value="local">Keep on this server</option>
+              </select>
+            </div>
+            {exportDelivery === 'local' && (
+              <div>
+                <label className="block text-sm text-ink-muted mb-2">Retention days</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={exportRetentionDays}
+                  onChange={(e) => onRetentionDaysChange(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
+                />
+              </div>
+            )}
+            <div className="md:col-span-2">
+              <label className="block text-sm text-ink-muted mb-2">Notes (optional)</label>
+              <input
+                type="text"
+                value={exportNotes}
+                onChange={(e) => onNotesChange(e.target.value)}
+                placeholder="Why this backup was created"
+                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={onExport}
+            disabled={exportLoading}
+            className="cyber-button mt-6 flex items-center gap-2"
+          >
+            <Play size={18} weight="duotone" />
+            {exportLoading ? 'Backing up...' : 'Back up now'}
+          </button>
+
+          {progress && exportLoading && <ProgressBar progress={progress} />}
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -11,6 +11,8 @@ interface AddBackupJobModalProps {
   onSuccess: () => void;
   initialJob?: any;
   mode?: 'create' | 'edit';
+  // Shown in the page itself (the Backups page's first screen when there is no schedule yet) instead of as a dialog.
+  inline?: boolean;
 }
 
 const WEEKDAYS = [
@@ -60,7 +62,7 @@ function jobDestination(job: any): number | undefined {
   return job?.destination_id ?? job?.destination;
 }
 
-export default function AddBackupJobModal({ destinations, onClose, onSuccess, initialJob, mode = 'create' }: AddBackupJobModalProps) {
+export default function AddBackupJobModal({ destinations, onClose, onSuccess, initialJob, mode = 'create', inline = false }: AddBackupJobModalProps) {
   const [destinationId, setDestinationId] = useState(jobDestination(initialJob) || destinations[0]?.id || 0);
   // Schedules made before packages have no selection of their own; the agent works one out from their old target.
   const [selection, setSelection] = useState<BackupSelection>(initialJob?.selection_data || { all_sites: true, all_databases: true });
@@ -134,25 +136,18 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div
-        className="card-vapor max-w-2xl w-full p-6 relative max-h-[90vh] overflow-y-auto"
-        style={{
-          background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)',
-          border: '2px solid var(--modal-border)',
-          boxShadow: '0 0 30px var(--modal-shadow)',
-        }}
-      >
-        <CloseButton onClick={onClose} className="absolute top-4 right-4" />
-
+  const title = inline ? 'Back up automatically' : mode === 'edit' ? 'Edit Schedule' : 'Create Schedule';
+  const body = (
+      <>
         <div className="mb-6">
           <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
             <ClockCounterClockwise size={32} weight="duotone" color="var(--status-success)" />
-            {mode === 'edit' ? 'Edit Schedule' : 'Create Schedule'}
+            {title}
           </h2>
           <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
-            Schedule automated backups for your sites and databases
+            {inline
+              ? 'Pick what to protect and when. Everything is ticked to start with; most servers only ever need this one schedule.'
+              : 'Schedule automated backups for your sites and databases'}
           </p>
         </div>
 
@@ -283,7 +278,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button
+            {!inline && <button
               type="button"
               onClick={onClose}
               disabled={loading}
@@ -295,7 +290,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
               }}
             >
               Cancel
-            </button>
+            </button>}
             <button
               type="submit"
               disabled={loading || destinations.length === 0}
@@ -306,10 +301,27 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
                 boxShadow: '0 0 20px rgba(var(--status-success-rgb), 0.4)',
               }}
             >
-              {loading ? (mode === 'edit' ? 'Saving...' : 'Creating...') : (mode === 'edit' ? 'Save Schedule' : 'Create Schedule')}
+              {loading ? (mode === 'edit' ? 'Saving...' : 'Creating...') : mode === 'edit' ? 'Save Schedule' : inline ? 'Start backing up' : 'Create Schedule'}
             </button>
           </div>
         </form>
+      </>
+  );
+
+  if (inline) return <div className="card-vapor p-4 sm:p-6 border border-neon-purple/40">{body}</div>;
+
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div
+        className="card-vapor max-w-2xl w-full p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto"
+        style={{
+          background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)',
+          border: '2px solid var(--modal-border)',
+          boxShadow: '0 0 30px var(--modal-shadow)',
+        }}
+      >
+        <CloseButton onClick={onClose} className="absolute top-4 right-4" />
+        {body}
       </div>
     </div>
   );

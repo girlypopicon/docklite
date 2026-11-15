@@ -24,6 +24,25 @@ const toggle = (list: number[] | undefined, id: number, on: boolean) => {
   return on ? [...rest, id] : rest;
 };
 
+type QuickChoice = 'everything' | 'sites' | 'databases' | 'choose';
+
+const QUICK: Array<{ id: QuickChoice; label: string }> = [
+  { id: 'everything', label: 'Everything' },
+  { id: 'sites', label: 'All sites' },
+  { id: 'databases', label: 'All databases' },
+  { id: 'choose', label: 'Choose…' },
+];
+
+// Which quick choice a selection is, if it is one of the three simple ones.
+function quickChoiceOf(sel: BackupSelection): QuickChoice {
+  const picked = !!(sel.sites?.length || sel.site_databases?.length || sel.databases?.length);
+  if (picked) return 'choose';
+  if (sel.all_sites && sel.all_databases) return 'everything';
+  if (sel.all_sites) return 'sites';
+  if (sel.all_databases) return 'databases';
+  return 'choose';
+}
+
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 interface BackupPickerProps {
@@ -42,6 +61,8 @@ export default function BackupPicker({ value, onChange, disabled, forSchedule }:
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Stays on the list once someone asks for it, even while what they've ticked happens to equal a quick choice.
+  const [choosing, setChoosing] = useState(() => quickChoiceOf(value) === 'choose' && !selectionIsEmpty(value));
 
   const load = useCallback(async () => {
     try {
@@ -106,44 +127,49 @@ export default function BackupPicker({ value, onChange, disabled, forSchedule }:
   if (error) return <div className="text-sm py-4" style={{ color: 'var(--status-error)' }}>{error}</div>;
 
   const box = 'w-4 h-4 cursor-pointer disabled:cursor-not-allowed';
-  const row = 'grid grid-cols-[1fr_4.5rem_5.5rem] items-center gap-2 px-3 py-2';
+  // Narrow checkbox columns on phones so the domain keeps most of the row
+  const row = 'grid grid-cols-[1fr_2.5rem_3rem] sm:grid-cols-[1fr_4.5rem_5.5rem] items-center gap-2 px-2 sm:px-3 py-2';
+
+  const quick = choosing ? 'choose' : quickChoiceOf(value);
+  const pickQuick = (id: QuickChoice) => {
+    setChoosing(id === 'choose');
+    if (id === 'everything') onChange({ all_sites: true, all_databases: true });
+    if (id === 'sites') onChange({ all_sites: true });
+    if (id === 'databases') onChange({ all_databases: true });
+    // Choosing starts from nothing, so every box can be ticked or left alone.
+    if (id === 'choose' && quickChoiceOf(value) !== 'choose') onChange({});
+  };
 
   return (
     <div className="space-y-3">
+      {isAdmin && (
+        <div role="radiogroup" aria-label="What to back up" className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {QUICK.map((q) => (
+            <button
+              key={q.id}
+              type="button"
+              role="radio"
+              aria-checked={quick === q.id}
+              disabled={disabled}
+              onClick={() => pickQuick(q.id)}
+              className={`px-3 py-2 rounded-lg text-sm font-bold border transition-colors ${
+                quick === q.id ? 'border-neon-cyan bg-neon-cyan/15 text-accent-cyan' : 'border-neon-purple/30 text-ink-muted hover:text-accent-cyan'
+              }`}
+            >
+              {q.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(!isAdmin || quick === 'choose') && (
       <div className="rounded-lg border border-neon-purple/30 overflow-hidden">
         <div className={`${row} text-xs uppercase text-ink-muted border-b border-neon-purple/20 bg-surface-muted`}>
           <span>{isAdmin ? 'Site' : 'Database'}</span>
           <span className="text-center">{isAdmin ? 'Site' : ''}</span>
-          <span className="text-center">{isAdmin ? 'Databases' : 'Back up'}</span>
+          <span className="text-center">{isAdmin ? <><span className="sm:hidden">DBs</span><span className="hidden sm:inline">Databases</span></> : 'Back up'}</span>
         </div>
 
-        {isAdmin && (
-          <div className={`${row} border-b border-neon-purple/20 font-bold`}>
-            <span className="text-accent-cyan">Everything</span>
-            <span className="text-center">
-              <input
-                type="checkbox"
-                className={box}
-                checked={allSites}
-                disabled={disabled || sites.length === 0}
-                onChange={(e) => onChange({ ...value, all_sites: e.target.checked, sites: [] })}
-                aria-label="All sites"
-                title={forSchedule ? 'Every site, including sites added later' : 'Every site'}
-              />
-            </span>
-            <span className="text-center">
-              <input
-                type="checkbox"
-                className={box}
-                checked={allDatabases}
-                disabled={disabled || databases.length === 0}
-                onChange={(e) => onChange({ ...value, all_databases: e.target.checked, site_databases: [], databases: [] })}
-                aria-label="All databases"
-                title={forSchedule ? 'Every database, including databases added later' : 'Every database'}
-              />
-            </span>
-          </div>
-        )}
 
         <div className="max-h-[28rem] overflow-y-auto">
           {isAdmin && sites.length === 0 && <div className="px-3 py-3 text-sm text-ink-muted">No sites yet.</div>}
@@ -232,8 +258,9 @@ export default function BackupPicker({ value, onChange, disabled, forSchedule }:
           )}
         </div>
       </div>
+      )}
 
-      {isAdmin && sites.some((s) => s.databases.length > 0) && (
+      {isAdmin && quick === 'choose' && sites.some((s) => s.databases.length > 0) && (
         <UnlinkHint sites={sites} onUnlink={(id) => linkDatabase(id, 0)} disabled={disabled} />
       )}
 

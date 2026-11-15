@@ -80,21 +80,51 @@ deployed together, so it is the established term; and "what's your stack? nginx 
 The Containers page becomes one flat **desktop** of cards, like a phone's home screen.
 - **Cards are playing-card shaped.** A box card is portrait, a little taller than the 1.4.2 card and narrower, at a
   playing card's ratio (about 5:7). A database card is the same size turned sideways, or square and shorter (try both).
+- **The loading screen matches.** The placeholder "ghost" cards shown while the page loads (`PageSkeletons.tsx`) use the
+  same size and layout as the real box, database and folder cards, so nothing jumps when the data arrives.
 - **Folders look like boxes.** A folder is a card the same size as a box card; instead of a box's details it lists the
   boxes inside it. Click it to open a modal with those boxes. No nested sections, no full-width folder rows, and no
   "Default" folder: anything not in a folder sits on the desktop itself.
 - **Make a folder the Android way:** drag one box onto another and hold for a second or two; the two become a folder.
   Dropping on a folder card adds to it; dragging out of the modal takes a box back to the desktop. Review the current
   drag and drop (`@dnd-kit`, `FolderSection.tsx`) before building this: it was written for sections, not a grid of cards.
-- **Click a box to open its details.** No separate eye button. The action buttons and the `⋯` menu get slimmer: the
-  1.4.2 buttons are too chunky for a card this size.
+- **Click a box to open its details.** The `⋯` menu is the only button on a card. It holds Start / Restart / Stop, View
+  details, and two submenus (`›`): **Colour**, 10 to 12 shades for that card, and **Icon**, 10 to 15 icons drawn huge and
+  muted (grey or the theme's quiet colour) in the card's background. The default icon is the old 1.4.1 box (`Package`).
+  Folders get the same menu, colour and icon. Saved per user, like the appearance settings.
+- **Names stay on one line.** A long name shrinks its font a little; an absurdly long one is cut with `…` and the full
+  name shows on hover. Never two lines.
+- **Say "box", not "container"**, everywhere a person reads it (page title, buttons, menus, messages).
 - **SSL on the card and in the details.** A small padlock on each site's card (valid, expiring soon, expired, none),
   checked in the background. The details modal gets an SSL tab to manage that box's certificate (issue, renew, remove,
   HTTPS redirect). Most of it exists already in `SiteHttpsCard.tsx` and the `/api/ssl` endpoints.
 - **One "New box" dialog** for everything: a website (static, PHP, Node, with its domain), a database (Postgres, MariaDB,
   MongoDB, Redis, SQLite), and later other server types. The Databases tab goes away; database boxes live on the desktop
   with everything else, and the DockLite system database viewer moves to Settings.
+- **Phones: the desktop is the whole app.** On a phone people only manage boxes, so the boxes desktop is the first page;
+  the other pages and most header buttons move into one dropdown menu; the type filters and "New box" become icon-only
+  buttons; and each card shows only what a thumb needs (status, name, the `⋯` menu with Start / Restart / Stop first).
+  The 1.4.2 phone layout is still crowded; this replaces it.
 - Stacks (above) fit the same picture: a stack is a folder card with its own network and start/stop for the group.
+
+### A new logo: a candle (owner's direction, 2026-11-15)
+- A candle gives off light; its **flame is a heart**. Keeps the heart the brand already uses, and works at favicon size
+  (a heart-shaped flame on a short stick reads at 16 px where a detailed box does not). Ideas to try beside it: a box
+  (cube) whose lid opens into a heart, a heart-shaped box, sparkles around the flame for the animated version.
+- Draw it as one SVG in the brand gradient (`#FF6AD5` to `#C7A4FF`), with a one-colour version for the favicon and the
+  TUI splash. Replaces `dockliteiconL.png`, the favicon and the top-bar logo together.
+
+### Unicorn theme: readable text (owner's direction, 2026-11-15)
+- Keep the colours; fix the text. Much of it is pale on pastel and hard to read. Fix through the `--text-*` variables in
+  `globals.css` and check with the contrast audit. The audit needs updating first: since 1.4.1 the theme is saved per
+  user, and the audit only sets it in the browser, so its numbers for the light themes can't be trusted.
+
+### Site folders: `/var/www/sites` holds only users (owner's direction, 2026-11-15)
+- After a folder check, `/var/www/sites` should contain only one folder per user who has boxes, and each site folder
+  inside its owner's. A folder in the wrong place that is serving a site is moved to the right place (box switched over,
+  old folder removed); one that serves nothing is removed.
+- "Removed" means moved to `.trash`, which empties itself after 30 days (1.4.3), so a mistake can be undone for a month.
+  Deleting at once is possible but leaves no way back.
 
 ### Hosting as a business: one-click websites (owner's direction, 2026-11-15)
 The idea for making DockLite pay: DockLite as a website host where making a site is one click.

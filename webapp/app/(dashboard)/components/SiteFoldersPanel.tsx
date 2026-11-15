@@ -202,8 +202,8 @@ export default function SiteFoldersPanel() {
   const trash = report?.trash ?? [];
 
   return (
-    <div className="card-vapor p-6 rounded-xl">
-      <div className="flex items-start justify-between gap-4 mb-4">
+    <div className="card-vapor p-4 sm:p-6 rounded-xl">
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
         <div>
           <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
             <FolderOpen size={20} weight="duotone" />

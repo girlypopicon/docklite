@@ -18,9 +18,13 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
   dump under `databases/`, and a `manifest.json` saying what is inside), so it unpacks with `tar` and needs no DockLite to read.
   Site exports also download as `.litpkg` now (the file was called `.dklpkg` before); the old name and the long spelling
   `.litepkg` still restore and import.
-- **New Backups page picker**: a list of your sites with a **Site** and a **Databases** checkbox on each row, an **Everything** row,
-  and the databases that don't belong to a site. Tick what you want and press Back up now; a progress bar shows how it is going.
-  Schedules use the same picker, and "everything" on a schedule includes sites and databases added later.
+- **The Backups page starts with the schedule.** Most servers need one schedule that backs up everything, so that is the
+  first screen: with no schedule yet, the form is right there with Everything already chosen. **Run backup now** (top of the
+  page) offers Everything, All sites, All databases, or Choose… to tick sites and databases one by one. Past backups are under
+  **Restore points**.
+- **The backup picker**: a list of your sites with a **Site** and a **Databases** checkbox on each row, and the databases that
+  don't belong to a site. Schedules and Run backup now use the same picker; "Everything" on a schedule includes sites and
+  databases added later.
 - **Databases can be linked to a site** (from the picker), so "this site and its databases" knows what to include. SQLite
   databases are linked to their site automatically.
 - **Restore one site out of any package**, from the Restore tab or `docklite backups restore <file> --from <domain>`. Older
