@@ -195,7 +195,7 @@ export default function DatabaseBoxModal({ db, container, onClose, onChanged, on
                       <div style={{ color: 'var(--text-primary)' }}>{db.username || 'docklite'}</div>
                     </div>
                   )}
-                  <p className="font-sans text-xs">The password was shown when you made it. If it's lost, set a new one under Password.</p>
+                  <p className="font-sans text-xs">The password was shown when you made it. If it&apos;s lost, set a new one under Password.</p>
                 </>
               )}
               {container && onOpenContainer && (
