@@ -158,6 +158,7 @@ func (h *Handlers) ListContainers(w http.ResponseWriter, r *http.Request) {
 
 	containersWithOwners := make([]models.ContainerInfo, 0, len(containers))
 	userCache := make(map[int64]string)
+	boxStyles, _ := h.store.ListBoxStyles() // a missing table (older database) just means default cards
 
 	for _, container := range containers {
 		if container.Labels == nil || container.Labels["docklite.managed"] != "true" {
@@ -177,6 +178,9 @@ func (h *Handlers) ListContainers(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		container.OwnerUsername = ownerName
+		if st, ok := boxStyles[container.Name]; ok {
+			container.Style = &models.BoxStyle{Color: st.Color, Icon: st.Icon}
+		}
 		containersWithOwners = append(containersWithOwners, container)
 	}
 
@@ -347,6 +351,8 @@ func (h *Handlers) Container(w http.ResponseWriter, r *http.Request) {
 		h.TransferSite(w, r, id)
 	case "terminal":
 		h.ContainerTerminal(w, r, id)
+	case "style":
+		h.SetContainerStyle(w, r, id)
 	case "":
 		h.handleApp(w, r, id)
 	default:
@@ -1214,6 +1220,8 @@ var auditedContainerActions = map[string]bool{
 	"start": true, "stop": true, "restart": true, "delete": true, "assign": true,
 	"claim": true, "transfer": true, "track": true, "untrack": true, "write-manifest": true,
 }
+
+// ("style" is cosmetic and not audited.)
 
 type statusRecorder struct {
 	http.ResponseWriter

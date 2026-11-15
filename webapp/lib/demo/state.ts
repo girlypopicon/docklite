@@ -5,6 +5,7 @@ export interface DemoUser { id: number; username: string; role: 'super_admin' | 
 export interface DemoSite {
   id: number; domain: string; userId: number; template: 'static' | 'php' | 'node'; running: boolean;
   startedAt: number; stoppedAt: number | null; createdAt: number; includeWww: boolean; internalPort: number; hostPort: number; containerId: string; tracked: boolean;
+  style?: { color?: string; icon?: string }; // card colour and icon
 }
 export interface DemoColumn { name: string; type: string; nullable: boolean; key: string; default: string | null }
 export interface DemoTable { name: string; columns: DemoColumn[]; rows: Record<string, unknown>[] }
@@ -12,6 +13,7 @@ export interface DemoDb {
   id: number; containerId: string; name: string; username: string; password: string; port: number;
   running: boolean; startedAt: number; createdAt: number; tables: DemoTable[];
   type?: 'postgres' | 'mariadb' | 'mongodb' | 'redis';
+  style?: { color?: string; icon?: string };
 }
 export interface DemoBackup { id: number; jobId: number | null; targetType: 'site' | 'database'; targetId: number; path: string; sizeBytes: number; status: string; createdAt: number }
 export interface DemoJob { id: number; name: string; targetType: 'site' | 'database' | 'all-sites' | 'all-databases'; targetId: number; schedule: string; enabled: boolean; createdAt: number }

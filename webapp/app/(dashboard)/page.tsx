@@ -201,6 +201,24 @@ export default function DashboardPage() {
     }
   };
 
+  // Colour and icon a box was given; the card already shows them, this keeps them for everyone.
+  const handleStyle = async (containerId: string, style: { color: string; icon: string }) => {
+    try {
+      const res = await fetch(`/api/containers/${containerId}/style`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(style),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not save the card style');
+      }
+    } catch (err: any) {
+      toast.error(`Error: ${err.message || err}`);
+      fetchData(); // put the card back the way the server has it
+    }
+  };
+
   const getContainerType = containerKind;
 
   const matchesStatus = (container: ContainerInfo) =>
@@ -645,6 +663,7 @@ export default function DashboardPage() {
                   setMoveError('');
                 }}
                 onToggleTracking={currentUser?.isAdmin ? handleToggleTracking : undefined}
+                onStyle={handleStyle}
                 onAddSubfolder={handleAddSubfolder}
                 onDeleteFolder={handleDeleteFolder}
               />

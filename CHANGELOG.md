@@ -5,6 +5,19 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Changed
+- **Box cards are now playing cards.** Portrait (5 by 7), with a big muted icon behind them, one line for the name and a status dot
+  with the uptime and port. A name takes the biggest size that fits on one line; a very long one is cut with "…" and the full
+  name shows when you hover. Two boxes fit side by side on a phone. The loading placeholders are the same shape, so nothing jumps
+  when the page fills in.
+- **Click a box to open its details.** The buttons on the card are gone; one `⋯` menu holds everything: Start / Restart / Stop,
+  View details, Open in terminal, Colour, Icon, Copy name, Assign, Move to folder, Track and Delete.
+
+### Added
+- **Pick a colour and an icon for any box** from its `⋯` menu: 12 colours (or Auto, which colours by type as before) and 15
+  icons (the box is the default). The colour is the card's glow and the icon is drawn huge behind it. It shows at once and is kept
+  on the server, so everyone who can see the box sees the same card.
+
 ## 1.4.3 (2026-11-15)
 
 ### Added
