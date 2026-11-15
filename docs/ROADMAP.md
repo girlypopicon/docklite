@@ -72,6 +72,42 @@ deployed together, so it is the established term; and "what's your stack? nginx 
   laptop or TV box runs mpv and plays the file over HTTP from the server, whatever cable the display uses. The stack is
   the glowrom box plus the media route on the domain. Design: `glowrom-linux/DEVNOTES.md`, 2026-11-11 entry.
 
+- **Existing boxes that already talk (found on smoll, 2026-11-15):** `imoverit.me` reaches `imoverit-db` by name over the
+  shared network, with no env var saying so. Removing the network without a shim breaks it. The update must put boxes that
+  already talk into a stack together (linked in `site_databases`, or named in the site's config), or list them and stop.
+
+### The desktop: boxes, folders and one place to make things (owner's direction, 2026-11-15)
+The Containers page becomes one flat **desktop** of cards, like a phone's home screen.
+- **Cards are playing-card shaped.** A box card is portrait, a little taller than the 1.4.2 card and narrower, at a
+  playing card's ratio (about 5:7). A database card is the same size turned sideways, or square and shorter (try both).
+- **Folders look like boxes.** A folder is a card the same size as a box card; instead of a box's details it lists the
+  boxes inside it. Click it to open a modal with those boxes. No nested sections, no full-width folder rows, and no
+  "Default" folder: anything not in a folder sits on the desktop itself.
+- **Make a folder the Android way:** drag one box onto another and hold for a second or two; the two become a folder.
+  Dropping on a folder card adds to it; dragging out of the modal takes a box back to the desktop. Review the current
+  drag and drop (`@dnd-kit`, `FolderSection.tsx`) before building this: it was written for sections, not a grid of cards.
+- **Click a box to open its details.** No separate eye button. The action buttons and the `⋯` menu get slimmer: the
+  1.4.2 buttons are too chunky for a card this size.
+- **SSL on the card and in the details.** A small padlock on each site's card (valid, expiring soon, expired, none),
+  checked in the background. The details modal gets an SSL tab to manage that box's certificate (issue, renew, remove,
+  HTTPS redirect). Most of it exists already in `SiteHttpsCard.tsx` and the `/api/ssl` endpoints.
+- **One "New box" dialog** for everything: a website (static, PHP, Node, with its domain), a database (Postgres, MariaDB,
+  MongoDB, Redis, SQLite), and later other server types. The Databases tab goes away; database boxes live on the desktop
+  with everything else, and the DockLite system database viewer moves to Settings.
+- Stacks (above) fit the same picture: a stack is a folder card with its own network and start/stop for the group.
+
+### Hosting as a business: one-click websites (owner's direction, 2026-11-15)
+The idea for making DockLite pay: DockLite as a website host where making a site is one click.
+- **A WYSIWYG site editor**, so a customer builds the site without touching files. Starts from the ioi profile builder idea
+  (see *Webrings* below).
+- **Buy the domain while making the site.** Search a name, pay, and the site, DNS and certificate are set up in one go.
+  The plan is to do this through Cloudflare. Check first: the note under *Webrings* says Cloudflare's registrar API isn't
+  open for new registrations to most accounts, and lists reseller alternatives (Porkbun, Namecheap, OpenSRS, IONOS).
+- **Link an imoverit account.** A customer with a DockLite domain can have `imoverit.me` point at their own domain
+  instead of their `ioi/username` page, so it is one address for both.
+- Payments make DockLite a business (merchant account, refunds, support, terms). Needs the multi-tenant hardening under
+  *Public hosts* before strangers' sites run on the same server.
+
 ### Apache as a choice under the static and PHP templates
 - A "web server" dropdown (nginx or Apache) on the static and PHP templates, not extra templates. Swaps the image inside the
   container (`httpd:alpine`, `php:apache`); the host nginx proxies to it exactly as before.

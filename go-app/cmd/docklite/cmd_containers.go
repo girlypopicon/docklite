@@ -474,7 +474,9 @@ func init() {
 					return err
 				}
 				var resp struct {
-					Domain, Owner, TemplateType string `json:"template_type"`
+					Domain       string `json:"domain"`
+					Owner        string `json:"owner"`
+					TemplateType string `json:"template_type"`
 				}
 				_ = json.Unmarshal(data, &resp)
 				a.emitValue(json.RawMessage(data), func() {
