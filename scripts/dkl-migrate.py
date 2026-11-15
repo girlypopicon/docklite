@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-dkl-migrate  —  Retroactively generate .dkl manifests and/or .dklpkg archives
+dkl-migrate  —  Retroactively generate .dkl manifests and/or .litpkg archives
 for every DockLite-managed site container on this machine.
 
 Works on old installations that pre-date the .dkl/onboard feature, as long as
@@ -11,10 +11,10 @@ Usage
   # Write a .dkl manifest into each site directory (safe, non-destructive):
   python3 dkl-migrate.py
 
-  # Also create a .dklpkg archive (full snapshot) per site:
+  # Also create a .litpkg archive (full snapshot) per site:
   python3 dkl-migrate.py --pkg
 
-  # Write .dklpkg files to a specific output directory:
+  # Write .litpkg files to a specific output directory:
   python3 dkl-migrate.py --pkg --out /mnt/backup
 
   # Preview what would happen without writing anything:
@@ -270,9 +270,9 @@ def write_manifest(site_path: str, manifest: dict, dry_run: bool) -> None:
     print(f"    wrote {dest}")
 
 
-def write_dklpkg(site_path: str, manifest: dict, out_dir: str, dry_run: bool) -> None:
+def write_litpkg(site_path: str, manifest: dict, out_dir: str, dry_run: bool) -> None:
     safe_domain = manifest.get("domain", "unknown").replace("/", "_").replace(":", "_")
-    filename = f"{safe_domain}.dklpkg"
+    filename = f"{safe_domain}.litpkg"
     dest = os.path.join(out_dir or site_path, filename)
 
     if dry_run:
@@ -327,11 +327,11 @@ def summarize_db(insp: dict) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate .dkl manifests and .dklpkg archives for existing DockLite containers",
+        description="Generate .dkl manifests and .litpkg archives for existing DockLite containers",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--pkg",     action="store_true", help="Also generate a .dklpkg archive per site")
-    parser.add_argument("--out",     metavar="DIR",       help="Output directory for .dklpkg files (default: site directory)")
+    parser.add_argument("--pkg",     action="store_true", help="Also generate a .litpkg archive per site")
+    parser.add_argument("--out",     metavar="DIR",       help="Output directory for .litpkg files (default: site directory)")
     parser.add_argument("--dry-run", action="store_true", help="Preview only — don't write any files")
     args = parser.parse_args()
 
@@ -403,7 +403,7 @@ def main():
             write_manifest(site_path, manifest, args.dry_run)
 
         if args.pkg:
-            write_dklpkg(site_path, manifest, args.out, args.dry_run)
+            write_litpkg(site_path, manifest, args.out, args.dry_run)
 
         sites_ok += 1
         print()
@@ -422,9 +422,9 @@ def main():
             print(f"  {db['name']:<30} type={db['type']}  image={db['image']}")
 
     if not args.pkg:
-        print("\nTip: run with --pkg to also generate portable .dklpkg archives.")
+        print("\nTip: run with --pkg to also generate portable .litpkg archives.")
     elif args.out:
-        print(f"\n.dklpkg archives written to: {args.out}")
+        print(f"\n.litpkg archives written to: {args.out}")
 
 
 if __name__ == "__main__":

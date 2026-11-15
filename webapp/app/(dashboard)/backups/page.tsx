@@ -16,6 +16,7 @@ import {
   Sparkle,
 } from '@phosphor-icons/react';
 import AddBackupJobModal from '../components/AddBackupJobModal';
+import BackupPicker, { BackupSelection, selectionIsEmpty } from '../components/BackupPicker';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import { useToast } from '@/lib/hooks/useToast';
 
@@ -30,6 +31,17 @@ type BackupRecord = {
   status: string;
   created_at: string;
   error_message?: string;
+  scope?: string; // set on .litpkg backups: what the package holds, in a few words
+};
+
+type BackupProgress = {
+  status: 'running' | 'success' | 'failed';
+  phase: string;
+  percent: number;
+  warnings: string[];
+  warning_count: number;
+  error?: string;
+  download_url?: string;
 };
 
 type BackupJob = {
@@ -39,9 +51,11 @@ type BackupJob = {
   frequency: string;
   retention_days: number;
   enabled: number;
-  destination: number;
+  destination_id: number;
   last_run_at?: string;
   next_run_at?: string;
+  what?: string;
+  selection_data?: BackupSelection;
 };
 
 type BackupDestination = {
@@ -58,12 +72,11 @@ export default function BackupsPage() {
   const [jobs, setJobs] = useState<BackupJob[]>([]);
   const [destinations, setDestinations] = useState<BackupDestination[]>([]);
   const [localBackupPath, setLocalBackupPath] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
 
   const [exportSites, setExportSites] = useState<Array<{ id: number; label: string }>>([]);
   const [exportDatabases, setExportDatabases] = useState<Array<{ id: number; label: string }>>([]);
-  const [exportTargetType, setExportTargetType] = useState<'site' | 'database'>('site');
-  const [exportTargetId, setExportTargetId] = useState<number | null>(null);
+  const [exportSelection, setExportSelection] = useState<BackupSelection>({});
+  const [progress, setProgress] = useState<BackupProgress | null>(null);
   const [exportDelivery, setExportDelivery] = useState<'download' | 'local'>('download');
   const [exportRetentionDays, setExportRetentionDays] = useState<string>('7');
   const [exportNotes, setExportNotes] = useState('');
@@ -87,27 +100,14 @@ export default function BackupsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const toast = useToast();
 
-  // The loaders below must not depend on state they themselves change (the
-  // admin flag, the auto-selected target): that made them a new function every
-  // time, which re-ran the load effect and re-showed the loading screen two or
-  // three times on first visit. They read the current values from refs instead.
-  const exportTypeRef = useRef(exportTargetType);
-  exportTypeRef.current = exportTargetType;
-  const exportIdRef = useRef(exportTargetId);
-  exportIdRef.current = exportTargetId;
+  // The loaders below must not depend on state they themselves change: that made them a new function every time, which
+  // re-ran the load effect and re-showed the loading screen two or three times on first visit.
   // Tabs whose data has been shown once. Only the first load shows the
   // loading screen; later refreshes update in place.
   const loadedTabs = useRef<Record<string, boolean>>({});
 
   const loadExportData = useCallback(async () => {
     try {
-      let admin = false;
-      const authRes = await fetch('/api/auth/me');
-      if (authRes.ok) {
-        const authData = await authRes.json();
-        admin = Boolean(authData?.user?.isAdmin);
-        setIsAdmin(admin);
-      }
       const [containersRes, databasesRes] = await Promise.all([
         fetch('/api/containers/all'),
         fetch('/api/databases/stats'),
@@ -129,19 +129,9 @@ export default function BackupsPage() {
         label: `${db.name} (ID ${db.id})`,
       }));
 
+      // Only used to name backups made before packages, which recorded just a site or database id.
       setExportSites(sites);
       setExportDatabases(databases);
-
-      if (!admin && exportTypeRef.current === 'site') {
-        setExportTargetType('database');
-        setExportTargetId(databases.length > 0 ? databases[0].id : null);
-        return;
-      }
-
-      if (!exportIdRef.current) {
-        const first = (exportTypeRef.current === 'site' ? sites : databases)[0];
-        if (first) setExportTargetId(first.id);
-      }
     } catch (error) {
       console.error('Error loading export options:', error);
     }
@@ -220,11 +210,13 @@ export default function BackupsPage() {
   }, [exportDatabases, exportSites]);
 
   const getBackupAppLabel = (backup: BackupRecord) => {
+    if (backup.scope) return backup.scope;
     return appLabelMap.get(`${backup.target_type}:${backup.target_id}`) ||
       `${backup.target_type} #${backup.target_id}`;
   };
 
   const getBackupTypeLabel = (backup: BackupRecord) => {
+    if (isPackage(backup)) return 'package';
     if (backup.target_type === 'database') return 'db';
     if (backup.target_type === 'site') return 'files';
     return backup.target_type;
@@ -233,7 +225,7 @@ export default function BackupsPage() {
   const getDownloadUrl = (backup: BackupRecord) => {
     if (!backup.backup_path) return null;
     const normalized = backup.backup_path.replace(/\\/g, '/');
-    if (normalized.startsWith('sites/') || normalized.startsWith('databases/') || normalized.startsWith('downloads/')) {
+    if (['sites/', 'databases/', 'downloads/', 'packages/'].some((dir) => normalized.startsWith(dir))) {
       return `/api/backups/local/download?file=${encodeURIComponent(normalized)}`;
     }
     if (localBackupPath) {
@@ -250,10 +242,7 @@ export default function BackupsPage() {
 
   const filteredBackups = useMemo(() => {
     return backups.filter((backup) => {
-      if (filterApp !== 'all') {
-        const key = `${backup.target_type}:${backup.target_id}`;
-        if (key !== filterApp) return false;
-      }
+      if (filterApp !== 'all' && appKey(backup) !== filterApp) return false;
       if (filterType !== 'all' && getBackupTypeLabel(backup) !== filterType) return false;
       if (filterStatus !== 'all' && backup.status !== filterStatus) return false;
       if (filterStart) {
@@ -268,18 +257,27 @@ export default function BackupsPage() {
     });
   }, [backups, filterApp, filterEnd, filterStart, filterStatus, filterType]);
 
+  // Follow a running backup until it is done; the agent keeps its progress in memory.
+  const followBackup = async (backupId: number) => {
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const res = await fetch(`/api/backups/progress?id=${backupId}`, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const p: BackupProgress = await res.json();
+      setProgress(p);
+      if (p.status !== 'running') return p;
+    }
+  };
+
   const handleExport = async () => {
-    if (!exportTargetId) {
-      toast.error('Select a target to back up');
+    if (selectionIsEmpty(exportSelection)) {
+      toast.error('Tick at least one site or database');
       return;
     }
     setExportLoading(true);
+    setProgress({ status: 'running', phase: 'Starting', percent: -1, warnings: [], warning_count: 0 });
     try {
-      const payload: any = {
-        target_type: exportTargetType,
-        target_id: exportTargetId,
-        delivery: exportDelivery,
-      };
+      const payload: any = { selection: exportSelection, delivery: exportDelivery };
       if (exportDelivery === 'local') {
         const days = Number(exportRetentionDays);
         if (!Number.isNaN(days) && days > 0) {
@@ -306,15 +304,19 @@ export default function BackupsPage() {
       if (!res.ok) {
         throw new Error(data.error || 'Backup failed');
       }
-      if (data.download_url) {
-        window.location.href = data.download_url;
-        toast.success('Backup complete. Download starting');
+      const done = await followBackup(data.backup_id);
+      if (done.status === 'failed') throw new Error(done.error || 'Backup failed');
+      const leftOut = done.warning_count > 0 ? ` (${done.warning_count} warning${done.warning_count === 1 ? '' : 's'})` : '';
+      if (done.download_url) {
+        window.location.href = done.download_url;
+        toast.success(`Backup complete${leftOut}. Download starting`);
       } else {
-        toast.success('Backup complete');
+        toast.success(`Backup complete${leftOut}`);
       }
       loadBackups();
     } catch (error: any) {
       toast.error(error.message || 'Backup failed');
+      loadBackups();
     } finally {
       setExportLoading(false);
     }
@@ -352,7 +354,7 @@ export default function BackupsPage() {
 
   // A row's Restore button opens the Restore tab with that backup already picked. Database restore isn't built yet.
   const handleRestoreRow = (backup: BackupRecord) => {
-    if (backup.target_type !== 'site') {
+    if (backup.target_type !== 'site' && !isPackage(backup)) {
       toast.info('Restoring a database from here is coming in a later version. Site backups can be restored now.');
       return;
     }
@@ -385,7 +387,7 @@ export default function BackupsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to trigger schedule');
-      toast.success('Schedule triggered');
+      toast.success('Backup started. It shows up under Backups when it is done');
     } catch (error: any) {
       toast.error(error.message || 'Trigger failed');
     }
@@ -489,22 +491,13 @@ export default function BackupsPage() {
                 allBackups={backups}
                 exportSites={exportSites}
                 exportDatabases={exportDatabases}
-                exportTargetType={exportTargetType}
-                exportTargetId={exportTargetId}
+                exportSelection={exportSelection}
+                progress={progress}
                 exportDelivery={exportDelivery}
                 exportRetentionDays={exportRetentionDays}
                 exportNotes={exportNotes}
                 exportLoading={exportLoading}
-                isAdmin={isAdmin}
-                onTargetTypeChange={(value: 'site' | 'database') => {
-                  if (!isAdmin && value === 'site') {
-                    toast.error('Site backups require an admin account');
-                    return;
-                  }
-                  setExportTargetType(value);
-                  setExportTargetId(null);
-                }}
-                onTargetIdChange={(value: number) => setExportTargetId(value)}
+                onSelectionChange={setExportSelection}
                 onDeliveryChange={(value: 'download' | 'local') => setExportDelivery(value)}
                 onRetentionDaysChange={setExportRetentionDays}
                 onNotesChange={setExportNotes}
@@ -585,17 +578,13 @@ export default function BackupsPage() {
 function BackupsTab({
   backups,
   allBackups,
-  exportSites,
-  exportDatabases,
-  exportTargetType,
-  exportTargetId,
+  exportSelection,
+  progress,
   exportDelivery,
   exportRetentionDays,
   exportNotes,
   exportLoading,
-  isAdmin,
-  onTargetTypeChange,
-  onTargetIdChange,
+  onSelectionChange,
   onDeliveryChange,
   onRetentionDaysChange,
   onNotesChange,
@@ -620,7 +609,7 @@ function BackupsTab({
   const appOptions = useMemo(() => {
     const options = new Map<string, string>();
     allBackups.forEach((backup: any) => {
-      options.set(`${backup.target_type}:${backup.target_id}`, getBackupAppLabel(backup));
+      options.set(appKey(backup), getBackupAppLabel(backup));
     });
     return Array.from(options.entries()).map(([value, label]) => ({ value, label }));
   }, [allBackups, getBackupAppLabel]);
@@ -631,46 +620,19 @@ function BackupsTab({
         <div className="lg:col-span-2 card-vapor p-6 border border-neon-purple/40">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-accent-cyan">Run backup now</h2>
+              <h2 className="text-xl font-bold text-accent-cyan">Back up now</h2>
               <p className="text-sm text-ink-muted mt-1">
-                Create an instant restore point and optionally download it.
+                Tick what you want. It all goes into one .litpkg file, kept on the server or downloaded.
               </p>
             </div>
             <Sparkle size={28} weight="duotone" color="var(--status-success)" />
           </div>
 
+          <div className="mt-6">
+            <BackupPicker value={exportSelection} onChange={onSelectionChange} disabled={exportLoading} />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <div>
-              <label className="block text-sm text-ink-muted mb-2">Target type</label>
-              <select
-                value={exportTargetType}
-                onChange={(e) => onTargetTypeChange(e.target.value)}
-                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
-              >
-                <option value="site" disabled={!isAdmin}>Site</option>
-                <option value="database">Database</option>
-              </select>
-              {!isAdmin && (
-                <p className="text-xs text-ink-muted mt-1">Site backups require admin access.</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm text-ink-muted mb-2">Target</label>
-              <select
-                value={exportTargetId ?? ''}
-                onChange={(e) => onTargetIdChange(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
-              >
-                <option value="" disabled>
-                  Select a target
-                </option>
-                {(exportTargetType === 'site' ? exportSites : exportDatabases).map((target: any) => (
-                  <option key={target.id} value={target.id}>
-                    {target.label}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div>
               <label className="block text-sm text-ink-muted mb-2">Delivery</label>
               <select
@@ -679,7 +641,7 @@ function BackupsTab({
                 className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="download">Download</option>
-                <option value="local">Local</option>
+                <option value="local">Keep on this server</option>
               </select>
             </div>
             {exportDelivery === 'local' && (
@@ -712,8 +674,10 @@ function BackupsTab({
             className="cyber-button mt-6 flex items-center gap-2"
           >
             <Play size={18} weight="duotone" />
-            {exportLoading ? 'Creating backup...' : 'Run backup now'}
+            {exportLoading ? 'Backing up...' : 'Back up now'}
           </button>
+
+          {progress && exportLoading && <ProgressBar progress={progress} />}
         </div>
 
         <div className="card-vapor p-6 border border-neon-purple/30">
@@ -742,8 +706,9 @@ function BackupsTab({
                 className="w-full px-3 py-2 bg-surface-muted border border-neon-purple/30 rounded-md text-gray-100"
               >
                 <option value="all">All types</option>
-                <option value="files">Files</option>
-                <option value="db">Database</option>
+                <option value="package">Package</option>
+                <option value="files">Files (older backups)</option>
+                <option value="db">Database (older backups)</option>
               </select>
             </div>
             <div>
@@ -849,7 +814,12 @@ function BackupsTab({
                           </button>
                         </div>
                         {backup.error_message && (
-                          <div className="text-xs text-status-error mt-2">{backup.error_message}</div>
+                          <div
+                            className="text-xs mt-2"
+                            style={{ color: backup.status === 'success' ? 'var(--status-warning)' : 'var(--status-error)' }}
+                          >
+                            {backup.status === 'success' ? `Left out: ${backup.error_message}` : backup.error_message}
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -871,7 +841,7 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
         <div className="text-center py-12 text-ink-muted">No schedules configured yet</div>
       ) : (
         jobs.map((job: any) => {
-          const destination = destinationMap.get(job.destination);
+          const destination = destinationMap.get(job.destination_id);
           const enabled = job.enabled === 1;
           return (
             <div
@@ -882,7 +852,7 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
                 <div className="space-y-1">
                   <div className="text-sm text-ink-muted">Schedule #{job.id}</div>
                   <h3 className="text-lg font-bold text-accent-pink">
-                    {job.target_type.replace('-', ' ')}{job.target_id ? ` #${job.target_id}` : ''}
+                    {job.what || `${job.target_type.replace('-', ' ')}${job.target_id ? ` #${job.target_id}` : ''}`}
                   </h3>
                   <div className="text-sm text-ink-muted">
                     {job.schedule_text || job.frequency}
@@ -934,6 +904,39 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
       {destinations.length === 0 && (
         <div className="text-xs text-ink-muted">
           No destinations available. Backups will use the default local destination.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function isPackage(backup: BackupRecord) {
+  return Boolean(backup.scope) || /\.(litpkg|litepkg|dklpkg)$/.test(backup.backup_path || '');
+}
+
+// Groups backups for the App filter: packages by what they hold, older backups by their site or database.
+function appKey(backup: BackupRecord) {
+  return backup.scope ? `package:${backup.scope}` : `${backup.target_type}:${backup.target_id}`;
+}
+
+function ProgressBar({ progress }: { progress: BackupProgress }) {
+  const known = progress.percent >= 0;
+  return (
+    <div className="mt-4">
+      <div className="flex justify-between text-xs text-ink-muted mb-1">
+        <span>{progress.phase}</span>
+        {known && <span>{Math.round(progress.percent)}%</span>}
+      </div>
+      <div className="h-2 rounded-full bg-surface-muted overflow-hidden">
+        <div
+          className={`h-full rounded-full ${known ? '' : 'animate-pulse'}`}
+          style={{ width: known ? `${progress.percent}%` : '100%', background: 'var(--neon-cyan)', opacity: known ? 1 : 0.4 }}
+        />
+      </div>
+      {progress.warning_count > 0 && (
+        <div className="text-xs mt-2" style={{ color: 'var(--status-warning)' }}>
+          {progress.warnings.slice(0, 3).join(' • ')}
+          {progress.warning_count > 3 ? ` (+${progress.warning_count - 3} more)` : ''}
         </div>
       )}
     </div>

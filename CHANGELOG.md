@@ -5,6 +5,53 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **Site folders panel (Settings → System) and `docklite sites folders`**: what is really under `/var/www/sites`, compared with
+  what DockLite knows. Folders left behind by deleted sites, transfers or hand copies can be adopted as sites (owner and type
+  chosen on the spot) or moved to the trash; the trash is listed with where each entry came from and when it goes, and can be
+  emptied, one entry or all. The old "User Folder Check" button lives in the same panel.
+- **The trash empties itself.** Folders moved to `/var/www/sites/.trash` (by a transfer, a layout move, a user deletion or the
+  panel) are deleted for good 30 days later (`DOCKLITE_TRASH_KEEP_DAYS` changes that; `0` keeps them until emptied by hand).
+  Before, nothing ever emptied it, so "cleaned up" folders only moved out of sight.
+- **Backups are now one `.litpkg` file, whatever you back up**: one site, a site plus its databases, one database, several sites, all
+  sites, all databases, or everything. A `.litpkg` is a plain `.tar.gz` (site folders under `sites/<domain>/files/`, each database's
+  dump under `databases/`, and a `manifest.json` saying what is inside), so it unpacks with `tar` and needs no DockLite to read.
+  Site exports also download as `.litpkg` now (the file was called `.dklpkg` before); the old name and the long spelling
+  `.litepkg` still restore and import.
+- **New Backups page picker**: a list of your sites with a **Site** and a **Databases** checkbox on each row, an **Everything** row,
+  and the databases that don't belong to a site. Tick what you want and press Back up now; a progress bar shows how it is going.
+  Schedules use the same picker, and "everything" on a schedule includes sites and databases added later.
+- **Databases can be linked to a site** (from the picker), so "this site and its databases" knows what to include. SQLite
+  databases are linked to their site automatically.
+- **Restore one site out of any package**, from the Restore tab or `docklite backups restore <file> --from <domain>`. Older
+  `.tar.gz` backups still restore as before.
+- **From the terminal:** `docklite backups create` and `backups schedule` take `--with-databases`, `--database <name>`,
+  `--all-sites`, `--all-databases` and `--all`, and several domains at once.
+
+### Changed
+- **Moving a site to another user really moves it.** The old folder is moved to the trash even when it belongs to root (an
+  older install or a hand-made site): the root helper moves it when the agent can't. Deleting a user now moves each of their
+  sites' folders to the new owner (`/var/www/sites/<new owner>/<domain>`, container switched over, old folder trashed) instead
+  of leaving the files under the deleted user's name, and removes the deleted user's folder. `docklite sites layout --apply`
+  also trashes the old folders instead of keeping them. The moved folder is made fully writable for the new owner (owned by
+  the docklite user, group-writable, setgid folders, default ACL): before, the copy kept the old folder's modes, so files an
+  older site or its container had written as read-only for the group stayed that way and the new owner could not save them.
+- Existing schedules keep working and now make packages: an "all sites" schedule makes one package per run instead of one file
+  per site, and "keep the newest N" counts packages. `docklite backups schedule --all` now means all sites and all databases.
+- A site or database that can't be backed up no longer fails the whole backup: it is left out, and the backup says what is missing.
+
+### Fixed
+- **Transferring a site to another user no longer drops its HTTPS.** certbot writes the HTTPS block into the site's own nginx
+  file; the transfer re-pointed nginx by rewriting that file from the plain template whenever the port had not changed (which
+  it never does any more), so the site fell back to HTTP only. The file is now only ever re-pointed, never rewritten, when it
+  carries a certificate; the same guard covers every other path that writes a site's nginx file. To bring a site back that
+  already lost its HTTPS this way: Containers → the site → HTTPS → enable again (or `docklite ssl issue <domain>`); the
+  certificate is still on the server and certbot just puts it back.
+- The dashboard's "Assign to user" now says when the old folder could not be tidied away, instead of reporting plain success.
+- Two backups of the same thing made in the same second no longer overwrite each other.
+- A backup that was running when DockLite stopped is now marked failed instead of showing "in progress" forever.
+- Editing a schedule showed the wrong destination.
+
 ## 1.4.0 (2026-10-17)
 
 ### Added

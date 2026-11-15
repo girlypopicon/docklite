@@ -1,6 +1,6 @@
 package handlers
 
-// .dklpkg format — a gzipped tar archive with the following layout:
+// .litpkg format — a gzipped tar archive with the following layout:
 //
 //   manifest.dkl        ← the site manifest (JSON)
 //   files/              ← full snapshot of the site directory
@@ -24,12 +24,12 @@ import (
 )
 
 const (
-	dklpkgManifestEntry = "manifest.dkl"
-	dklpkgFilesPrefix   = "files/"
+	litpkgManifestEntry = "manifest.dkl"
+	litpkgFilesPrefix   = "files/"
 	maxImportSize       = 500 << 20 // 500 MB
 )
 
-// ExportSite streams a .dklpkg archive for a container identified by its
+// ExportSite streams a .litpkg archive for a container identified by its
 // site domain (query param ?domain=) or container ID path segment.
 func (h *Handlers) ExportSite(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -79,7 +79,7 @@ func (h *Handlers) ExportSite(w http.ResponseWriter, r *http.Request) {
 
 	sanitized := strings.ReplaceAll(site.Domain, "/", "_")
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.dklpkg"`, sanitized))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.litpkg"`, sanitized))
 
 	gw := gzip.NewWriter(w)
 	defer gw.Close()
@@ -87,7 +87,7 @@ func (h *Handlers) ExportSite(w http.ResponseWriter, r *http.Request) {
 	defer tw.Close()
 
 	// 1. Write manifest.dkl
-	if err := addBytesToTar(tw, dklpkgManifestEntry, dklData); err != nil {
+	if err := addBytesToTar(tw, litpkgManifestEntry, dklData); err != nil {
 		// Headers already sent; nothing we can do except log.
 		return
 	}
@@ -105,11 +105,11 @@ func (h *Handlers) ExportSite(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil
 		}
-		return addFileToTar(tw, path, dklpkgFilesPrefix+rel, info)
+		return addFileToTar(tw, path, litpkgFilesPrefix+rel, info)
 	})
 }
 
-// ImportSite accepts a multipart upload of a .dklpkg file, extracts it, and
+// ImportSite accepts a multipart upload of a .litpkg file, extracts it, and
 // provisions the site (files + container) on this machine.
 func (h *Handlers) ImportSite(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -135,16 +135,16 @@ func (h *Handlers) ImportSite(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	// Extract to a temp directory first so we can validate before committing.
-	tmpDir, err := os.MkdirTemp("", "dklpkg-*")
+	tmpDir, err := os.MkdirTemp("", "litpkg-*")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not create temp dir")
 		return
 	}
 	defer os.RemoveAll(tmpDir)
 
-	manifest, err := extractDKLPkg(file, tmpDir)
+	manifest, err := extractLitPkg(file, tmpDir)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid .dklpkg: %v", err))
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid .litpkg: %v", err))
 		return
 	}
 
@@ -246,7 +246,7 @@ func addFileToTar(tw *tar.Writer, srcPath, tarName string, info os.FileInfo) err
 	return err
 }
 
-func extractDKLPkg(r io.Reader, destDir string) (*dklManifest, error) {
+func extractLitPkg(r io.Reader, destDir string) (*dklManifest, error) {
 	gr, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("not a valid gzip archive: %w", err)
@@ -291,7 +291,7 @@ func extractDKLPkg(r io.Reader, destDir string) (*dklManifest, error) {
 			}
 			f.Close()
 
-			if hdr.Name == dklpkgManifestEntry {
+			if hdr.Name == litpkgManifestEntry {
 				data, err := os.ReadFile(destPath)
 				if err != nil {
 					return nil, err

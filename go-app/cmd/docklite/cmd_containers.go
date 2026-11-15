@@ -394,7 +394,7 @@ func init() {
 				return usageError("usage: docklite sites layout [--apply] [--domain example.com]")
 			}
 			if apply {
-				if err := a.confirm("copy sites into /var/www/sites/<user>/<domain> and restart each moved site's container (old folders are kept)"); err != nil {
+				if err := a.confirm("copy sites into /var/www/sites/<user>/<domain>, restart each moved site's container and move the old folders to the trash"); err != nil {
 					return err
 				}
 			}
@@ -434,5 +434,192 @@ func init() {
 			return nil
 		},
 	})
+	register(command{
+		Path: []string{"sites", "folders"}, Summary: "What is really under /var/www/sites: strays to adopt or trash, and the trash itself",
+		Usage:       "sites folders [--adopt PATH [--owner USER] [--type static|php|node]] [--trash PATH] [--purge NAME|all] [--yes]",
+		Destructive: true, AdminOnly: true,
+		Examples: []string{
+			"docklite sites folders",
+			"docklite sites folders --adopt /var/www/sites/old.example.com --owner alice",
+			"docklite sites folders --trash /var/www/sites/leftover --yes",
+			"docklite sites folders --purge all --yes",
+		},
+		Run: func(a *app, args []string) error {
+			var adopt, owner, typ, trash, purge string
+			pos, err := a.flags("sites folders", args, func(fs *flag.FlagSet) {
+				fs.StringVar(&adopt, "adopt", "", "")
+				fs.StringVar(&owner, "owner", "", "")
+				fs.StringVar(&typ, "type", "", "")
+				fs.StringVar(&trash, "trash", "", "")
+				fs.StringVar(&purge, "purge", "", "")
+			})
+			if err != nil {
+				return err
+			}
+			if len(pos) != 0 {
+				return usageError("usage: docklite sites folders [--adopt PATH] [--trash PATH] [--purge NAME|all]")
+			}
+			switch {
+			case adopt != "":
+				body := map[string]any{"path": adopt, "template_type": typ}
+				if owner != "" {
+					id, err := a.userIDByName(owner)
+					if err != nil {
+						return err
+					}
+					body["user_id"] = id
+				}
+				data, err := a.post("/api/sites/folders/adopt", body)
+				if err != nil {
+					return err
+				}
+				var resp struct {
+					Domain, Owner, TemplateType string `json:"template_type"`
+				}
+				_ = json.Unmarshal(data, &resp)
+				a.emitValue(json.RawMessage(data), func() {
+					a.say("%s is now a %s site owned by %s (files untouched; start it with: docklite sites start %s)", resp.Domain, resp.TemplateType, resp.Owner, resp.Domain)
+				})
+				return nil
+			case trash != "":
+				if err := a.confirm("move " + trash + " to the trash (/var/www/sites/.trash)"); err != nil {
+					return err
+				}
+				data, err := a.post("/api/sites/folders/trash", map[string]any{"path": trash})
+				if err != nil {
+					return err
+				}
+				var resp struct {
+					MovedTo string `json:"moved_to"`
+				}
+				_ = json.Unmarshal(data, &resp)
+				a.emitValue(json.RawMessage(data), func() { a.say("moved to %s", resp.MovedTo) })
+				return nil
+			case purge != "":
+				what := "delete " + purge + " from the trash for good"
+				body := map[string]any{"name": purge}
+				if purge == "all" {
+					what, body = "empty the trash for good", map[string]any{"all": true}
+				}
+				if err := a.confirm(what); err != nil {
+					return err
+				}
+				data, err := a.post("/api/sites/folders/trash/purge", body)
+				if err != nil {
+					return err
+				}
+				var resp struct {
+					Deleted []string `json:"deleted"`
+				}
+				_ = json.Unmarshal(data, &resp)
+				a.emitValue(json.RawMessage(data), func() { a.say("deleted %d folder(s) from the trash", len(resp.Deleted)) })
+				return nil
+			}
+			data, err := a.get("/api/sites/folders")
+			if err != nil {
+				return err
+			}
+			if a.opts.JSON {
+				a.emit(data)
+				return nil
+			}
+			var rep struct {
+				Folders []struct {
+					Path, Status, Owner, Note string
+					DetectedType              string `json:"detected_type"`
+					Files                     int
+					SizeBytes                 int64  `json:"size_bytes"`
+					MountedBy                 string `json:"mounted_by"`
+					CanRemove                 bool   `json:"can_remove"`
+				} `json:"folders"`
+				Ghosts []struct{ Domain, Path string } `json:"ghosts"`
+				Trash  []struct {
+					Name, Original string
+					AgeDays        int   `json:"age_days"`
+					Files          int   `json:"files"`
+					SizeBytes      int64 `json:"size_bytes"`
+				} `json:"trash"`
+				TrashKeepDays int `json:"trash_keep_days"`
+			}
+			if err := json.Unmarshal(data, &rep); err != nil {
+				return err
+			}
+			rows := [][]string{}
+			for _, f := range rep.Folders {
+				if f.Status == "registered" || f.Status == "user-dir" {
+					continue
+				}
+				action := "docklite sites folders --trash " + f.Path
+				if f.MountedBy != "" {
+					action = "in use by container " + f.MountedBy
+				} else if !f.CanRemove {
+					action = "deal with the folders inside it first"
+				} else if f.Status == "unregistered" {
+					action = "docklite sites folders --adopt " + f.Path + "  (or --trash)"
+				}
+				rows = append(rows, []string{f.Path, f.Note, fmt.Sprintf("%d files, %s", f.Files, humanBytes(f.SizeBytes)), action})
+			}
+			if len(rows) == 0 {
+				a.say("every folder under /var/www/sites belongs to a user and a registered site")
+			} else {
+				a.table([]string{"FOLDER", "WHAT", "SIZE", "WHAT YOU CAN DO"}, rows)
+			}
+			for _, g := range rep.Ghosts {
+				a.say("missing folder: %s expects %s (restore a backup, or delete the site)", g.Domain, g.Path)
+			}
+			if len(rep.Trash) == 0 {
+				a.say("\ntrash: empty")
+				return nil
+			}
+			rows = rows[:0]
+			for _, t := range rep.Trash {
+				rows = append(rows, []string{t.Name, t.Original, fmt.Sprintf("%d days ago", t.AgeDays), fmt.Sprintf("%d files, %s", t.Files, humanBytes(t.SizeBytes))})
+			}
+			a.say("\ntrash (/var/www/sites/.trash):")
+			a.table([]string{"ENTRY", "CAME FROM", "TRASHED", "SIZE"}, rows)
+			if rep.TrashKeepDays > 0 {
+				a.say("entries are deleted by themselves after %d days; sooner with: docklite sites folders --purge <entry>|all --yes", rep.TrashKeepDays)
+			} else {
+				a.say("automatic deletion is off; delete with: docklite sites folders --purge <entry>|all --yes")
+			}
+			return nil
+		},
+	})
 	_ = url.QueryEscape
+}
+
+// userIDByName resolves a DockLite username through the users list.
+func (a *app) userIDByName(name string) (int64, error) {
+	data, err := a.get("/api/users")
+	if err != nil {
+		return 0, err
+	}
+	var resp struct {
+		Users []struct {
+			ID       int64  `json:"id"`
+			Username string `json:"username"`
+		} `json:"users"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return 0, err
+	}
+	for _, u := range resp.Users {
+		if u.Username == name {
+			return u.ID, nil
+		}
+	}
+	return 0, usageError("no DockLite user called " + name + " (see: docklite users list)")
+}
+
+func humanBytes(n int64) string {
+	const unit = 1024
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
+	}
+	div, exp := int64(unit), 0
+	for m := n / unit; m >= unit; m /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGTPE"[exp])
 }

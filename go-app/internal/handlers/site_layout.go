@@ -17,7 +17,8 @@ import (
 // Site layout normalisation: every site lives in /var/www/sites/<user>/<domain>.
 // Older servers have sites at /var/www/sites/<domain> (no user folder). The plan
 // is read-only; applying copies the files to the right place, points the site's
-// container at them and leaves the old folder untouched, so nothing is lost.
+// container at them and, once that worked, moves the old folder to the trash
+// (/var/www/sites/.trash), where it stays for trashKeepDays before it is deleted.
 
 const (
 	layoutOK       = "ok"
@@ -37,6 +38,8 @@ type layoutItem struct {
 	Action  string `json:"action"`
 	Reason  string `json:"reason,omitempty"`
 	Running bool   `json:"running"`
+	// OldFolder is where the previous folder went (the trash) after a move.
+	OldFolder string `json:"old_folder,omitempty"`
 }
 
 type layoutStray struct {
@@ -189,7 +192,12 @@ func (h *Handlers) SiteLayout(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			it.Action = layoutMoved
-			h.audit(r, "site.layout", it.Domain, map[string]any{"from": it.From, "to": it.To})
+			if trashed, err := moveToTrash(it.From); err != nil {
+				it.Reason = "moved, but the old folder could not be tidied away: " + err.Error()
+			} else {
+				it.OldFolder = trashed
+			}
+			h.audit(r, "site.layout", it.Domain, map[string]any{"from": it.From, "to": it.To, "old_folder": it.OldFolder})
 		}
 		report.Applied = true
 		writeJSON(w, http.StatusOK, report)
@@ -228,7 +236,10 @@ func (h *Handlers) relocateSite(site *store.SiteRecord, newUserID int64, newUser
 			clearFolderContents(to) // it was empty before, so everything in it is our partial copy
 			return fmt.Errorf("copy failed: %s", strings.TrimSpace(string(out)))
 		}
-		chownDocklite(to)
+		// The copy keeps the old folder's modes, which may predate group-writable sites or come from files the old
+		// container or someone's shell wrote as 644. The new owner (through the dashboard, which edits as the docklite
+		// user) must be able to write everything, so the whole tree is normalised now.
+		ensureSiteWritable(to)
 	}
 
 	finish := func(ctx context.Context, containerID string, internalPort int, includeWww bool) error {
@@ -301,7 +312,16 @@ func (h *Handlers) repointNginx(ctx context.Context, domain, containerID string,
 	if err != nil || hostPort <= 0 {
 		return
 	}
-	if updateNginxProxyPort(domain, hostPort) != nil {
-		_ = setupNginxForDomain(domain, includeWww, hostPort)
+	if updateNginxProxyPort(domain, hostPort) == nil {
+		return
+	}
+	// The site has no vhost of its own (an older multi-site file, or none at all). The upstream sync fixes every
+	// server block it can find through the root helper; a brand-new vhost is written only when the domain has no
+	// server block anywhere, so an existing HTTPS setup is never overwritten.
+	_, missing, _ := h.SyncUpstreams(ctx)
+	for _, m := range missing {
+		if m == domain {
+			_ = setupNginxForDomain(domain, includeWww, hostPort)
+		}
 	}
 }

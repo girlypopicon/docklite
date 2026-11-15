@@ -152,7 +152,65 @@ func (s *SQLiteStore) HasDatabaseAccess(userID int64, databaseID int64) (bool, e
 
 func (s *SQLiteStore) DeleteDatabase(id int64) error {
 	_, err := s.DB.Exec(`DELETE FROM databases WHERE id = ?`, id)
+	if err == nil {
+		_, _ = s.DB.Exec(`DELETE FROM site_databases WHERE database_id = ?`, id) // best effort: a stale link is ignored anyway
+	}
 	return err
+}
+
+// SetDatabaseSite records that a database belongs to a site, so "this site and its databases" backs up both. siteID 0
+// removes the link. A database belongs to at most one site; a site can have several databases.
+func (s *SQLiteStore) SetDatabaseSite(databaseID, siteID int64) error {
+	if siteID <= 0 {
+		_, err := s.DB.Exec(`DELETE FROM site_databases WHERE database_id = ?`, databaseID)
+		return err
+	}
+	_, err := s.DB.Exec(`
+    INSERT INTO site_databases (database_id, site_id) VALUES (?, ?)
+    ON CONFLICT(database_id) DO UPDATE SET site_id = excluded.site_id
+  `, databaseID, siteID)
+	return err
+}
+
+// DatabasesForSite lists the databases linked to a site. Links to databases that no longer exist are left out.
+func (s *SQLiteStore) DatabasesForSite(siteID int64) ([]DatabaseRecord, error) {
+	rows, err := s.DB.Query(`
+    SELECT d.id, d.name, COALESCE(d.type, 'postgres'), d.container_id, d.postgres_port, COALESCE(d.db_path, ''), d.created_at
+    FROM site_databases l JOIN databases d ON d.id = l.database_id
+    WHERE l.site_id = ?
+    ORDER BY d.name
+  `, siteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DatabaseRecord
+	for rows.Next() {
+		var r DatabaseRecord
+		if err := rows.Scan(&r.ID, &r.Name, &r.Type, &r.ContainerID, &r.PostgresPort, &r.DBPath, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// DatabaseSiteLinks maps each linked database id to its site id (links to deleted sites are left out).
+func (s *SQLiteStore) DatabaseSiteLinks() (map[int64]int64, error) {
+	rows, err := s.DB.Query(`SELECT l.database_id, l.site_id FROM site_databases l JOIN sites s ON s.id = l.site_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]int64{}
+	for rows.Next() {
+		var db, site int64
+		if err := rows.Scan(&db, &site); err != nil {
+			return nil, err
+		}
+		out[db] = site
+	}
+	return out, rows.Err()
 }
 
 func (s *SQLiteStore) DeleteDatabasePermissionsByDatabaseID(databaseID int64) error {

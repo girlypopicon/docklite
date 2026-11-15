@@ -151,6 +151,9 @@ func (s *SQLiteStore) TransferSite(id int64, newUserID int64, newCodePath string
 
 func (s *SQLiteStore) DeleteSite(id int64) error {
 	_, err := s.DB.Exec(`DELETE FROM sites WHERE id = ?`, id)
+	if err == nil {
+		_, _ = s.DB.Exec(`DELETE FROM site_databases WHERE site_id = ?`, id) // best effort: a stale link is ignored anyway
+	}
 	return err
 }
 

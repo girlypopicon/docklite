@@ -17,6 +17,12 @@ interface Inspection {
   bytes: number;
   verified: boolean;
   skipped?: string[];
+  // set for a .litpkg, which can hold several sites and databases
+  package?: boolean;
+  description?: string;
+  sites?: { domain: string; files: number; problem?: string }[];
+  databases?: { name: string; engine: string }[];
+  problems?: string[];
 }
 
 function formatSize(bytes: number) {
@@ -31,10 +37,13 @@ function formatSize(bytes: number) {
   return `${value.toFixed(1)} ${units[i]}`;
 }
 
-// "sites/site-example.com-20261011-030000.tar.gz" -> "example.com"
+// .litpkg is what DockLite writes; .litepkg and .dklpkg (before 1.5) are read too
+const isPackage = (file: string) => /\.(litpkg|litepkg|dklpkg)$/.test(file);
+
+// "sites/site-example.com-20261011-030000.tar.gz" -> "example.com"; "packages/everything-20261011-030000.litpkg" -> "everything"
 function siteName(file: string) {
   const base = file.split('/').pop() || file;
-  const m = /^site-(.+)-\d{8}-\d{6}\.tar\.gz$/.exec(base);
+  const m = /^site-(.+)-\d{8}-\d{6}\.tar\.gz$/.exec(base) || /^(.+)-\d{8}-\d{6}(?:-\d+)?\.(?:litpkg|litepkg|dklpkg)$/.exec(base);
   return m ? m[1] : base;
 }
 
@@ -53,7 +62,11 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
     try {
       const res = await fetch('/api/backups/local', { cache: 'no-store' });
       const data = res.ok ? await res.json() : { files: [] };
-      setFiles((data.files || []).filter((f: BackupFile) => f.name.startsWith('sites/') && f.name.endsWith('.tar.gz')));
+      setFiles(
+        (data.files || []).filter(
+          (f: BackupFile) => (f.name.startsWith('sites/') && f.name.endsWith('.tar.gz')) || (isPackage(f.name) && !f.name.startsWith('downloads/'))
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -87,14 +100,14 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
     }
   };
 
-  const restore = async () => {
+  const restore = async (fromSite?: string) => {
     if (!picked) return;
     setWorking(true);
     try {
       const res = await fetch('/api/backups/restore', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file: picked.name }),
+        body: JSON.stringify({ file: picked.name, from_site: fromSite }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Restore failed');
@@ -132,7 +145,7 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
             <div className="text-sm text-ink-muted">Loading backups…</div>
           ) : files.length === 0 ? (
             <div className="text-sm text-ink-muted">
-              No site backups on this server yet. Make one from the Backups tab (choose “Local”), or set up a schedule.
+              No site backups on this server yet. Make one from the Backups tab (choose “Keep on this server”), or set up a schedule.
             </div>
           ) : (
             files.map((f) => (
@@ -146,7 +159,7 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
                     {new Date(f.modified_at).toLocaleString()} • {formatSize(f.size)}
                   </div>
                 </div>
-                <button onClick={() => choose(f)} className="cyber-button-sm flex items-center gap-1">
+                <button onClick={() => choose(f)} className="cyber-button-sm flex items-center gap-1" title={isPackage(f.name) ? 'A .litpkg package' : undefined}>
                   <ArrowCounterClockwise size={14} weight="duotone" /> Restore…
                 </button>
               </div>
@@ -167,7 +180,9 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
       {picked && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="card-vapor max-w-lg w-full p-6 rounded-2xl" style={{ background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)', border: '2px solid var(--modal-border)', boxShadow: '0 0 30px var(--modal-shadow)' }}>
-            <h3 className="text-xl font-bold text-accent-cyan">Restore {siteName(picked.name)}?</h3>
+            <h3 className="text-xl font-bold text-accent-cyan">
+              {inspection?.package ? `Restore from ${inspection.description || siteName(picked.name)}` : `Restore ${siteName(picked.name)}?`}
+            </h3>
             <div className="mt-3 text-sm text-ink-muted space-y-2">
               {!inspection && !inspectError && <div>Checking the backup…</div>}
               {inspectError && (
@@ -175,7 +190,49 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
                   <WarningCircle size={18} weight="duotone" /> {inspectError}
                 </div>
               )}
-              {inspection && (
+              {inspection?.package && (
+                <>
+                  <div>
+                    Made {new Date(picked.modified_at).toLocaleString()} ({formatSize(picked.size)}). Pick a site to put back; its
+                    current files are saved first. Other sites aren&apos;t touched.
+                  </div>
+                  {!inspection.verified && (
+                    <div style={{ color: 'var(--status-error)' }}>
+                      This file doesn&apos;t match what was recorded when it was made, so it was changed or damaged. It won&apos;t be used.
+                    </div>
+                  )}
+                  {(inspection.sites || []).length === 0 && <div>This package holds no site files.</div>}
+                  <div className="space-y-2">
+                    {(inspection.sites || []).map((site) => (
+                      <div key={site.domain} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-surface-muted border border-neon-purple/20">
+                        <div>
+                          <div className="font-bold text-accent-pink">{site.domain}</div>
+                          <div className="text-xs">{site.problem ? <span style={{ color: 'var(--status-error)' }}>{site.problem}</span> : `${site.files} files`}</div>
+                        </div>
+                        <button
+                          onClick={() => restore(site.domain)}
+                          className="cyber-button-sm"
+                          disabled={working || !inspection.verified || !!site.problem}
+                        >
+                          {working ? 'Restoring…' : 'Restore'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {(inspection.databases || []).length > 0 && (
+                    <div className="text-xs">
+                      Also holds {inspection.databases!.map((d) => `${d.name} (${d.engine})`).join(', ')}. Restoring databases from here is coming
+                      later; the dumps can be unpacked with tar meanwhile.
+                    </div>
+                  )}
+                  {(inspection.problems || []).length > 0 && (
+                    <div className="text-xs" style={{ color: 'var(--status-warning)' }}>
+                      Left out when it was made: {inspection.problems!.join('; ')}
+                    </div>
+                  )}
+                </>
+              )}
+              {inspection && !inspection.package && (
                 <>
                   <div>
                     This backup has <strong>{inspection.files} files</strong> ({formatSize(inspection.bytes)}), made{' '}
@@ -203,9 +260,11 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
               <button onClick={() => setPicked(null)} className="btn-neon px-4 py-2 font-bold" disabled={working}>
                 Cancel
               </button>
-              <button onClick={restore} className="btn-neon px-5 py-2 font-bold" disabled={!canRestore}>
-                {working ? 'Restoring…' : 'Restore now'}
-              </button>
+              {!inspection?.package && (
+                <button onClick={() => restore()} className="btn-neon px-5 py-2 font-bold" disabled={!canRestore}>
+                  {working ? 'Restoring…' : 'Restore now'}
+                </button>
+              )}
             </div>
           </div>
         </div>

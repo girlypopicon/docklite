@@ -84,5 +84,60 @@ func (s *SQLiteStore) InitializeAgentTables() error {
 			role TEXT
 		)
 	`)
+	if err != nil {
+		return err
+	}
+	return s.EnsureBackupPackageSchema()
+}
+
+// EnsureBackupPackageSchema adds what .litpkg backups need: which databases belong to which site, a scope on each
+// backup row and a selection on each schedule. All are additions only, so an older DockLite keeps working with the same
+// file. The GUI's migration 016 does the same; whichever starts first wins and the other finds nothing to do.
+func (s *SQLiteStore) EnsureBackupPackageSchema() error {
+	if _, err := s.DB.Exec(`
+		CREATE TABLE IF NOT EXISTS site_databases (
+			database_id INTEGER PRIMARY KEY,
+			site_id INTEGER NOT NULL,
+			created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`); err != nil {
+		return err
+	}
+	// On a brand-new server the GUI creates the backup tables; until then there is nothing to add the columns to.
+	for _, c := range []struct{ table, column string }{{"backups", "scope"}, {"backup_jobs", "selection"}} {
+		if err := s.addColumnIfMissing(c.table, c.column); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *SQLiteStore) addColumnIfMissing(table, column string) error {
+	var exists int
+	if err := s.DB.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&exists); err != nil || exists == 0 {
+		return err
+	}
+	if has, err := s.hasColumn(table, column); err != nil || has {
+		return err
+	}
+	_, err := s.DB.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column + ` TEXT`)
 	return err
+}
+
+func (s *SQLiteStore) hasColumn(table, column string) (bool, error) {
+	rows, err := s.DB.Query(`SELECT name FROM pragma_table_info(?)`, table)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
 }

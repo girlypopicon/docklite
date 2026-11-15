@@ -54,21 +54,46 @@ func verifyDatabaseDumpOfType(path, engine string, rep *Reporter) (string, int64
 	if err != nil {
 		return "", 0, fmt.Errorf("the backup file isn't a valid archive: %w", err)
 	}
-	head := make([]byte, 8)
-	n, _ := io.ReadFull(gz, head)
-	head = head[:n]
-	tail := &tailBuffer{max: 4096}
-	tail.Write(head)
-	if _, err := io.Copy(tail, gz); err != nil {
-		return "", 0, fmt.Errorf("the backup file is damaged: %w", err)
+	if err := checkDump(gz, engine); err != nil {
+		return "", 0, err
 	}
 	if _, err := io.Copy(io.Discard, counted); err != nil {
 		return "", 0, fmt.Errorf("the backup file is damaged: %w", err)
 	}
-	if err := checkDumpShape(engine, head, tail.Bytes()); err != nil {
-		return "", 0, err
-	}
 	return hex.EncodeToString(hasher.Sum(nil)), fi.Size(), nil
+}
+
+// checkDump reads a whole (uncompressed) dump and checks it looks like a complete dump of its engine.
+func checkDump(r io.Reader, engine string) error {
+	head := make([]byte, 8)
+	n, _ := io.ReadFull(r, head)
+	head = head[:n]
+	tail := &tailBuffer{max: 4096}
+	tail.Write(head)
+	if _, err := io.Copy(tail, r); err != nil {
+		return fmt.Errorf("the backup file is damaged: %w", err)
+	}
+	if engine == "" || engine == "postgres" {
+		if !bytes.HasPrefix(head, []byte("PGDMP")) {
+			return fmt.Errorf("the dump is empty or isn't a PostgreSQL backup")
+		}
+		return nil
+	}
+	return checkDumpShape(engine, head, tail.Bytes())
+}
+
+// dumpExt is the file extension a dump of each engine gets inside a package, so a person who unpacks one knows which
+// tool reads it back (pg_restore, mariadb, mongorestore, redis).
+func dumpExt(engine string) string {
+	switch engine {
+	case "mariadb":
+		return ".sql"
+	case "mongodb":
+		return ".archive"
+	case "redis":
+		return ".rdb"
+	}
+	return ".pgdump"
 }
 
 // checkDumpShape recognises each engine's dump by its first and last bytes.

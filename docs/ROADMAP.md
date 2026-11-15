@@ -26,6 +26,12 @@ Fixes found by running DockLite on a live server, plus proving the update path.
   site, plus a Site folders tab (strays, orphans, move to trash).
 
 ## 1.5.0: production-ready
+- **Stacks: isolated by default, connected on purpose.** Containers (each one a "box") no longer share one network. A
+  group of boxes (a "stack") gets its own network, start/stop/restart as one, and connection strings between its
+  members. Folders become cards in the grid. Decided 2026-11-11: no compatibility shim; the shared `docklite_network`
+  goes away in the same release, since nothing in use relies on reaching a database by name across it. A server can't be
+  called production-ready while every container can reach every database. Design notes under *Ideas* below.
+- Resource limits per container (CPU, memory, process count) and non-root inside the site images, set by DockLite.
 - Simpler and friendlier: declutter the dashboard; the Network page in plain language (visitors → front door → site); an activity log
   viewer; a branded "back soon" page (`docklite nginx maintenance on|off`); terminal tabs and persistent sessions.
 - Security review and dependency/licence audit; documented backup-and-restore drill.
@@ -35,3 +41,171 @@ Fixes found by running DockLite on a live server, plus proving the update path.
 ## Later
 Other server types beside websites (media servers and similar), more database types (MySQL proper, others on request), shareable templates ("Capsules"),
 a packaged installer.
+
+## Ideas (design notes, not scheduled)
+
+Rough thinking for later. Nothing here is promised; each one is written so it can be built without changing how a single
+server works today.
+
+### Stacks (scheduled for 1.5.0): boxes that belong together
+Words: a container is a **box**; a group of boxes is a **stack**. Docker already uses "stack" for a group of containers
+deployed together, so it is the established term; and "what's your stack? nginx and Postgres" is literally what's in one.
+- Two kinds of group. A **folder** is what exists now (organisation only). A **stack** is a folder that also owns a Docker
+  network and has start/stop/restart for the whole group. One `kind` column on `folders`, plus a `network_name`; additive.
+- Folders could show as a card in the grid (open on click) instead of a full-width section. UI only; same data.
+- Every DockLite container already sits on `docklite_network`, so "connect nginx to postgres" works today but is flat. A
+  stack's own network is what gives isolation (one user's site can't reach another user's database), start order (database
+  before app), and connection wiring (inject `DATABASE_URL` on the next recreate).
+- The principle: **isolated by default, connected on purpose.** Nothing reaches anything until the boxes are in a stack;
+  the stack is what owns a network, a start order and the connection strings. The security model and the user's mental
+  model are the same picture.
+- No migration shim. The shared `docklite_network` is removed in the same release. The update moves every existing
+  container onto a per-site network of its own (a one-box stack), so a site that talked to a database by name stops
+  being able to until the two are put in a box together. The release notes say so in the first line.
+- A stack inside a folder: yes. A stack inside a stack: no; Docker networks don't nest.
+- An nginx container inside a stack still sits behind the host nginx, so it must publish on a localhost port like any site.
+- Last phase: a stack serialised to a `.dkl` is a shareable template ("Capsule"), and `docker-compose.yml` import is the
+  same code path with a second input format. Needs: several services per file, any image (templates become shortcuts),
+  volumes and inputs the installer asks for, and a version the agent refuses when it's too new.
+- First template that needs a stack rather than one box: glowrom (the media center) on a server, playing to screens
+  anywhere. The glowrom box is the brain (library, resume, auto-skip, phone remote); a small `glowrom screen` agent on the
+  laptop or TV box runs mpv and plays the file over HTTP from the server, whatever cable the display uses. The stack is
+  the glowrom box plus the media route on the domain. Design: `glowrom-linux/DEVNOTES.md`, 2026-11-11 entry.
+
+### Apache as a choice under the static and PHP templates
+- A "web server" dropdown (nginx or Apache) on the static and PHP templates, not extra templates. Swaps the image inside the
+  container (`httpd:alpine`, `php:apache`); the host nginx proxies to it exactly as before.
+- Turn on `AllowOverride All` for the site root, otherwise `.htaccess` (the reason people want Apache) does nothing.
+
+### Databases page revamp
+- Engines are one row each in `docker/engines.go`; MySQL proper is nearly free. SQLite is a file, not a server, so it needs
+  its own path (lives in the site folder, schema browser points at the file).
+- Group the page by family rather than by product: relational, document, key-value.
+
+### More than one server (fleet)
+Install DockLite on a second server, sign in with the same account, see the containers from both, and choose which server
+each one runs on. Pieces that already exist and would carry most of it:
+- **`.litpkg` is the transport.** Moving a site is export on one server, import on the other; a package already holds the
+  files, the databases and the `.dkl`.
+- **Cloudflare DNS is the switch.** The DNS integration can already write a site's A record; moving a site ends with
+  pointing the record at the other server's IP. Later, Cloudflare Tunnels would let a second server with no public IP join.
+- **The agent API is the remote control.** The TUI already drives an agent over the bearer-token API; the dashboard could
+  talk to several agents the same way, with a `servers` table and a server id on each container.
+
+Design notes:
+- **The hub is a list of addresses, and that list is a `.dklnet` file.** Fleet nodes are entered on the main dashboard by
+  IP or hostname, or by opening a `.dklnet` file: plain JSON, one entry per node (address, name, public key, maybe a
+  label like "eu-2"). The hub keeps it as its `servers` table, and can export it again. No discovery protocol, no cluster
+  membership dance. Not needed for two servers; for a big site spread over many, the fleet definition is a file you can
+  keep in a repo, hand to a colleague, or open on a fresh hub. Same family as `.dkl` (one site) and `.litpkg` (one package).
+- **Nodes don't need the GUI.** A fleet node is the agent on its own (`NEXTJS_URL=disabled` already does this), driven by
+  the hub's dashboard, the TUI or the CLI. The GUI runs once, on the hub.
+- **Superadmin is the keystone.** Every node trusts the hub's superadmin; that account ties the fleet together and is for
+  big emergencies only. Admin is for ordinary emergencies. Day to day, people use their own account, because it does
+  everything they need. Nobody signs in as superadmin or admin to get work done.
+- **Pairing with a generated key, not a shared password.** At join time DockLite generates a keypair; the dashboard shows
+  a one-time join code, the second server pastes it, and the two exchange public keys. SSH is a good wire for it: `rsync`
+  over SSH moves large site folders without going through the API, and the `docklite` user owning `/var/www/sites` on both
+  ends means no root is involved. Agent-to-agent API calls can sign with the same key.
+- **One primary for accounts.** The first server owns users and sessions; a secondary trusts the primary's sessions rather
+  than keeping its own user table in step. Avoids two sources of truth for passwords and roles.
+- **Independent servers with a shared dashboard, not an orchestrator.** No Swarm, no Kubernetes, no shared state between
+  the Docker daemons. Each server keeps working on its own if the others go away; the fleet view is a convenience on top.
+- **Single-server mode stays exactly as it is.** A server that never joins a fleet runs the same code with an empty
+  `servers` table.
+
+### Mail
+- Two different jobs. **Sending** (contact forms, password resets) is easy and is what most sites need: an SMTP relay
+  setting per site or per server, pointed at any provider, and `MAIL_*` env injected into containers. **Receiving**
+  (mailboxes, IMAP) is the hardest thing to self-host: port 25 is blocked on many VPSs, reverse DNS must match, and IP
+  reputation takes months.
+- A mail "engine" for the full thing: one container like `docker-mailserver` (Postfix, Dovecot, Rspamd) in the engine
+  table, same as a database. DockLite's value is the wiring people get wrong: MX, SPF, DKIM, DMARC and autoconfig records
+  written through the Cloudflare integration, and the certificate shared with the host nginx.
+- Start with sending. Offer receiving only with a pre-flight that checks port 25, reverse DNS and that the domain's zone is
+  in DockLite, and says plainly what is missing.
+
+### Proxy management
+- Keep nginx. Swapping it for Traefik or Caddy would throw away the vhost generation, the SSL stack and the upstream sync.
+  The gap is the editing experience, not the proxy.
+- Routes, not config files. A per-site view of what the host nginx does for that domain: upstream (container and port),
+  www handling, redirects, path-based routes to other containers (a stack's services), custom headers, basic auth, rate
+  limits, the maintenance page. Each is a form field that regenerates the vhost; the raw config stays available under
+  "advanced" for people who want it.
+- Stacks plug in here: a stack exposes one or more services as routes under a domain.
+
+### Terminal UI
+- The TUI source lives in a separate repository (`cli-repo` is a pointer to it, with no submodule mapping) and is not
+  built by the installer, so releases don't ship it. Bring it into this repo under `go-app/cmd/docklite-tui` so it builds
+  with `make build-all`, ships with releases and gets tested with everything else.
+- Parity with the dashboard, screen by screen: sites (create, SSL, DNS), backups (picker, restore), users, server health,
+  logs that stream. Lists must scroll inside the panel (fixed in the containers, databases and files screens), and every
+  screen must survive a narrow terminal.
+- The TUI is first-class, not a fallback: on a fleet node without the GUI it is the interface.
+
+### Neon controls
+- Today there is one glow slider (0 to 200 percent) plus theme, text size and animations, in `webapp/lib/appearance.ts`.
+- Keep adding granularity until it feels right: separate intensity for borders, text and fills; per-colour toggles (pink,
+  cyan, purple, green, yellow); glow radius vs brightness; a "calm" preset and a "maximum" preset; the same knobs in the
+  TUI's colour scheme. Every step must keep the contrast audit (`scripts/contrast-audit.js`) at zero failures.
+
+### Public hosts: donated capacity for small things
+Pitch: "Got extra server space? Let someone run their glowrom app on it." Later, not now. Someone with spare room on their DockLite server opens it up, and a person who just wants a small thing (a media server,
+a blog, a game server) gets an account there without owning a server. From the guest's side it is a borrowed fleet node.
+- **Start as a directory, not a marketplace.** Hosts opt in and say what they offer (how much, what's allowed, where they
+  are, how to reach them); guests apply for an account; the host decides. Trust stays between people, the way Fediverse
+  instances and community game servers work. The automatic "pick a host, deploy" flow comes later, if ever.
+- **Not before multi-tenant hardening.** DockLite trusts its users today; a public host runs strangers' containers. Needs,
+  in order: per-user networks (from stacks), quotas the host sets (CPU, memory, disk, bandwidth, container count),
+  rootless Docker or gVisor with an image allowlist and no privileged containers, no path from a guest to the Docker
+  socket or another user's files, and an outside security review of all of it.
+- **Abuse is the host's problem, so give them the tools.** A kill switch per guest, an abuse report address on the listing,
+  delisting from the directory, and plain terms the guest accepts. Media servers are the sharpest case: a stranger
+  streaming a pirated library from a volunteer's IP is the volunteer's legal exposure. Say so in the host guide.
+- **What DockLite can promise early.** The account model, the per-user folders and the directory itself are cheap. What it
+  must not promise is that it's safe to host strangers until the hardening list above is done.
+
+### Webrings, names and the quiet social network
+**Why:** to get people off the computer, off the phone and outside. Moving away from endless scroll is the start. So the
+reader is **finite by design**: it has a bottom ("you're caught up", then nothing), no notifications (you go look when you
+feel like it; it never comes to you), time as the only sort order (nothing promoted, nothing competing), an optional daily
+or weekly digest, and sources you add on purpose with a cap if you want one ("at most three a day from this one").
+At the bottom, a friendly note: you can go back to the top and read them all again, because your friends deserve it,
+and the second pass earns you a second reaction. The only "more" the reader ever offers is the same posts again, pointed
+back at the people you already chose. Every later choice in this section is judged against that.
+
+Someone types the name they want, sees if it's free, pays a couple of dollars, and has their own site on their own
+domain, built with the ioi profile builder if they don't want to touch files, and connected to other people's sites.
+- **Rings first.** A webring is a member list plus a previous / next / random widget: a small file (`.dklring`, to keep the
+  family going) and a few lines on each member site. Cheap, no protocol work, and it makes the connected feeling real on
+  day one.
+- **Standards, not a protocol of our own.** Every profile site publishes an h-card (this is a person), an RSS feed, and a
+  Webmention endpoint (when one site links to another, the other finds out). Those three turn a ring of profile sites into
+  a slow, quiet social network with no server in the middle. ActivityPub (what Mastodon speaks) is the later step if the
+  sites should appear in Fediverse feeds.
+- **Buying the name.** A domain, not a TLD (a TLD is `.com` itself and is not for sale). Needs a registrar reseller API
+  (Porkbun, Namecheap, OpenSRS; Cloudflare's registrar API doesn't open new registrations to most accounts), with
+  Cloudflare taking over DNS afterwards through the existing integration. Payments make DockLite a service with a
+  merchant account, refunds and support: a business decision, not a feature, so it goes last.
+- Order: rings and the three standards (free, no permission needed), then the profile-builder on-ramp, then the registrar
+  flow once there is a reason to run a business around it.
+- **A reader, not a feed.** "There are 25 posts total ever" is the design constraint: nothing to rank, nothing real-time. A
+  page that checks your friends' sites once an hour is the whole engine. Pull in other sources if you want; or just friends.
+- **Friends are domains, not accounts.** A friend is any address that publishes a feed: an ioi site, a hand-written blog, a
+  Mastodon profile (every Mastodon profile already has an RSS feed at its address plus `.rss`). Same reader for all.
+- **Alongside Mastodon, not instead.** Consume it first (free, via RSS); later let Mastodon users follow an ioi site back
+  (ActivityPub). Never a replacement for what the Fediverse is doing.
+- **Two addresses, one site.** `ioi.me/username` is the home everyone gets; `username.com` is the same site once they buy
+  a name. One vhost with two server names and a canonical link, the way www and non-www already work. No migration.
+- **Registrar candidates.** IONOS (dollar-domain bundles; the loss leader is autorenew on the extras, and a reseller's math
+  is the same: a few renewals pay for the ones that lapse; has a developer API for domains and DNS), Porkbun, Namecheap,
+  OpenSRS. DNS hands off to Cloudflare afterwards either way.
+- **Curating with a small model call, in your own words.** Instead of "at most three from this source", a person types what
+  they want ("the ones about climbing, or anyone who sounds like they need help") and a small call picks from the new
+  posts since last refresh. **The hard rule: it never learns.** No engagement signal, no counting the seconds a dog
+  picture was on screen so the feed can become all dogs. The only input is the words the person typed; if they want
+  dogs, they type "dogs" and get the dogs their friends actually posted. Also: the person can read their instructions
+  back; it runs on pull over a handful of posts, so it
+  narrows the pile and never adds to it; each pick says why; the rest stay one tap away under "the rest"; it is optional
+  and per source, and the default is still everything, in order. Hosted or local model is a per-server setting, like a
+  database engine; no key configured, no feature.

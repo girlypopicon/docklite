@@ -40,7 +40,7 @@ func TestRestoreSiteBackupFindsSiteAndKeepsSafetyCopy(t *testing.T) {
 	makeSiteTar(t, filepath.Join(h.backupBaseDir, file), "shop.example.com", map[string]string{"index.html": "from backup"})
 
 	req := httptest.NewRequest("POST", "/api/backups/restore", nil)
-	res, got, err := h.restoreSiteBackup(req, file, "")
+	res, got, err := h.restoreSiteBackup(req, file, "", "")
 	testhelpers.AssertNoError(t, err)
 	testhelpers.AssertEqual(t, got.Domain, "shop.example.com")
 	b, _ := os.ReadFile(filepath.Join(site.CodePath, "index.html"))
@@ -59,20 +59,20 @@ func TestRestoreSiteBackupRefusesWrongTargets(t *testing.T) {
 	makeSiteTar(t, filepath.Join(h.backupBaseDir, "sites", "site-other.org-1-2.tar.gz"), "other.org", map[string]string{"a": "b"})
 	req := httptest.NewRequest("POST", "/", nil)
 
-	if _, _, err := h.restoreSiteBackup(req, "sites/site-other.org-1-2.tar.gz", ""); err == nil || !strings.Contains(err.Error(), "no site called other.org") {
+	if _, _, err := h.restoreSiteBackup(req, "sites/site-other.org-1-2.tar.gz", "", ""); err == nil || !strings.Contains(err.Error(), "no site called other.org") {
 		t.Fatalf("a backup for an unknown site must say so: %v", err)
 	}
-	if _, _, err := h.restoreSiteBackup(req, "../../etc/passwd", ""); err == nil {
+	if _, _, err := h.restoreSiteBackup(req, "../../etc/passwd", "", ""); err == nil {
 		t.Fatal("paths outside the backup folder must be refused")
 	}
-	if _, _, err := h.restoreSiteBackup(req, "sites/site-other.org-1-2.tar.gz", "../../etc"); err == nil {
+	if _, _, err := h.restoreSiteBackup(req, "sites/site-other.org-1-2.tar.gz", "../../etc", ""); err == nil {
 		t.Fatal("a made-up site name must be refused")
 	}
 	// a site whose folder is outside the sites base is never restored into
 	outside := t.TempDir()
 	_, err := h.store.CreateSite(store.SiteRecord{Domain: "evil.test", UserID: site.UserID, TemplateType: "static", CodePath: outside, Status: "stopped"})
 	testhelpers.AssertNoError(t, err)
-	if _, _, err := h.restoreSiteBackup(req, "sites/site-other.org-1-2.tar.gz", "evil.test"); err == nil || !strings.Contains(err.Error(), "isn't under") {
+	if _, _, err := h.restoreSiteBackup(req, "sites/site-other.org-1-2.tar.gz", "evil.test", ""); err == nil || !strings.Contains(err.Error(), "isn't under") {
 		t.Fatalf("restore outside the sites folder must be refused: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(outside, "a")); err == nil {
@@ -96,7 +96,7 @@ func TestBackupJobsValidateAndDescribeSchedules(t *testing.T) {
 	testhelpers.AssertEqual(t, post("daily@25:99"), 400)
 	testhelpers.AssertEqual(t, post("whenever"), 400)
 	jobs, _ := s.GetBackupJobs()
-	views := describeJobs(jobs)
+	views := h.describeJobs(jobs)
 	testhelpers.AssertEqual(t, len(views), 1)
 	testhelpers.AssertEqual(t, views[0].ScheduleText, "every day at 03:00, keeping the last 7")
 }

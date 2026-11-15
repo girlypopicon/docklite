@@ -509,10 +509,25 @@ func TestBackupsRestoreCommands(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "site-glowrom.com") || !strings.Contains(out, "2.0 KB") {
 		t.Fatalf("files: exit %d\n%s", code, out)
 	}
+	agent.json("GET", "/api/backups/targets", 200, backupTargetsJSON)
 	agent.json("POST", "/api/backups/export", 200, `{"backup_id":5}`)
-	code, out, _ = runCLI(t, agent, "", "backups", "create", "GlowRom.com")
-	if code != 0 || !strings.Contains(agent.calls("POST", "/api/backups/export")[0].Body, `"domain":"glowrom.com"`) || !strings.Contains(out, "Backed up glowrom.com") {
-		t.Fatalf("create must send the lower-cased domain and keep it local: exit %d\n%s", code, out)
+	agent.json("GET", "/api/backups/progress", 200, `{"status":"success","location":"packages/glowrom.com-1-2.litpkg","size":4096,"warnings":["Database shopdb was left out: boom"]}`)
+	code, out, _ = runCLI(t, agent, "", "backups", "create", "GlowRom.com", "--with-databases")
+	body := agent.calls("POST", "/api/backups/export")[0].Body
+	if code != 0 || !strings.Contains(body, `"sites":[3]`) || !strings.Contains(body, `"site_databases":[3]`) || !strings.Contains(body, `"delivery":"local"`) ||
+		!strings.Contains(out, "packages/glowrom.com-1-2.litpkg") || !strings.Contains(out, "shopdb was left out") {
+		t.Fatalf("create must send the site (any case) and its databases, keep it local, and report warnings: exit %d body %s\n%s", code, body, out)
+	}
+	code, _, _ = runCLI(t, agent, "", "backups", "create", "--database", "shopdb", "--all-sites")
+	body = agent.calls("POST", "/api/backups/export")[1].Body
+	if code != 0 || !strings.Contains(body, `"databases":[8]`) || !strings.Contains(body, `"all_sites":true`) || strings.Contains(body, "all_databases") {
+		t.Fatalf("--database and --all-sites: exit %d body %s", code, body)
+	}
+	if code, _, _ = runCLI(t, agent, "", "backups", "create", "nope.org"); code == 0 {
+		t.Fatal("an unknown site must be refused")
+	}
+	if code, _, _ = runCLI(t, agent, "", "backups", "create"); code != exitUsage {
+		t.Fatalf("create needs something to back up, exit %d", code)
 	}
 	agent.json("GET", "/api/backups/inspect", 200, `{"domain":"glowrom.com","files":12,"bytes":4096,"verified":true}`)
 	code, out, _ = runCLI(t, agent, "", "backups", "inspect", "sites/site-glowrom.com-1-2.tar.gz")
@@ -530,20 +545,26 @@ func TestBackupsRestoreCommands(t *testing.T) {
 	if code != 0 || !strings.Contains(out, "Restored glowrom.com") || !strings.Contains(out, "safety/x.tar.gz") {
 		t.Fatalf("restore: exit %d\n%s", code, out)
 	}
+	code, _, _ = runCLI(t, agent, "", "backups", "restore", "packages/everything-1-2.litpkg", "--from", "glowrom.com", "--yes")
+	if code != 0 || !strings.Contains(agent.calls("POST", "/api/backups/restore")[1].Body, `"from_site":"glowrom.com"`) {
+		t.Fatal("--from must name the site inside the package")
+	}
 }
+
+const backupTargetsJSON = `{"sites":[{"id":3,"domain":"glowrom.com","databases":[{"id":8,"name":"shopdb"}]}],"databases":[{"id":8,"name":"shopdb","site_id":3}],"is_admin":true}`
 
 func TestBackupsScheduleCommands(t *testing.T) {
 	agent := newFakeAgent(t)
-	agent.json("GET", "/api/backups/destinations", 200, `{"destinations":[{"id":4,"type":"local"}]}`)
+	agent.json("GET", "/api/backups/targets", 200, backupTargetsJSON)
 	agent.json("POST", "/api/backups/jobs", 200, `{"id":9}`)
 	code, out, _ := runCLI(t, agent, "", "backups", "schedule", "--all", "--daily-at", "03:00", "--keep", "7")
 	body := agent.calls("POST", "/api/backups/jobs")[0].Body
-	if code != 0 || !strings.Contains(body, `"frequency":"daily@03:00;keep=7"`) || !strings.Contains(body, `"all-sites"`) || !strings.Contains(body, `"destination_id":4`) {
+	if code != 0 || !strings.Contains(body, `"frequency":"daily@03:00;keep=7"`) || !strings.Contains(body, `"all_sites":true`) || !strings.Contains(body, `"all_databases":true`) {
 		t.Fatalf("exit %d out %s body %s", code, out, body)
 	}
 	code, _, _ = runCLI(t, agent, "", "backups", "schedule", "glowrom.com", "--weekly", "sun@04:00")
-	if code != 0 || !strings.Contains(agent.calls("POST", "/api/backups/jobs")[1].Body, `"domain":"glowrom.com"`) {
-		t.Fatal("a site name must be sent as the domain")
+	if code != 0 || !strings.Contains(agent.calls("POST", "/api/backups/jobs")[1].Body, `"sites":[3]`) {
+		t.Fatal("a site name must be sent as that site's id")
 	}
 	if code, _, _ = runCLI(t, agent, "", "backups", "schedule", "--all"); code != exitUsage {
 		t.Fatalf("a schedule needs a time rule, exit %d", code)
@@ -551,9 +572,9 @@ func TestBackupsScheduleCommands(t *testing.T) {
 	if code, _, _ = runCLI(t, agent, "", "backups", "schedule", "--daily-at", "03:00"); code != exitUsage {
 		t.Fatalf("a schedule needs a site or --all, exit %d", code)
 	}
-	agent.json("GET", "/api/backups/jobs", 200, `{"jobs":[{"id":9,"target_type":"all-sites","enabled":1,"schedule_text":"every day at 03:00, keeping the last 7","last_run_at":null,"next_run_at":"2026-10-13T03:00:00Z"}]}`)
+	agent.json("GET", "/api/backups/jobs", 200, `{"jobs":[{"id":9,"target_type":"all-sites","what":"All sites + all databases","enabled":1,"schedule_text":"every day at 03:00, keeping the last 7","last_run_at":null,"next_run_at":"2026-10-13T03:00:00Z"}]}`)
 	code, out, _ = runCLI(t, agent, "", "backups", "schedules")
-	if code != 0 || !strings.Contains(out, "every day at 03:00, keeping the last 7") {
+	if code != 0 || !strings.Contains(out, "every day at 03:00, keeping the last 7") || !strings.Contains(out, "All sites + all databases") {
 		t.Fatalf("schedules: exit %d\n%s", code, out)
 	}
 	if code, _, _ = runCLI(t, agent, "", "backups", "unschedule", "9"); code == 0 {
@@ -590,5 +611,50 @@ func TestDatabasesCommands(t *testing.T) {
 	}
 	if code, _, _ = runCLI(t, agent, "", "databases", "delete", "nope", "--yes"); code == 0 {
 		t.Fatal("deleting a database that doesn't exist must fail")
+	}
+}
+
+func TestSitesFoldersCommand(t *testing.T) {
+	agent := newFakeAgent(t)
+	agent.json("GET", "/api/sites/folders", 200, `{"folders":[
+		{"path":"/var/www/sites/alice","status":"user-dir","owner":"alice","files":1,"size_bytes":0,"can_remove":false},
+		{"path":"/var/www/sites/alice/shop.example.com","status":"registered","owner":"alice","files":10,"size_bytes":1000,"can_remove":false},
+		{"path":"/var/www/sites/old.example.com","status":"unregistered","note":"a site folder DockLite doesn't know about","files":3,"size_bytes":2048,"can_remove":true},
+		{"path":"/var/www/sites/junk","status":"unknown","note":"not a valid domain name, so it can't be a site","files":1,"size_bytes":10,"mounted_by":"docklite-site-x","can_remove":false}],
+		"ghosts":[{"site_id":3,"domain":"gone.example.com","path":"/var/www/sites/alice/gone.example.com"}],
+		"trash":[{"name":"20260101-120000-bob__a.example.com","original":"bob/a.example.com","age_days":4,"files":2,"size_bytes":512}],"trash_keep_days":30}`)
+	agent.json("GET", "/api/users", 200, `{"users":[{"id":7,"username":"alice"}]}`)
+	agent.json("POST", "/api/sites/folders/adopt", 201, `{"success":true,"domain":"old.example.com","owner":"alice","template_type":"php"}`)
+	agent.json("POST", "/api/sites/folders/trash", 200, `{"success":true,"moved_to":"/var/www/sites/.trash/20260102-000000-junk"}`)
+	agent.json("POST", "/api/sites/folders/trash/purge", 200, `{"success":true,"deleted":["20260101-120000-bob__a.example.com"],"remaining":0}`)
+
+	code, out, _ := runCLI(t, agent, "", "sites", "folders")
+	if code != 0 || !strings.Contains(out, "--adopt /var/www/sites/old.example.com") || !strings.Contains(out, "in use by container docklite-site-x") ||
+		!strings.Contains(out, "gone.example.com") || !strings.Contains(out, "bob/a.example.com") || !strings.Contains(out, "after 30 days") || strings.Contains(out, "shop.example.com") {
+		t.Fatalf("unexpected output (exit %d):\n%s", code, out)
+	}
+
+	code, _, _ = runCLI(t, agent, "", "sites", "folders", "--adopt", "/var/www/sites/old.example.com", "--owner", "alice", "--type", "php")
+	if code != 0 || !strings.Contains(agent.calls("POST", "/api/sites/folders/adopt")[0].Body, `"user_id":7`) {
+		t.Fatal("adopt should resolve the owner's id and send it")
+	}
+	if code, _, errOut := runCLI(t, agent, "", "sites", "folders", "--adopt", "/x", "--owner", "nobody"); code == 0 || !strings.Contains(errOut, "no DockLite user called nobody") {
+		t.Fatalf("unknown owner should fail cleanly: %d %q", code, errOut)
+	}
+
+	// Trashing and purging are destructive: refused without --yes, nothing sent.
+	for _, args := range [][]string{{"sites", "folders", "--trash", "/var/www/sites/junk"}, {"sites", "folders", "--purge", "all"}} {
+		if code, _, errOut := runCLI(t, agent, "", args...); code != exitNeedsYes || !strings.Contains(errOut, "--yes") {
+			t.Fatalf("%v: exit %d, %q", args, code, errOut)
+		}
+	}
+	if len(agent.calls("POST", "/api/sites/folders/trash")) != 0 || len(agent.calls("POST", "/api/sites/folders/trash/purge")) != 0 {
+		t.Fatal("a destructive request was sent without --yes")
+	}
+	if code, out, _ := runCLI(t, agent, "", "sites", "folders", "--trash", "/var/www/sites/junk", "--yes"); code != 0 || !strings.Contains(out, ".trash/20260102-000000-junk") {
+		t.Fatalf("trash --yes: %d %q", code, out)
+	}
+	if code, out, _ := runCLI(t, agent, "", "sites", "folders", "--purge", "all", "--yes"); code != 0 || !strings.Contains(out, "deleted 1 folder") || !strings.Contains(agent.calls("POST", "/api/sites/folders/trash/purge")[0].Body, `"all":true`) {
+		t.Fatalf("purge all --yes: %d %q", code, out)
 	}
 }

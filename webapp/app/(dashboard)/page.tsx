@@ -165,11 +165,15 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: Number(assignUserId) }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to assign container');
       }
-      toast.success(`Assigned ${assignTarget.name}`);
+      if (data.warning) {
+        toast.warning(`Assigned ${assignTarget.name}, but: ${data.warning}`, 12000);
+      } else {
+        toast.success(data.old_folder_moved_to ? `Assigned ${assignTarget.name}; the old folder is in the trash` : `Assigned ${assignTarget.name}`);
+      }
       setAssignTarget(null);
       setAssignUserId('');
       fetchData();

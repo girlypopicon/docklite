@@ -104,16 +104,38 @@ func reloadNginx() error {
 	return nil
 }
 
-var proxyPassRegex = regexp.MustCompile(`(proxy_pass\s+http://127\.0\.0\.1:)\d+`)
+var proxyPassRegex = regexp.MustCompile(`(proxy_pass\s+http://(?:127\.0\.0\.1|localhost):)\d+`)
 
+// setProxyPort returns cfg with every local proxy_pass pointing at port. found is false when the config has no local
+// proxy_pass at all (then there is nothing to update and cfg comes back unchanged).
+func setProxyPort(cfg string, port int) (out string, found bool) {
+	if !proxyPassRegex.MatchString(cfg) {
+		return cfg, false
+	}
+	return proxyPassRegex.ReplaceAllString(cfg, fmt.Sprintf("${1}%d", port)), true
+}
+
+// nginxConfigHasSSL reports whether a vhost already serves HTTPS. certbot --nginx writes the 443 server block and the
+// certificate lines into the site's own file, so that file must never be rewritten from the plain template.
+func nginxConfigHasSSL(cfg string) bool {
+	return strings.Contains(cfg, "ssl_certificate") || nginxListen443.MatchString(cfg)
+}
+
+var nginxListen443 = regexp.MustCompile(`(?m)^\s*listen\s+(?:\[::\]:)?443\b`)
+
+// updateNginxProxyPort points the site's existing vhost at newPort, keeping everything else in the file (the SSL
+// block above all). A vhost that already names newPort is left alone and counts as success.
 func updateNginxProxyPort(domain string, newPort int) error {
 	existing, err := readNginxSiteConfig(domain)
 	if err != nil || existing == "" {
 		return fmt.Errorf("no existing nginx config for %s", domain)
 	}
-	updated := proxyPassRegex.ReplaceAllString(existing, fmt.Sprintf("${1}%d", newPort))
-	if updated == existing {
+	updated, found := setProxyPort(existing, newPort)
+	if !found {
 		return fmt.Errorf("could not find proxy_pass to update in nginx config")
+	}
+	if updated == existing {
+		return nil
 	}
 	if err := writeNginxSiteConfig(domain, updated); err != nil {
 		return err
@@ -126,6 +148,12 @@ func setupNginxForDomain(domain string, includeWww bool, hostPort int) error {
 		return fmt.Errorf("invalid domain %q", domain)
 	}
 	config := nginxVhostConfig(domain, includeWww, hostPort)
+	// A vhost that already carries HTTPS is kept and only re-pointed; the template would drop its SSL block.
+	if existing, err := readNginxSiteConfig(domain); err == nil && nginxConfigHasSSL(existing) {
+		if updated, found := setProxyPort(existing, hostPort); found {
+			config = updated
+		}
+	}
 	if err := writeNginxSiteConfig(domain, config); err != nil {
 		return err
 	}

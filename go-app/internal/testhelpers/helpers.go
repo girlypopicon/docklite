@@ -171,6 +171,7 @@ func TestStoreWithTables(t *testing.T) *sql.DB {
 			last_run_at DATETIME,
 			next_run_at DATETIME,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			selection TEXT,
 			FOREIGN KEY (destination_id) REFERENCES backup_destinations(id)
 		)
 	`)
@@ -190,6 +191,7 @@ func TestStoreWithTables(t *testing.T) *sql.DB {
 			status TEXT DEFAULT 'in_progress',
 			error_message TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			scope TEXT,
 			FOREIGN KEY (job_id) REFERENCES backup_jobs(id),
 			FOREIGN KEY (destination_id) REFERENCES backup_destinations(id)
 		)

@@ -378,10 +378,19 @@ func init() {
 			if err := a.confirm(fmt.Sprintf("delete user %d", id)); err != nil {
 				return err
 			}
-			if _, err := a.del("/api/users?id=" + strconv.Itoa(id)); err != nil {
+			data, err := a.del("/api/users?id=" + strconv.Itoa(id))
+			if err != nil {
 				return err
 			}
-			a.say("user %d deleted", id)
+			var resp struct {
+				SitesMovedTo string   `json:"sites_moved_to"`
+				Warnings     []string `json:"warnings"`
+			}
+			_ = json.Unmarshal(data, &resp)
+			a.say("user %d deleted; their sites (files included) now belong to %s", id, resp.SitesMovedTo)
+			for _, w := range resp.Warnings {
+				a.say("warning: %s", w)
+			}
 			return nil
 		},
 	})

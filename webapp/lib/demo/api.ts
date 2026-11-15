@@ -410,7 +410,56 @@ on('PUT', new RegExp(`^/api/nginx/sites/${ID}$`), (r, m, s) => { s.nginx[decodeU
 on('POST', /^\/api\/nginx\/(test|reload)$/, () => ok({ success: true, output: 'nginx: configuration file test is successful (demo)' }));
 
 // settings
-on('POST', /^\/api\/system\/check-folders$/, () => ok({ success: true, checked: 3, created: 0 }));
+on('POST', /^\/api\/system\/check-folders$/, (_r, _m, s) => ok({ success: true, userCount: s.users.length, created: s.users.length, failed: 0 }));
+
+// site folders (what is on disk under /var/www/sites): a couple of strays and a trash entry, kept in memory only
+const BASE_DIR = '/var/www/sites';
+const stamp2 = (ms: number) => { const d = new Date(ms); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}-${p(d.getUTCHours())}${p(d.getUTCMinutes())}${p(d.getUTCSeconds())}`; };
+let demoStrays: Array<{ path: string; name: string; depth: number; status: 'unregistered' | 'unknown'; owner?: string; detected_type?: string; files: number; size_bytes: number; note: string }> = [
+  { path: `${BASE_DIR}/old-blog.example.com`, name: 'old-blog.example.com', depth: 1, status: 'unregistered', detected_type: 'php', files: 212, size_bytes: 18_400_000, note: "a site folder DockLite doesn't know about" },
+  { path: `${BASE_DIR}/demo/staging.example.com`, name: 'staging.example.com', depth: 2, status: 'unregistered', owner: 'demo', detected_type: 'static', files: 9, size_bytes: 120_000, note: "a site folder DockLite doesn't know about" },
+  { path: `${BASE_DIR}/backup-2025`, name: 'backup-2025', depth: 1, status: 'unknown', files: 1_430, size_bytes: 96_000_000, note: "not a valid domain name, so it can't be a site" },
+];
+let demoTrash: Array<{ name: string; path: string; original: string; trashed_at: string; age_days: number; files: number; size_bytes: number; delete_on: string }> = [(() => {
+  const at = Date.now() - 12 * T.DAY; const name = `${stamp2(at)}-demo__retired.example.com`;
+  return { name, path: `${BASE_DIR}/.trash/${name}`, original: 'demo/retired.example.com', trashed_at: iso(at), age_days: 12, files: 48, size_bytes: 2_300_000, delete_on: iso(at + 30 * T.DAY) };
+})()];
+on('GET', /^\/api\/sites\/folders$/, (_r, _m, s) => {
+  const folders: any[] = [];
+  for (const u of s.users) {
+    const mine = s.sites.filter((x) => x.userId === u.id);
+    folders.push({ path: `${BASE_DIR}/${u.username}`, name: u.username, depth: 1, status: 'user-dir', owner: u.username, files: mine.length, size_bytes: 0, fs_uid: 1000, writable: true, can_remove: mine.length === 0 });
+    for (const x of mine) folders.push({ path: `${BASE_DIR}/${u.username}/${x.domain}`, name: x.domain, depth: 2, status: 'registered', owner: u.username, detected_type: x.template, files: 20, size_bytes: 400_000, fs_uid: 1000, writable: true, mounted_by: x.running ? siteName(x.domain) : '', site_id: x.id, can_remove: false });
+  }
+  for (const f of demoStrays) folders.push({ ...f, fs_uid: 1000, writable: true, can_remove: true });
+  return ok({ folders, ghosts: [], trash: demoTrash, trash_keep_days: 30 });
+});
+on('POST', /^\/api\/sites\/folders\/adopt$/, (r, _m, s) => {
+  const f = demoStrays.find((x) => x.path === r.body?.path);
+  if (!f || f.status !== 'unregistered') return err(400, 'the folder name must be the site\'s domain, e.g. example.com');
+  const owner = f.owner ? s.users.find((u) => u.username === f.owner) : s.users.find((u) => u.id === Number(r.body?.user_id));
+  if (!owner) return err(400, 'choose which user this site belongs to');
+  if (s.sites.length >= MAX_SITES) return err(400, 'The demo is full');
+  const template = (['static', 'php', 'node'].includes(r.body?.template_type) ? r.body.template_type : f.detected_type || 'static') as DemoSite['template'];
+  const id = s.nextId++;
+  s.sites.push({ id, domain: f.name, userId: owner.id, template, running: false, startedAt: 0, stoppedAt: Date.now(), createdAt: Date.now(), includeWww: true, internalPort: template === 'node' ? 3000 : 80, hostPort: 32000 + id, containerId: fakeHex(64), tracked: true });
+  demoStrays = demoStrays.filter((x) => x !== f); save();
+  return { status: 201, body: { success: true, site_id: id, domain: f.name, owner: owner.username, template_type: template, message: 'registered; files, nginx and any running container were not touched' } };
+});
+on('POST', /^\/api\/sites\/folders\/trash$/, (r) => {
+  const f = demoStrays.find((x) => x.path === r.body?.path);
+  if (!f) return err(409, 'only folders DockLite does not use can be trashed in the demo');
+  const at = Date.now(); const name = `${stamp2(at)}-${f.path.slice(BASE_DIR.length + 1).replace(/\//g, '__')}`;
+  demoTrash.push({ name, path: `${BASE_DIR}/.trash/${name}`, original: f.path.slice(BASE_DIR.length + 1), trashed_at: iso(at), age_days: 0, files: f.files, size_bytes: f.size_bytes, delete_on: iso(at + 30 * T.DAY) });
+  demoStrays = demoStrays.filter((x) => x !== f);
+  return ok({ success: true, moved_to: `${BASE_DIR}/.trash/${name}` });
+});
+on('POST', /^\/api\/sites\/folders\/trash\/purge$/, (r) => {
+  const gone = r.body?.all ? demoTrash.map((t) => t.name) : demoTrash.filter((t) => t.name === r.body?.name).map((t) => t.name);
+  if (!r.body?.all && gone.length === 0) return err(400, `${r.body?.name ?? ''} is not in the trash`);
+  demoTrash = demoTrash.filter((t) => !gone.includes(t.name));
+  return ok({ success: true, deleted: gone, remaining: demoTrash.length });
+});
 on('GET', /^\/api\/system\/shell-access$/, (_r, _m, s) => ok({ members: s.shellUsers }));
 on('POST', /^\/api\/system\/shell-access$/, (r, _m, s) => {
   const u = String(r.body?.username ?? '').trim(); if (!u) return err(400, 'Enter a username');

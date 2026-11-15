@@ -21,6 +21,7 @@ import * as migration012 from './012_rename_admin_user';
 import * as migration013 from './013_add_container_tracking';
 import * as migration014 from './014_create_tokens';
 import * as migration015 from './015_add_sqlite_support';
+import * as migration016 from './016_backup_packages';
 
 const allMigrations: Migration[] = [
   migration001,
@@ -38,6 +39,7 @@ const allMigrations: Migration[] = [
   migration013,
   migration014,
   migration015,
+  migration016,
 ];
 
 function ensureMigrationsTable(db: Database.Database): void {

@@ -72,3 +72,27 @@ func pruneKeepLast(storeHandle *store.SQLiteStore, targetType string, targetID i
 		_ = storeHandle.DeleteBackup(r.ID)
 	}
 }
+
+// pruneJobKeepLast keeps only the newest keep successful packages a schedule made. Like pruneKeepLast, failures are never
+// counted, so they can't push a good backup out.
+func pruneJobKeepLast(storeHandle *store.SQLiteStore, jobID int64, keep int) {
+	if keep <= 0 {
+		return
+	}
+	records, err := storeHandle.GetBackupsByJob(jobID, 1000) // newest first
+	if err != nil {
+		return
+	}
+	kept := 0
+	for _, r := range records {
+		if r.Status != "success" {
+			continue
+		}
+		kept++
+		if kept <= keep {
+			continue
+		}
+		_ = RemoveBackupArtifacts(r.BackupPath)
+		_ = storeHandle.DeleteBackup(r.ID)
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"docklite-agent/internal/store"
 	"docklite-agent/internal/testhelpers"
@@ -111,4 +112,88 @@ func TestManifestKeepsPreviousOwners(t *testing.T) {
 	testhelpers.AssertEqual(t, m.PreviousOwners[0].By, "root")
 	testhelpers.AssertTrue(t, m.CreatedAt.Equal(first.CreatedAt), "created time kept")
 	RecordPreviousOwner(t.TempDir(), "x", "transfer", "") // no manifest: must not panic or create one
+}
+
+func TestTrashListingAndPurge(t *testing.T) {
+	base := t.TempDir()
+	old := siteBaseDir
+	siteBaseDir = base
+	defer func() { siteBaseDir = old }()
+	db := testhelpers.TestStoreWithTables(t)
+	s := &store.SQLiteStore{DB: db, Path: ":memory:"}
+	defer s.Close()
+	h := &Handlers{store: s}
+
+	mk := func(rel string) string {
+		p := filepath.Join(base, rel)
+		testhelpers.AssertNoError(t, os.MkdirAll(p, 0o755))
+		testhelpers.AssertNoError(t, os.WriteFile(filepath.Join(p, "index.html"), []byte("hello"), 0o644))
+		return p
+	}
+	recent, err := moveToTrash(mk("alice/new.example.com"))
+	testhelpers.AssertNoError(t, err)
+	// An entry trashed 40 days ago, named the way moveToTrash names things.
+	stale := filepath.Join(base, ".trash", time.Now().UTC().AddDate(0, 0, -40).Format("20060102-150405")+"-bob__old.example.com")
+	testhelpers.AssertNoError(t, os.Rename(mk("bob/old.example.com"), stale))
+	// Junk in the trash folder that the agent did not put there is ignored, never deleted.
+	testhelpers.AssertNoError(t, os.MkdirAll(filepath.Join(base, ".trash", "not-ours"), 0o755))
+
+	list := listTrash()
+	testhelpers.AssertEqual(t, len(list), 2)
+	testhelpers.AssertEqual(t, list[0].Original, "bob/old.example.com")
+	testhelpers.AssertEqual(t, list[0].AgeDays, 40)
+	testhelpers.AssertEqual(t, list[0].Files, 1)
+	testhelpers.AssertEqual(t, list[1].Original, "alice/new.example.com")
+	if list[1].DeleteOn == "" {
+		t.Fatal("entries should say when the automatic purge removes them")
+	}
+	rep, err := h.scanFolders(context.Background())
+	testhelpers.AssertNoError(t, err)
+	testhelpers.AssertEqual(t, len(rep.Trash), 2)
+	testhelpers.AssertEqual(t, rep.TrashKeepDays, trashKeepDays)
+
+	// The automatic purge only takes entries older than the retention.
+	deleted, err := purgeTrashOlderThan(30, time.Now())
+	testhelpers.AssertNoError(t, err)
+	testhelpers.AssertEqual(t, len(deleted), 1)
+	if _, err := os.Stat(stale); err == nil {
+		t.Fatal("the 40-day-old entry should be gone")
+	}
+	if _, err := os.Stat(recent); err != nil {
+		t.Fatal("the fresh entry must survive")
+	}
+	if _, err := os.Stat(filepath.Join(base, ".trash", "not-ours")); err != nil {
+		t.Fatal("foreign folders in .trash must never be deleted")
+	}
+
+	// The endpoint refuses anything that isn't a trash entry name.
+	for _, bad := range []string{`{"name":"../alice"}`, `{"name":"not-ours"}`, `{"name":"` + filepath.Base(recent) + `/index.html"}`, `{}`} {
+		rr := httptest.NewRecorder()
+		h.PurgeTrash(rr, adminReq("POST", bad))
+		testhelpers.AssertEqual(t, rr.Code, http.StatusBadRequest)
+	}
+	if _, err := os.Stat(filepath.Join(base, "alice")); err != nil {
+		t.Fatal("a bad purge request must not touch live folders")
+	}
+	rr := httptest.NewRecorder()
+	h.PurgeTrash(rr, adminReq("POST", `{"name":"`+filepath.Base(recent)+`"}`))
+	testhelpers.AssertEqual(t, rr.Code, http.StatusOK)
+	if _, err := os.Stat(recent); err == nil {
+		t.Fatal("purge by name should delete the entry")
+	}
+
+	// Empty the trash: only agent-made entries go.
+	testhelpers.AssertNoError(t, os.Rename(mk("carol/a.example.com"), filepath.Join(base, ".trash", "20260101-000000-carol__a.example.com")))
+	rr = httptest.NewRecorder()
+	h.PurgeTrash(rr, adminReq("POST", `{"all":true}`))
+	testhelpers.AssertEqual(t, rr.Code, http.StatusOK)
+	testhelpers.AssertEqual(t, len(listTrash()), 0)
+	if _, err := os.Stat(filepath.Join(base, ".trash", "not-ours")); err != nil {
+		t.Fatal("emptying the trash must leave foreign folders alone")
+	}
+	// Non-admins can't.
+	rr = httptest.NewRecorder()
+	r := httptest.NewRequest("POST", "/x", strings.NewReader(`{"all":true}`))
+	h.PurgeTrash(rr, r.WithContext(context.WithValue(r.Context(), ctxUserRoleKey, "user")))
+	testhelpers.AssertEqual(t, rr.Code, http.StatusForbidden)
 }

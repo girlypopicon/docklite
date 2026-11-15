@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import CloseButton from './CloseButton';
-import { ClockCounterClockwise, X, WarningCircle } from '@phosphor-icons/react';
+import { ClockCounterClockwise, WarningCircle } from '@phosphor-icons/react';
+import BackupPicker, { BackupSelection, selectionIsEmpty } from './BackupPicker';
 
 interface AddBackupJobModalProps {
   destinations: any[];
@@ -11,15 +12,6 @@ interface AddBackupJobModalProps {
   initialJob?: any;
   mode?: 'create' | 'edit';
 }
-
-type TargetType = 'all-sites' | 'site' | 'all-databases' | 'database';
-
-const TARGET_TYPES = [
-  { value: 'all-sites', label: 'All Sites', description: 'Backup all sites' },
-  { value: 'site', label: 'Specific Site', description: 'Backup one site' },
-  { value: 'all-databases', label: 'All Databases', description: 'Backup all databases' },
-  { value: 'database', label: 'Specific Database', description: 'Backup one database' },
-];
 
 const WEEKDAYS = [
   { value: 'sun', label: 'Sunday' },
@@ -63,10 +55,15 @@ function parseFrequency(freq: string | undefined): { kind: ScheduleKind; time: s
   return out;
 }
 
+// The agent sends a job's destination as destination_id; older code here read "destination".
+function jobDestination(job: any): number | undefined {
+  return job?.destination_id ?? job?.destination;
+}
+
 export default function AddBackupJobModal({ destinations, onClose, onSuccess, initialJob, mode = 'create' }: AddBackupJobModalProps) {
-  const [destinationId, setDestinationId] = useState(initialJob?.destination || destinations[0]?.id || 0);
-  const [targetType, setTargetType] = useState<TargetType>(initialJob?.target_type || 'all-sites');
-  const [targetId, setTargetId] = useState<number | ''>(initialJob?.target_id ?? '');
+  const [destinationId, setDestinationId] = useState(jobDestination(initialJob) || destinations[0]?.id || 0);
+  // Schedules made before packages have no selection of their own; the agent works one out from their old target.
+  const [selection, setSelection] = useState<BackupSelection>(initialJob?.selection_data || { all_sites: true, all_databases: true });
   const initialSchedule = parseFrequency(initialJob?.frequency);
   const [kind, setKind] = useState<ScheduleKind>(initialSchedule.kind);
   const [time, setTime] = useState(initialSchedule.time);
@@ -75,26 +72,13 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
   const [keep, setKeep] = useState(initialSchedule.keep);
   const [enabled, setEnabled] = useState(initialJob ? initialJob.enabled === 1 : true);
 
-  const [databases, setDatabases] = useState<any[]>([]);
-  const [sites, setSites] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Load databases if needed
-  useEffect(() => {
-    if (targetType === 'database') {
-      loadDatabases();
-    }
-    if (targetType === 'site') {
-      loadSites();
-    }
-  }, [targetType]);
-
   useEffect(() => {
     if (!initialJob) return;
-    setDestinationId(initialJob.destination || destinations[0]?.id || 0);
-    setTargetType(initialJob.target_type || 'all-sites');
-    setTargetId(initialJob.target_id ?? '');
+    setDestinationId(jobDestination(initialJob) || destinations[0]?.id || 0);
+    if (initialJob.selection_data) setSelection(initialJob.selection_data);
     const sched = parseFrequency(initialJob.frequency);
     setKind(sched.kind);
     setTime(sched.time);
@@ -104,56 +88,20 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
     setEnabled(initialJob.enabled === 1);
   }, [initialJob, destinations]);
 
-  const loadDatabases = async () => {
-    try {
-      const res = await fetch('/api/databases/stats');
-      const data = await res.json();
-      const normalized = (data.databases || []).map((db: any) => ({
-        id: Number(db.id),
-        name: db.name,
-      }));
-      setDatabases(normalized);
-      if (normalized.length > 0) {
-        setTargetId((current) => (current === '' ? normalized[0].id : current));
-      }
-    } catch (err) {
-      console.error('Error loading databases:', err);
-    }
-  };
-
-  const loadSites = async () => {
-    try {
-      const res = await fetch('/api/containers/all');
-      const data = await res.json();
-      const found = (data.containers || [])
-        .map((container: any) => {
-          const siteId = container.labels?.['docklite.site.id'];
-          if (!siteId) return null;
-          const domain = container.labels?.['docklite.domain'] || container.name || 'Site';
-          return { id: Number(siteId), label: domain };
-        })
-        .filter(Boolean);
-      setSites(found);
-      if (found.length > 0) {
-        setTargetId((current) => (current === '' ? found[0].id : current));
-      }
-    } catch (err) {
-      console.error('Error loading sites:', err);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (selectionIsEmpty(selection)) {
+      setError('Tick at least one site or database');
+      return;
+    }
     setLoading(true);
 
     try {
       const isEdit = mode === 'edit' && initialJob?.id;
-      const selectedTargetId = targetId === '' ? null : targetId;
       const payload: any = {
         destination_id: destinationId,
-        target_type: targetType,
-        target_id: targetType === 'database' || targetType === 'site' ? selectedTargetId : null,
+        selection,
         frequency:
           (kind === 'daily' ? `daily@${time}` : kind === 'weekly' ? `weekly@${weekday}@${time}` : String(everyHours)) +
           (keep > 0 ? `;keep=${keep}` : ''),
@@ -249,77 +197,10 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
 
           <div>
             <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
-              What to Backup
+              What to back up
             </label>
-            <select
-              value={targetType}
-              onChange={(e) => {
-                setTargetType(e.target.value as TargetType);
-                setTargetId('');
-              }}
-              className="input-vapor w-full"
-              required
-              disabled={loading}
-            >
-              {TARGET_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label} - {t.description}
-                </option>
-              ))}
-            </select>
+            <BackupPicker value={selection} onChange={setSelection} disabled={loading} forSchedule />
           </div>
-
-          {targetType === 'site' && (
-            <div>
-              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
-                Select Site
-              </label>
-              <select
-                value={targetId}
-                onChange={(e) => setTargetId(Number(e.target.value))}
-                className="input-vapor w-full"
-                required
-                disabled={loading || sites.length === 0}
-              >
-                {sites.map((site) => (
-                  <option key={site.id} value={site.id}>
-                    {site.label}
-                  </option>
-                ))}
-              </select>
-              {sites.length === 0 && (
-                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                  No sites found
-                </p>
-              )}
-            </div>
-          )}
-
-          {targetType === 'database' && (
-            <div>
-              <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-pink)' }}>
-                Select Database
-              </label>
-              <select
-                value={targetId}
-                onChange={(e) => setTargetId(Number(e.target.value))}
-                className="input-vapor w-full"
-                required
-                disabled={loading || databases.length === 0}
-              >
-                {databases.map((db) => (
-                  <option key={db.id} value={db.id}>
-                    {db.name}
-                  </option>
-                ))}
-              </select>
-              {databases.length === 0 && (
-                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                  No databases found
-                </p>
-              )}
-            </div>
-          )}
 
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -376,7 +257,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
               <select value={keep} onChange={(e) => setKeep(Number(e.target.value))} className="input-vapor w-full" disabled={loading}>
                 {[1, 3, 5, 7, 14, 30, 60, 90].map((n) => (
                   <option key={n} value={n}>
-                    {n} {n === 1 ? 'backup' : 'backups'} of each
+                    {n} {n === 1 ? 'backup' : 'backups'}
                   </option>
                 ))}
                 <option value={0}>All of them (never delete)</option>

@@ -88,6 +88,10 @@ test-update:
 test-nginx:
 	@bash scripts/test-nginx-helper.sh
 
+.PHONY: test-folders
+test-folders:
+	@bash scripts/test-folders-helper.sh
+
 .PHONY: test-installer
 test-installer:
 	@bash scripts/test-installer-preflight.sh
