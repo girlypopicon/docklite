@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.4.3 (2026-11-15)
+
 ### Added
 - **Site folders panel (Settings → System) and `docklite sites folders`**: what is really under `/var/www/sites`, compared with
   what DockLite knows. Folders left behind by deleted sites, transfers or hand copies can be adopted as sites (owner and type
