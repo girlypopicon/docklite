@@ -105,6 +105,7 @@ export interface ContainerInfo {
   ports: string;
   labels?: { [key: string]: string };
   owner_username?: string;
+  style?: { color?: string; icon?: string }; // card colour and icon the owner picked (lib/box-styles.ts)
 }
 
 export interface ContainerStats {

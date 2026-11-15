@@ -9,20 +9,22 @@ function Bone({ className = '' }: { className?: string }) {
 }
 
 function ContainerCardSkeleton() {
+  // The same shape as a real box card (a playing card, 5:7), with the same rows: status and menu, name, type, uptime, port.
   return (
     <div
-      className="p-3 rounded-xl min-h-[132px] flex flex-col relative"
+      className="w-full aspect-[5/7] p-3 rounded-xl flex flex-col relative"
       style={{ background: 'var(--surface-dim)', border: '2px solid rgba(var(--neon-purple-rgb), 0.3)' }}
       aria-hidden="true"
     >
-      <Bone className="absolute top-2 right-2 w-9 h-9 rounded-lg" />
-      <Bone className="h-4 w-2/3" />
-      <Bone className="h-3 w-1/3 mt-2" />
-      <Bone className="h-3 w-1/2 mt-3" />
-      <div className="flex gap-2 mt-auto pt-3">
-        <Bone className="h-9 flex-1 rounded-lg" />
-        <Bone className="h-9 flex-1 rounded-lg" />
-        <Bone className="h-9 flex-1 rounded-lg" />
+      <div className="flex items-center justify-between">
+        <Bone className="h-3 w-16" />
+        <Bone className="w-7 h-7 rounded-full" />
+      </div>
+      <Bone className="h-5 w-3/4 mt-3" />
+      <Bone className="h-3 w-1/2 mt-2" />
+      <div className="mt-auto space-y-2">
+        <Bone className="h-3 w-2/5" />
+        <Bone className="h-3 w-3/5" />
       </div>
     </div>
   );
@@ -67,7 +69,7 @@ export function ContainersPageSkeleton() {
           <Bone className="h-8 w-48" />
           <Bone className="h-6 w-20 rounded-full" />
         </div>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),1fr))] gap-3 p-2 sm:p-3 rounded-xl border-2 border-transparent">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,148px),1fr))] sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))] gap-3 sm:gap-4 p-2 sm:p-3 rounded-xl border-2 border-transparent">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <ContainerCardSkeleton key={i} />
           ))}

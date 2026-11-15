@@ -44,6 +44,7 @@ function siteInfo(s: DemoState, site: DemoSite) {
       'docklite.user.id': String(site.userId), 'docklite.include_www': String(site.includeWww), 'docklite.internal_port': String(site.internalPort),
     },
     owner_username: username(s, site.userId),
+    style: site.style,
   };
 }
 
@@ -53,6 +54,7 @@ function dbInfo(db: DemoDb) {
     state: db.running ? 'running' : 'exited', status: dockerStatus(db.running, db.startedAt), uptime: db.running ? formatUptime(Date.now() - db.startedAt) : '-',
     ports: db.running ? `${db.port}->5432, ${db.port}->5432` : '',
     labels: { 'docklite.managed': 'true', 'docklite.type': 'postgres', 'docklite.database': db.name, 'docklite.username': db.username, 'docklite.password': db.password },
+    style: db.style,
   };
 }
 
@@ -189,6 +191,16 @@ on('POST', new RegExp(`^/api/containers/${ID}/(assign|transfer)$`), (r, m, s) =>
 });
 on('POST', new RegExp(`^/api/containers/${ID}/(track|untrack|claim|write-manifest)$`), () => ok());
 on('POST', /^\/api\/containers\/(scan|onboard)$/, () => ok({ sites: [] }));
+// Colour and icon on a box's card: kept with the demo's own data, so it shows after a refresh like the real thing.
+on('PUT', /^\/api\/containers\/([^/]+)\/style$/, (r, m, s) => {
+  const found = findContainer(s, m[1]);
+  if (!found) return err(404, 'box not found');
+  const style = { color: String(r.body?.color || ''), icon: String(r.body?.icon || '') };
+  const target = found.site || found.db!;
+  target.style = style.color || style.icon ? style : undefined;
+  save();
+  return ok({ success: true, style });
+});
 on('GET', /^\/api\/containers\/scan$/, () => ok({ sites: [] }));
 on('GET', /^\/api\/ports\/suggest$/, (_r, _m, s) => ok({ port: 3000 + s.sites.length }));
 

@@ -77,6 +77,10 @@ deployed together, so it is the established term; and "what's your stack? nginx 
   already talk into a stack together (linked in `site_databases`, or named in the site's config), or list them and stop.
 
 ### The desktop: boxes, folders and one place to make things (owner's direction, 2026-11-15)
+*Done in the card release: the playing-card shape, the single `⋯` menu with Colour and Icon, click-to-open details, one-line names,
+matching loading cards and the two-per-row phone grid. Still to do: folders as cards (no "Default" section), drag to make a
+folder, the Databases tab merged away, the SSL padlock and SSL tab, one "New box" dialog, and the phone's own menu layout.*
+
 The Containers page becomes one flat **desktop** of cards, like a phone's home screen.
 - **Cards are playing-card shaped.** A box card is portrait, a little taller than the 1.4.2 card and narrower, at a
   playing card's ratio (about 5:7). A database card is the same size turned sideways, or square and shorter (try both).

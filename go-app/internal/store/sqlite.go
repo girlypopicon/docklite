@@ -102,6 +102,9 @@ func (s *SQLiteStore) InitializeAgentTables() error {
 	if err := s.EnsureSettingsSchema(); err != nil {
 		return err
 	}
+	if err := s.EnsureBoxStyleSchema(); err != nil {
+		return err
+	}
 	return s.EnsureBackupPackageSchema()
 }
 
