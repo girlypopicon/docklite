@@ -81,6 +81,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/dns/zones/ssl", handlers.Auth(hnd.CSRFMiddleware(handlers.CloudflareZoneSSL)))
 	mux.HandleFunc("/api/nginx/sites", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxSites)))
 	mux.HandleFunc("/api/nginx/sites/", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxSites)))
+	mux.HandleFunc("/api/settings/down-page", handlers.Auth(hnd.CSRFMiddleware(handlers.DownPageSettings)))
 	mux.HandleFunc("/api/nginx/test", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxActions)))
 	mux.HandleFunc("/api/nginx/reload", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxActions)))
 	mux.HandleFunc("/api/ssl", handlers.Auth(handlers.SSLBasic))

@@ -5,6 +5,18 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **A DockLite page for stopped boxes.** When a site's box is stopped, visitors used to get nginx's plain "502 Bad Gateway". They
+  now see a page in DockLite's colours: "This website's box isn't running right now", with a line saying who to contact. It is sent
+  as a 503 ("back soon") so search engines don't treat the site as gone, it checks again every minute, and it shows nothing about
+  your server. A box that is running but answers with an error of its own keeps its own error page.
+- **Set the contact line in Settings → System → Page for stopped boxes** (a name, an email address or a link), with a preview. One
+  page is shared by every site, so changing it changes all of them.
+- **Existing sites get it too.** DockLite adds one `include` line to each site's nginx file, in the server block that names the
+  site (HTTPS ones as well), when it starts and once a minute after that. Each file is backed up first, nginx's config is tested,
+  and the file is put back if nginx refuses it. New sites are created with the line already in place. Anything that isn't one of
+  your sites (the DockLite dashboard itself, hand-written proxies, a block that already has its own 502 page) is left alone.
+
 ## 1.4.3 (2026-11-15)
 
 ### Added

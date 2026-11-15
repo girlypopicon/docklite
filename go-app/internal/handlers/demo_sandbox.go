@@ -33,7 +33,7 @@ func demoRootHelper(stdin io.Reader, args ...string) ([]byte, error) {
 			}
 		}
 		return nil, nil
-	case "site-enable", "site-disable", "nginx-test", "nginx-reload", "nginx-restart", "nginx-survey":
+	case "site-enable", "site-disable", "nginx-test", "nginx-reload", "nginx-restart", "nginx-survey", "nginx-down-write":
 		return nil, nil
 	case "site-remove":
 		if len(args) > 1 {

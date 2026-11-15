@@ -27,6 +27,10 @@ type upstreamBlock struct {
 	File  string
 	Names []string
 	Ports []int
+	// The helper's fourth column: whether this block already has the stopped-box page ("down") or not ("-"). Older
+	// helpers print three columns, so DownKnown says whether HasDown means anything.
+	DownKnown bool
+	HasDown   bool
 }
 
 type upstreamFix struct {
@@ -51,6 +55,14 @@ func parseUpstreamBlocks(out string) []upstreamBlock {
 		for _, p := range strings.Fields(cols[2]) {
 			if n, err := strconv.Atoi(p); err == nil {
 				b.Ports = append(b.Ports, n)
+			}
+		}
+		if len(cols) >= 4 {
+			switch strings.TrimSpace(cols[3]) {
+			case "down":
+				b.DownKnown, b.HasDown = true, true
+			case "-":
+				b.DownKnown = true
 			}
 		}
 		blocks = append(blocks, b)
@@ -259,6 +271,7 @@ func (h *Handlers) RunUpstreamSync(ctx context.Context) {
 		if _, _, err := h.SyncUpstreams(c); err != nil {
 			log.Printf("upstream sync: %v", err)
 		}
+		h.SyncDownPage(c)
 	}
 	first := time.NewTimer(20 * time.Second) // let Docker finish starting everything after a boot
 	defer first.Stop()

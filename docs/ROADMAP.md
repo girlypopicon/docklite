@@ -138,6 +138,11 @@ The idea for making DockLite pay: DockLite as a website host where making a site
 - Payments make DockLite a business (merchant account, refunds, support, terms). Needs the multi-tenant hardening under
   *Public hosts* before strangers' sites run on the same server.
 
+### Stopped boxes: later ideas
+- **Retired on purpose.** A per-box switch for a site its owner has stopped deliberately: a different message ("this site has
+  closed"), or none (nginx drops the connection). Today every stopped box shows the same "isn't running" page.
+- **Per-site contact.** The contact line is server-wide. A host with several customers may want each site's own owner shown.
+
 ### Apache as a choice under the static and PHP templates
 - A "web server" dropdown (nginx or Apache) on the static and PHP templates, not extra templates. Swaps the image inside the
   container (`httpd:alpine`, `php:apache`); the host nginx proxies to it exactly as before.
