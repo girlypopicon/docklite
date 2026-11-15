@@ -56,6 +56,7 @@ type globalOptions struct {
 }
 
 type app struct {
+	lines      *bufio.Reader // buffered a.in, shared by every prompt
 	opts       globalOptions
 	in         io.Reader
 	out        io.Writer
@@ -268,7 +269,10 @@ func (a *app) confirm(what string) error {
 		return &exitError{code: exitNeedsYes, msg: fmt.Sprintf("refusing to %s without --yes (nothing was changed)", what)}
 	}
 	fmt.Fprintf(a.errOut, "%s? [y/N] ", strings.ToUpper(what[:1])+what[1:])
-	line, _ := bufio.NewReader(a.in).ReadString('\n')
+	if a.lines == nil {
+		a.lines = bufio.NewReader(a.in)
+	}
+	line, _ := a.lines.ReadString('\n')
 	switch strings.ToLower(strings.TrimSpace(line)) {
 	case "y", "yes":
 		return nil
@@ -278,7 +282,11 @@ func (a *app) confirm(what string) error {
 
 func (a *app) readLine(prompt string) (string, error) {
 	fmt.Fprint(a.errOut, prompt)
-	line, err := bufio.NewReader(a.in).ReadString('\n')
+	// One reader for the whole run: a new one per prompt would swallow the later lines when answers are piped in.
+	if a.lines == nil {
+		a.lines = bufio.NewReader(a.in)
+	}
+	line, err := a.lines.ReadString('\n')
 	if err != nil && line == "" {
 		return "", err
 	}

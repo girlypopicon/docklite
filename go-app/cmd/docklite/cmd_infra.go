@@ -366,6 +366,27 @@ func init() {
 		},
 	})
 	register(command{
+		Path: []string{"users", "2fa-reset"}, Summary: "Turn off a user's two-factor login (lost phone and recovery codes)",
+		Usage: "users 2fa-reset <username> --yes", AdminOnly: true, Destructive: true,
+		Examples: []string{"docklite users 2fa-reset stella --yes"},
+		Run: func(a *app, args []string) error {
+			if len(args) != 1 {
+				return usageError("usage: docklite users 2fa-reset <username> --yes")
+			}
+			if err := a.confirm(fmt.Sprintf("turn off two-factor login for %s", args[0])); err != nil {
+				return err
+			}
+			data, err := a.post("/api/users/2fa-reset", map[string]any{"username": args[0]})
+			if err != nil {
+				return err
+			}
+			a.emitValue(json.RawMessage(data), func() {
+				a.say("two-factor login is off for %s; they sign in with their password and can turn it on again in Settings → Security", args[0])
+			})
+			return nil
+		},
+	})
+	register(command{
 		Path: []string{"users", "delete"}, Summary: "Delete a user (their sites move to you)", Usage: "users delete <id>", AdminOnly: true, Destructive: true,
 		Run: func(a *app, args []string) error {
 			if len(args) != 1 {

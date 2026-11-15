@@ -126,6 +126,24 @@ export default function ManageUsersPage() {
     }
   };
 
+  // For someone who lost their phone and their recovery codes: turns two-factor login off so they can sign in with the
+  // password alone and set it up again.
+  const handleResetTwoFactor = async (user: { id: number; username: string }) => {
+    if (!window.confirm(`Turn off two-factor login for ${user.username}? They sign in with just their password until they turn it on again.`)) return;
+    try {
+      const res = await fetch('/api/users/2fa-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not reset two-factor login');
+      window.alert(`Two-factor login is off for ${user.username}.`);
+    } catch (err: any) {
+      window.alert(err.message || 'Could not reset two-factor login');
+    }
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passwordUser) return;
@@ -309,7 +327,7 @@ export default function ManageUsersPage() {
                       <div
                         data-user-menu
                         style={menuPos}
-                        className="fixed w-40 rounded-lg border border-neon-purple/30 bg-surface-muted backdrop-blur-md shadow-lg z-[9000] flex flex-col"
+                        className="fixed w-52 rounded-lg border border-neon-purple/30 bg-surface-muted backdrop-blur-md shadow-lg z-[9000] flex flex-col"
                       >
                         <button
                           type="button"
@@ -345,6 +363,18 @@ export default function ManageUsersPage() {
                             className="w-full text-left px-4 py-2 text-sm text-accent-cyan hover:bg-neon-purple/10"
                           >
                             Change Password
+                          </button>
+                        )}
+                        {canDeleteUser(user) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMenuUserId(null);
+                              handleResetTwoFactor(user);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-accent-cyan hover:bg-neon-purple/10"
+                          >
+                            Reset two-factor login
                           </button>
                         )}
                       </div>,
