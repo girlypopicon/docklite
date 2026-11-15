@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.5.0 (2026-11-15)
+
 This release is **1.5.0**: two-factor login, a page for stopped boxes, and the box cards redone as playing cards.
 
 ### Added
