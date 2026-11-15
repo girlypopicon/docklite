@@ -11,6 +11,8 @@ set -euo pipefail
 SITES_AVAILABLE=/etc/nginx/sites-available
 SITES_ENABLED=/etc/nginx/sites-enabled
 LE_LIVE=/etc/letsencrypt/live
+SITES_ROOT=/var/www/sites
+SITES_TRASH="$SITES_ROOT/.trash"
 
 die() { echo "docklite-helper: $*" >&2; exit 1; }
 
@@ -42,6 +44,16 @@ check_os_user() {
 
 check_email() {
     [[ "$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "invalid email: $1"
+}
+
+# A site folder relative to /var/www/sites: "<user>" or "<user>/<domain>", no hidden parts, no "..".
+check_site_rel() {
+    [[ "${1:-}" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,253}(/[A-Za-z0-9_][A-Za-z0-9._-]{0,253})?$ ]] || die "invalid site folder: ${1:-}"
+}
+
+# A trash entry name as the agent writes it: "<YYYYMMDD-HHMMSS>-<original path with / as __>".
+check_trash_name() {
+    [[ "${1:-}" =~ ^[0-9]{8}-[0-9]{6}-[A-Za-z0-9_][A-Za-z0-9._-]{0,509}$ ]] || die "invalid trash entry: ${1:-}"
 }
 
 # ── nginx upstream ports ────────────────────────────────────────────────────
@@ -301,6 +313,24 @@ case "$cmd" in
         check_name "${1:-}"
         rm -f "${SITES_ENABLED}/$1" "${SITES_AVAILABLE}/$1"
         ;;
+    site-trash)       # site-trash REL NAME   (move /var/www/sites/REL into the trash as NAME; for folders the
+                      # docklite user can't move itself, e.g. root-owned ones from an older install)
+        check_site_rel "${1:-}"; check_trash_name "${2:-}"
+        src="$SITES_ROOT/$1"
+        [[ -d "$src" && ! -L "$src" ]] || die "no such site folder: $1"
+        mkdir -p "$SITES_TRASH"
+        chown docklite:docklite "$SITES_TRASH"; chmod 2775 "$SITES_TRASH"
+        [[ ! -e "$SITES_TRASH/$2" ]] || die "already in the trash: $2"
+        mv "$src" "$SITES_TRASH/$2"
+        # Hand it to the docklite user so the agent can empty the trash later without asking again.
+        chown -R docklite:docklite "$SITES_TRASH/$2" 2>/dev/null || true
+        ;;
+    site-purge)       # site-purge NAME   (delete one trash entry for good)
+        check_trash_name "${1:-}"
+        t="$SITES_TRASH/$1"
+        [[ -d "$t" && ! -L "$t" ]] || die "not in the trash: $1"
+        rm -rf --one-file-system "$t"
+        ;;
     nginx-survey)     # nginx-survey   (read-only: what nginx already serves)
         # Lines: "enabled NAME", "default_server NAME" (declares default_server),
         # and "stock_default yes|no" (is sites-enabled/default the untouched Debian page?).
@@ -470,6 +500,6 @@ case "$cmd" in
         cat "${LE_LIVE}/$1/cert.pem"
         ;;
     *)
-        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|nginx-test|nginx-reload|nginx-restart|cert-issue|cert-obtain|cert-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
+        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|site-trash|site-purge|nginx-test|nginx-reload|nginx-restart|cert-issue|cert-obtain|cert-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
         ;;
 esac

@@ -89,13 +89,20 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Delete a database and its data | `docklite databases delete wordpress --yes` |
 | See all backups | `docklite backups list` |
 | See the backup files on the server | `docklite backups files` |
-| Back up a site now | `docklite backups create example.com` |
-| Check a backup without changing anything | `docklite backups inspect sites/site-example.com-20261011-030000.tar.gz` |
-| Put a site back the way a backup had it (the current files are saved first) | `docklite backups restore sites/site-example.com-20261011-030000.tar.gz --yes` |
-| Back up automatically every night, keeping the last 7 | `docklite backups schedule --all --daily-at 03:00 --keep 7` (or one site, or `--weekly sun@04:00`) |
+| Back up a site now (everything goes into one `.litpkg` kept on the server) | `docklite backups create example.com` |
+| Back up a site plus its databases | `docklite backups create example.com --with-databases` |
+| Back up one database / several sites | `docklite backups create --database shopdb` / `docklite backups create a.com b.com` |
+| Back up all sites / all databases / everything | `docklite backups create --all-sites` / `--all-databases` / `--all` |
+| Check a backup without changing anything (what a package holds, whether it is intact) | `docklite backups inspect packages/example.com-20261011-030000.litpkg` |
+| Put a site back the way a backup had it (the current files are saved first) | `docklite backups restore packages/example.com-20261011-030000.litpkg --yes` |
+| Restore one site out of a package that holds several | `docklite backups restore packages/everything-20261011-030000.litpkg --from example.com --yes` |
+| Back up automatically every night, keeping the last 7 | `docklite backups schedule --all --daily-at 03:00 --keep 7` (takes the same choices as `create`; or `--weekly sun@04:00`) |
 | See / remove automatic backups | `docklite backups schedules` / `docklite backups unschedule <id> --yes` |
 | Check sites follow `/var/www/sites/<user>/<domain>` | `docklite sites layout` (report only) |
-| Move sites into that layout | `docklite sites layout --apply --yes` (copies; old folders are kept) |
+| Move sites into that layout | `docklite sites layout --apply --yes` (copies, switches the container over, old folder goes to the trash) |
+| See folders under `/var/www/sites` DockLite doesn't know about, and the trash | `docklite sites folders` |
+| Register such a folder as a site (files untouched) | `docklite sites folders --adopt /var/www/sites/old.example.com --owner alice` |
+| Move a leftover folder to the trash / empty the trash for good | `docklite sites folders --trash <path> --yes` / `--purge all --yes` (the trash empties itself after 30 days) |
 | See if a newer DockLite exists | `docklite update --check` |
 | Update DockLite (sites keep running) | `docklite update --yes` (waits until it's running; rolls back by itself if it fails) |
 | Let me (or an assistant) edit a site's files | new sites already allow it; for older ones: `docklite sites permissions [domain]` |

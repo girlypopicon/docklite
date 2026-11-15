@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 // Site folders belong to the docklite user and group. People who manage the server (and assistants working in their
@@ -185,6 +186,35 @@ func (h *Handlers) RunSitePermissionsOnce() {
 		state = "done acl\n"
 	}
 	_ = os.WriteFile(permsMarkerFile, []byte(state), 0o640)
+}
+
+// ensureSiteWritable makes a whole site folder editable the way DockLite expects after its files changed hands (a
+// transfer, a layout move, a restore): everything owned by the docklite user (the dashboard's file editor and the
+// site's container run as it), group-writable with setgid folders, and the docklite group's default ACL for whatever
+// is created there later. Symlinks are skipped so nothing outside the folder is touched. It never touches a folder
+// outside the sites root.
+func ensureSiteWritable(root string) (changed, skipped int) {
+	if !isWithinBase(root) {
+		return 0, 0
+	}
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.Type()&fs.ModeSymlink != 0 {
+			return nil
+		}
+		if st, err := os.Lstat(path); err == nil {
+			if sys, ok := st.Sys().(*syscall.Stat_t); ok && (int(sys.Uid) != dockliteUID || int(sys.Gid) != dockliteGID) {
+				if os.Lchown(path, dockliteUID, dockliteGID) == nil {
+					changed++
+				} else {
+					skipped++
+				}
+			}
+		}
+		return nil
+	})
+	c, k := fixSitePermissions(root)
+	applyGroupACL(root)
+	return changed + c, skipped + k
 }
 
 // mkdirAllShared is os.MkdirAll that also makes every folder it creates usable by the docklite group.

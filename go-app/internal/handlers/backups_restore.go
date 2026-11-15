@@ -49,14 +49,37 @@ func (h *Handlers) restoreTarget(archive, domain string) (*store.SiteRecord, err
 	return site, nil
 }
 
-// restoreSiteBackup restores a backup file (path relative to the backup folder) into its site.
-func (h *Handlers) restoreSiteBackup(r *http.Request, file, domain string) (*backup.RestoreResult, *store.SiteRecord, error) {
+// restoreSiteBackup restores a backup file (path relative to the backup folder) into its site. For a package, fromSite
+// names which of its sites to restore; it may be left out when the package holds only one.
+func (h *Handlers) restoreSiteBackup(r *http.Request, file, domain, fromSite string) (*backup.RestoreResult, *store.SiteRecord, error) {
 	archive, ok := h.resolveBackupPath(file)
-	if !ok || !strings.HasSuffix(archive, ".tar.gz") {
+	if !ok || !(strings.HasSuffix(archive, ".tar.gz") || backup.IsPackage(archive)) {
 		return nil, nil, fmt.Errorf("that isn't a site backup file")
 	}
 	if err := backup.CheckAgainstManifest(archive); err != nil {
 		return nil, nil, err
+	}
+	if backup.IsPackage(archive) {
+		info, err := backup.InspectPackage(archive)
+		if err != nil {
+			return nil, nil, err
+		}
+		from, err := pickPackageSite(&info.Manifest, fromSite)
+		if err != nil {
+			return nil, nil, err
+		}
+		if strings.TrimSpace(domain) == "" {
+			domain = from.Domain
+		}
+		site, err := h.restoreTarget(archive, domain)
+		if err != nil {
+			return nil, nil, err
+		}
+		res, err := backup.RestoreSiteFromPackage(r.Context(), archive, from.Folder, site.CodePath, filepath.Join(h.backupBaseDir, "safety"))
+		if err != nil {
+			return nil, nil, err
+		}
+		return res, site, nil
 	}
 	site, err := h.restoreTarget(archive, domain)
 	if err != nil {
@@ -67,6 +90,63 @@ func (h *Handlers) restoreSiteBackup(r *http.Request, file, domain string) (*bac
 		return nil, nil, err
 	}
 	return res, site, nil
+}
+
+// pickPackageSite finds the site to restore from a package: the one named, or the only one.
+func pickPackageSite(m *backup.PackageManifest, name string) (*backup.PackageSite, error) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	if name == "" {
+		switch len(m.Sites) {
+		case 0:
+			return nil, fmt.Errorf("this backup holds no site files (only databases)")
+		case 1:
+			return &m.Sites[0], nil
+		}
+		names := make([]string, 0, len(m.Sites))
+		for _, s := range m.Sites {
+			names = append(names, s.Domain)
+		}
+		return nil, fmt.Errorf("this backup holds %d sites (%s); say which one to restore", len(m.Sites), strings.Join(names, ", "))
+	}
+	for i := range m.Sites {
+		if strings.EqualFold(m.Sites[i].Domain, name) {
+			return &m.Sites[i], nil
+		}
+	}
+	return nil, fmt.Errorf("this backup doesn't hold the files of %s", name)
+}
+
+// inspectPackage describes a .litpkg: what is in it, and for each site whether it exists here to restore into.
+func (h *Handlers) inspectPackage(w http.ResponseWriter, archive string) {
+	info, err := backup.InspectPackage(archive)
+	if err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	type siteView struct {
+		Domain  string `json:"domain"`
+		Files   int    `json:"files"`
+		Problem string `json:"problem,omitempty"` // why it can't be restored here as it is
+	}
+	sites := make([]siteView, 0, len(info.Manifest.Sites))
+	for _, s := range info.Manifest.Sites {
+		v := siteView{Domain: s.Domain, Files: s.Files}
+		if _, err := h.restoreTarget(archive, s.Domain); err != nil {
+			v.Problem = err.Error()
+		}
+		sites = append(sites, v)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"package":     true,
+		"description": info.Manifest.Description,
+		"created_at":  info.Manifest.CreatedAt,
+		"sites":       sites,
+		"databases":   info.Manifest.Databases,
+		"problems":    info.Manifest.Problems,
+		"notes":       info.Manifest.Notes,
+		"bytes":       info.Bytes,
+		"verified":    backup.CheckAgainstManifest(archive) == nil,
+	})
 }
 
 // BackupInspect describes a backup file without changing anything: what site it is for, how many files, how big.
@@ -80,6 +160,10 @@ func (h *Handlers) BackupInspect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	archive, ok := h.resolveBackupPath(r.URL.Query().Get("file"))
+	if ok && backup.IsPackage(archive) {
+		h.inspectPackage(w, archive)
+		return
+	}
 	if !ok || !strings.HasSuffix(archive, ".tar.gz") {
 		writeError(w, http.StatusBadRequest, "that isn't a site backup file")
 		return
@@ -112,14 +196,15 @@ func (h *Handlers) BackupRestore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		File   string `json:"file"`
-		Domain string `json:"domain"`
+		File     string `json:"file"`
+		Domain   string `json:"domain"`    // the site to restore into; by default the one the files came from
+		FromSite string `json:"from_site"` // which site of a package to restore
 	}
 	if err := readJSON(w, r, &body); err != nil || body.File == "" {
 		writeError(w, http.StatusBadRequest, "file is required")
 		return
 	}
-	res, site, err := h.restoreSiteBackup(r, body.File, body.Domain)
+	res, site, err := h.restoreSiteBackup(r, body.File, body.Domain, body.FromSite)
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return

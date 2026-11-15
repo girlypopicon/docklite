@@ -151,7 +151,7 @@ covers the tests (`make test`).
 
 ## Roadmap
 
-Planned, not built yet: a backup scheduler and one-click restore, portable `.dklpkg` packages (a site or server
+Planned, not built yet: a backup scheduler and one-click restore, portable `.litpkg` packages (a site or server
 bundled to move elsewhere), adopting existing sites and cleaning up leftovers from the dashboard, an activity log
 viewer, more database types, and a refreshed terminal UI.
 

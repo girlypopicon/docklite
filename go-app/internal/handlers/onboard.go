@@ -17,7 +17,7 @@ const dklFilename = ".dkl"
 // container is first provisioned.  The file acts as a breadcrumb so that a
 // fresh DockLite installation can discover and re-attach to existing sites.
 // It contains enough information to rebuild the container against the existing
-// files on disk without needing a full .dklpkg backup.
+// files on disk without needing a full .litpkg backup.
 type dklManifest struct {
 	Version      string    `json:"version"`
 	Domain       string    `json:"domain"`
@@ -30,7 +30,7 @@ type dklManifest struct {
 	Env          []string  `json:"env,omitempty"` // template-defined env vars (no secrets)
 	CreatedAt    time.Time `json:"createdAt"`
 	// PreviousOwners is the site's ownership history, oldest first. It lives in the
-	// manifest so it travels with the folder, backups and .dklpkg packages.
+	// manifest so it travels with the folder, backups and .litpkg packages.
 	PreviousOwners []dklPreviousOwner `json:"previousOwners,omitempty"`
 }
 

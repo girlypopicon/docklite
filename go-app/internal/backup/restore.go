@@ -49,9 +49,33 @@ func cleanEntry(name string) (top, rel string, ok bool) {
 	return parts[0], parts[1], true
 }
 
+// siteEntry maps a tar entry name to a path inside the site folder. In a plain site backup the site folder is the
+// archive's single top-level folder; in a package it is within ("sites/<domain>/files") and every other entry is
+// outside it (inside=false). ok=false means the name is unsafe.
+func siteEntry(name, within string) (top, rel string, inside, ok bool) {
+	top, rel, ok = cleanEntry(name)
+	if !ok || within == "" {
+		return top, rel, ok, ok
+	}
+	clean := path.Clean(strings.TrimPrefix(filepath.ToSlash(name), "./"))
+	if clean == within {
+		return within, "", true, true
+	}
+	if strings.HasPrefix(clean, within+"/") {
+		return within, strings.TrimPrefix(clean, within+"/"), true, true
+	}
+	return "", "", false, true
+}
+
 // InspectSiteArchive reads a site backup end to end and reports what's in it. It rejects an archive that is damaged, empty,
 // or holds more than one top-level folder, so a restore never starts from something it can't finish.
 func InspectSiteArchive(archivePath string) (*ArchiveInfo, error) {
+	return inspectSiteTree(archivePath, "")
+}
+
+// inspectSiteTree is InspectSiteArchive for the site folder at within inside a package ("" for a plain site backup).
+// The whole archive is read either way, so damage anywhere in it is caught.
+func inspectSiteTree(archivePath, within string) (*ArchiveInfo, error) {
 	f, err := os.Open(archivePath)
 	if err != nil {
 		return nil, fmt.Errorf("can't open the backup: %w", err)
@@ -71,17 +95,20 @@ func InspectSiteArchive(archivePath string) (*ArchiveInfo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("the backup file is damaged: %w", err)
 		}
-		top, rel, ok := cleanEntry(hdr.Name)
+		top, rel, inside, ok := siteEntry(hdr.Name, within)
 		if !ok {
 			return nil, fmt.Errorf("the backup holds an unsafe path (%q), so it won't be restored", hdr.Name)
+		}
+		if _, err := io.Copy(io.Discard, tr); err != nil {
+			return nil, fmt.Errorf("the backup file is damaged: %w", err)
+		}
+		if !inside {
+			continue
 		}
 		if info.Folder == "" {
 			info.Folder = top
 		} else if top != info.Folder {
 			return nil, fmt.Errorf("the backup isn't a single site folder (found %q and %q)", info.Folder, top)
-		}
-		if _, err := io.Copy(io.Discard, tr); err != nil {
-			return nil, fmt.Errorf("the backup file is damaged: %w", err)
 		}
 		switch hdr.Typeflag {
 		case tar.TypeReg:
@@ -97,6 +124,9 @@ func InspectSiteArchive(archivePath string) (*ArchiveInfo, error) {
 		}
 	}
 	if info.Folder == "" {
+		if within != "" {
+			return nil, fmt.Errorf("the package doesn't hold that site's files")
+		}
 		return nil, fmt.Errorf("the backup is empty")
 	}
 	return info, nil
@@ -118,9 +148,22 @@ func symlinkStaysInside(rel, target string) bool {
 // container has siteDir itself mounted and the folder must keep its identity. If the swap fails part way the old
 // contents are put back. Nothing is deleted until the new contents are in place.
 func RestoreSiteArchive(ctx context.Context, archivePath, siteDir, safetyDir string) (*RestoreResult, error) {
+	return restoreSiteTree(ctx, archivePath, "", siteDir, safetyDir)
+}
+
+// RestoreSiteFromPackage is RestoreSiteArchive for one site inside a .litpkg; folder is where its files are in the
+// package (PackageManifest.SiteFolder).
+func RestoreSiteFromPackage(ctx context.Context, packagePath, folder, siteDir, safetyDir string) (*RestoreResult, error) {
+	if folder == "" {
+		return nil, fmt.Errorf("the package doesn't hold that site's files")
+	}
+	return restoreSiteTree(ctx, packagePath, folder, siteDir, safetyDir)
+}
+
+func restoreSiteTree(ctx context.Context, archivePath, within, siteDir, safetyDir string) (*RestoreResult, error) {
 	rep := reporterFrom(ctx)
 	rep.Phase(kindVerifying, "Checking the backup", 0)
-	info, err := InspectSiteArchive(archivePath)
+	info, err := inspectSiteTree(archivePath, within)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +200,7 @@ func RestoreSiteArchive(ctx context.Context, archivePath, siteDir, safetyDir str
 	}
 	defer os.RemoveAll(stage)
 	rep.Phase(kindWorking, "Unpacking the backup", info.Bytes)
-	if err := extractInto(ctx, archivePath, stage, rep); err != nil {
+	if err := extractInto(ctx, archivePath, within, stage, rep); err != nil {
 		return nil, fmt.Errorf("couldn't unpack the backup, so nothing was changed: %w", err)
 	}
 
@@ -216,10 +259,10 @@ func swapContents(dir, stage, aside string) error {
 	return nil
 }
 
-// extractInto unpacks a site backup into dest, dropping the archive's top-level folder name. Paths that would escape
-// dest are never written. Files and folders end up readable and writable by the docklite group, like everything else
+// extractInto unpacks a site backup into dest, dropping the archive's top-level folder name (or, in a package, only the
+// site folder at within, dropping that). Paths that would escape dest are never written. Files and folders end up readable and writable by the docklite group, like everything else
 // DockLite creates in a site folder.
-func extractInto(ctx context.Context, archivePath, dest string, rep *Reporter) error {
+func extractInto(ctx context.Context, archivePath, within, dest string, rep *Reporter) error {
 	f, err := os.Open(archivePath)
 	if err != nil {
 		return err
@@ -246,11 +289,11 @@ func extractInto(ctx context.Context, archivePath, dest string, rep *Reporter) e
 		if err != nil {
 			return err
 		}
-		_, rel, ok := cleanEntry(hdr.Name)
+		_, rel, inside, ok := siteEntry(hdr.Name, within)
 		if !ok {
 			return fmt.Errorf("unsafe path %q", hdr.Name)
 		}
-		if rel == "" {
+		if !inside || rel == "" {
 			continue
 		}
 		target := filepath.Join(dest, filepath.FromSlash(rel))

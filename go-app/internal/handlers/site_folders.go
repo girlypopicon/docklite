@@ -3,10 +3,12 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -16,10 +18,24 @@ import (
 
 // Everything under /var/www/sites should be a user folder holding site folders.
 // These endpoints show what is actually there, adopt folders DockLite doesn't
-// know about, and quarantine orphans. Nothing here deletes data: removal moves
-// a folder into /var/www/sites/.trash.
+// know about, and quarantine orphans. Removing a folder moves it into
+// /var/www/sites/.trash; the trash is the only place DockLite ever deletes
+// from, either by hand (PurgeTrash) or on its own once an entry is older than
+// trashKeepDays (RunTrashPurge).
 
-const trashDirName = ".trash"
+const (
+	trashDirName   = ".trash"
+	trashStampSize = len("20060102-150405")
+)
+
+// trashKeepDays is how long a trashed folder is kept before it is deleted for good. DOCKLITE_TRASH_KEEP_DAYS overrides
+// it; 0 turns the automatic purge off (entries then stay until someone empties the trash).
+var trashKeepDays = func() int {
+	if v, err := strconv.Atoi(os.Getenv("DOCKLITE_TRASH_KEEP_DAYS")); err == nil && v >= 0 {
+		return v
+	}
+	return 30
+}()
 
 type folderEntry struct {
 	Path        string `json:"path"`
@@ -44,10 +60,25 @@ type folderGhost struct {
 	Path   string `json:"path"`
 }
 
+// trashEntry is one folder in /var/www/sites/.trash. Its name is "<stamp>-<original path with / as __>", so the
+// original location and the time it was trashed can be read back without a database.
+type trashEntry struct {
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	Original  string `json:"original"` // where it came from, relative to the sites root
+	TrashedAt string `json:"trashed_at"`
+	AgeDays   int    `json:"age_days"`
+	Files     int    `json:"files"`
+	SizeBytes int64  `json:"size_bytes"`
+	// DeleteOn is when the automatic purge will remove it (empty if the purge is off).
+	DeleteOn string `json:"delete_on,omitempty"`
+}
+
 type folderReport struct {
-	Folders []folderEntry `json:"folders"`
-	Ghosts  []folderGhost `json:"ghosts"`
-	Trash   []string      `json:"trash"`
+	Folders       []folderEntry `json:"folders"`
+	Ghosts        []folderGhost `json:"ghosts"`
+	Trash         []trashEntry  `json:"trash"`
+	TrashKeepDays int           `json:"trash_keep_days"`
 }
 
 func detectSiteType(dir string) string {
@@ -134,7 +165,7 @@ func (h *Handlers) scanFolders(ctx context.Context) (*folderReport, error) {
 		}
 	}
 	mounts := h.mountedFolders(ctx)
-	report := &folderReport{Folders: []folderEntry{}, Ghosts: []folderGhost{}, Trash: []string{}}
+	report := &folderReport{Folders: []folderEntry{}, Ghosts: []folderGhost{}, Trash: listTrash(), TrashKeepDays: trashKeepDays}
 
 	describe := func(path string, depth int) folderEntry {
 		e := folderEntry{Path: path, Name: filepath.Base(path), Depth: depth}
@@ -156,15 +187,7 @@ func (h *Handlers) scanFolders(ctx context.Context) (*folderReport, error) {
 		if !t.IsDir() {
 			continue
 		}
-		if t.Name() == trashDirName {
-			if inner, err := os.ReadDir(filepath.Join(siteBaseDir, t.Name())); err == nil {
-				for _, i := range inner {
-					report.Trash = append(report.Trash, i.Name())
-				}
-			}
-			continue
-		}
-		if strings.HasPrefix(t.Name(), ".") {
+		if strings.HasPrefix(t.Name(), ".") { // includes the trash, listed separately
 			continue
 		}
 		p := filepath.Join(siteBaseDir, t.Name())
@@ -427,9 +450,200 @@ func moveToTrash(p string) (string, error) {
 	chownDocklite(trash)
 	shareWithGroup(trash)
 	rel, _ := filepath.Rel(siteBaseDir, p)
-	dest := filepath.Join(trash, time.Now().UTC().Format("20060102-150405")+"-"+strings.ReplaceAll(rel, string(filepath.Separator), "__"))
-	if err := os.Rename(p, dest); err != nil {
-		return "", fmt.Errorf("could not move it (it may be owned by root; run: sudo mv %s %s): %w", p, dest, err)
+	name := time.Now().UTC().Format("20060102-150405") + "-" + strings.ReplaceAll(rel, string(filepath.Separator), "__")
+	dest := filepath.Join(trash, name)
+	err = os.Rename(p, dest)
+	if err != nil && os.IsPermission(err) && !isTestSitesRoot() {
+		// The folder (or its parent) is owned by root, from an older install or a hand-made site. The root helper
+		// moves it for us and hands it to the docklite user so the trash can be emptied later without root.
+		if out, herr := runRootHelper(nil, "site-trash", rel, name); herr == nil {
+			err = nil
+		} else {
+			err = fmt.Errorf("%w; the root helper also failed: %s", err, strings.TrimSpace(string(out)))
+		}
+	}
+	if err != nil {
+		return "", fmt.Errorf("could not move it (run by hand: sudo mv %s %s): %w", p, dest, err)
 	}
 	return dest, nil
+}
+
+// isTestSitesRoot reports whether the sites root is somewhere other than the real one (tests point it at a temp
+// folder); the root helper only knows the real root, so it is never asked about anything else.
+func isTestSitesRoot() bool { return siteBaseDir != "/var/www/sites" }
+
+// trashName checks a client-supplied trash entry name: exactly what moveToTrash produces, one path component, nothing
+// hidden, no separators.
+func trashName(name string) (string, error) {
+	if len(name) <= trashStampSize+1 || strings.ContainsAny(name, `/\`+"\x00") || strings.HasPrefix(name, ".") {
+		return "", fmt.Errorf("not a trash entry: %q", name)
+	}
+	if _, err := time.Parse("20060102-150405", name[:trashStampSize]); err != nil || name[trashStampSize] != '-' {
+		return "", fmt.Errorf("not a trash entry: %q", name)
+	}
+	st, err := os.Lstat(filepath.Join(siteBaseDir, trashDirName, name))
+	if err != nil || !st.IsDir() {
+		return "", fmt.Errorf("%s is not in the trash", name)
+	}
+	return name, nil
+}
+
+// listTrash describes everything in the trash, oldest first.
+func listTrash() []trashEntry {
+	out := []trashEntry{}
+	entries, err := os.ReadDir(filepath.Join(siteBaseDir, trashDirName))
+	if err != nil {
+		return out
+	}
+	now := time.Now().UTC()
+	for _, e := range entries {
+		if _, err := trashName(e.Name()); err != nil {
+			continue
+		}
+		t := trashEntry{Name: e.Name(), Path: filepath.Join(siteBaseDir, trashDirName, e.Name())}
+		stamp, _ := time.Parse("20060102-150405", e.Name()[:trashStampSize])
+		t.Original = strings.ReplaceAll(e.Name()[trashStampSize+1:], "__", "/")
+		t.TrashedAt = stamp.Format(time.RFC3339)
+		t.AgeDays = int(now.Sub(stamp).Hours() / 24)
+		if trashKeepDays > 0 {
+			t.DeleteOn = stamp.AddDate(0, 0, trashKeepDays).Format(time.RFC3339)
+		}
+		t.Files, t.SizeBytes = measure(t.Path)
+		out = append(out, t)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// purgeTrashEntry deletes one trash entry for good. Entries the docklite user cannot delete (root-owned files from
+// before the move) go through the root helper.
+func purgeTrashEntry(name string) error {
+	name, err := trashName(name)
+	if err != nil {
+		return err
+	}
+	p := filepath.Join(siteBaseDir, trashDirName, name)
+	err = os.RemoveAll(p)
+	if err == nil {
+		if _, statErr := os.Lstat(p); statErr == nil {
+			err = fmt.Errorf("%s is still there", p)
+		}
+	}
+	if err != nil && !isTestSitesRoot() {
+		out, herr := runRootHelper(nil, "site-purge", name)
+		if herr == nil {
+			return nil
+		}
+		err = fmt.Errorf("%w; the root helper also failed: %s", err, strings.TrimSpace(string(out)))
+	}
+	if err != nil {
+		return fmt.Errorf("could not delete %s: %w", p, err)
+	}
+	return nil
+}
+
+// purgeTrashOlderThan deletes every trash entry trashed at least keepDays ago. It returns what it deleted and the
+// first error it hit (the rest are still attempted).
+func purgeTrashOlderThan(keepDays int, now time.Time) (deleted []string, firstErr error) {
+	if keepDays <= 0 {
+		return nil, nil
+	}
+	cutoff := now.UTC().AddDate(0, 0, -keepDays)
+	for _, t := range listTrash() {
+		stamp, _ := time.Parse(time.RFC3339, t.TrashedAt)
+		if stamp.After(cutoff) {
+			continue
+		}
+		if err := purgeTrashEntry(t.Name); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		deleted = append(deleted, t.Name)
+	}
+	return deleted, firstErr
+}
+
+// RunTrashPurge empties old trash entries once at start and then daily. It runs in the background from main.
+func (h *Handlers) RunTrashPurge(ctx context.Context) {
+	if trashKeepDays <= 0 {
+		return
+	}
+	run := func() {
+		deleted, err := purgeTrashOlderThan(trashKeepDays, time.Now())
+		for _, d := range deleted {
+			log.Printf("site folders: deleted %s from the trash (older than %d days)", d, trashKeepDays)
+		}
+		if err != nil {
+			log.Printf("site folders: trash purge: %v", err)
+		}
+	}
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(2 * time.Minute):
+		run()
+	}
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			run()
+		}
+	}
+}
+
+// PurgeTrash: POST {"name": "<entry>"} deletes one trash entry for good; {"all": true} empties the trash.
+func (h *Handlers) PurgeTrash(w http.ResponseWriter, r *http.Request) {
+	if !isAdminRole(r) {
+		writeError(w, http.StatusForbidden, "admin access required")
+		return
+	}
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+		All  bool   `json:"all"`
+	}
+	if err := readJSON(w, r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	var names []string
+	switch {
+	case body.All:
+		for _, t := range listTrash() {
+			names = append(names, t.Name)
+		}
+	case body.Name != "":
+		if _, err := trashName(body.Name); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		names = []string{body.Name}
+	default:
+		writeError(w, http.StatusBadRequest, "say which trash entry to delete (name), or all")
+		return
+	}
+	deleted := []string{}
+	var failed []string
+	for _, n := range names {
+		if err := purgeTrashEntry(n); err != nil {
+			failed = append(failed, err.Error())
+			continue
+		}
+		deleted = append(deleted, n)
+	}
+	h.audit(r, "site.folder-purge", strings.Join(deleted, ","), map[string]any{"all": body.All, "failed": len(failed)})
+	if len(failed) > 0 {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "deleted": deleted, "error": strings.Join(failed, "; ")})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "deleted": deleted, "remaining": len(listTrash())})
 }

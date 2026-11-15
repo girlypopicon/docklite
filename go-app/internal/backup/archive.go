@@ -46,23 +46,53 @@ func (p progressWriter) Write(b []byte) (int, error) {
 // writeSiteArchive packs srcDir into a .tar.gz at dest. Entries are named
 // "<dirname>/..." (relative to srcDir's parent) so the archive unpacks into
 // a single folder, exactly like `tar -C parent dirname` did before.
-//
-// Files that can't be read (permissions) are skipped with a warning rather
-// than failing the whole backup; special files (sockets, devices) are
-// skipped silently. Symlinks are stored as links, never followed.
 // It returns the number of entries written.
 func writeSiteArchive(ctx context.Context, srcDir, dest string, rep *Reporter) (int, error) {
+	if err := checkFolder(srcDir); err != nil {
+		return 0, err
+	}
+	total := treeSize(srcDir)
+	rep.Phase(kindWorking, "Compressing files", total)
+	out, err := os.Create(dest)
+	if err != nil {
+		return 0, err
+	}
+	defer out.Close()
+	gz := gzip.NewWriter(out)
+	tw := tar.NewWriter(gz)
+
+	entries, err := addTree(ctx, tw, srcDir, filepath.Base(srcDir), rep)
+	if err != nil {
+		return 0, err
+	}
+	rep.SetFiles(entries)
+	if err := tw.Close(); err != nil {
+		return 0, err
+	}
+	if err := gz.Close(); err != nil {
+		return 0, err
+	}
+	if err := out.Sync(); err != nil {
+		return 0, err
+	}
+	return entries, out.Close()
+}
+
+func checkFolder(srcDir string) error {
 	info, err := os.Stat(srcDir)
 	if err != nil {
-		return 0, fmt.Errorf("site folder not found: %s", srcDir)
+		return fmt.Errorf("site folder not found: %s", srcDir)
 	}
 	if !info.IsDir() {
-		return 0, fmt.Errorf("site path is not a folder: %s", srcDir)
+		return fmt.Errorf("site path is not a folder: %s", srcDir)
 	}
+	return nil
+}
 
-	rep.Phase(kindCounting, "Counting files", 0)
+// treeSize adds up the sizes of the regular files under dir, for the progress bar.
+func treeSize(dir string) int64 {
 	var total int64
-	_ = filepath.WalkDir(srcDir, func(_ string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -73,25 +103,29 @@ func writeSiteArchive(ctx context.Context, srcDir, dest string, rep *Reporter) (
 		}
 		return nil
 	})
+	return total
+}
 
-	rep.Phase(kindWorking, "Compressing files", total)
-	out, err := os.Create(dest)
-	if err != nil {
-		return 0, err
-	}
-	defer out.Close()
-	gz := gzip.NewWriter(out)
-	tw := tar.NewWriter(gz)
-
-	parent := filepath.Dir(srcDir)
+// addTree writes srcDir and everything under it to tw, naming entries "<prefix>/<path inside srcDir>" (srcDir itself is
+// "<prefix>/"). Files that can't be read (permissions) are skipped with a warning rather than failing the whole backup;
+// special files (sockets, devices) are skipped silently. Symlinks are stored as links, never followed. It returns the
+// number of entries written.
+func addTree(ctx context.Context, tw *tar.Writer, srcDir, prefix string, rep *Reporter) (int, error) {
 	entries := 0
-
 	walkErr := filepath.WalkDir(srcDir, func(path string, d fs.DirEntry, err error) error {
 		if cerr := ctx.Err(); cerr != nil {
 			return cerr
 		}
+		rel, rerr := filepath.Rel(srcDir, path)
+		if rerr != nil {
+			return rerr
+		}
+		name := prefix
+		if rel != "." {
+			name = prefix + "/" + filepath.ToSlash(rel)
+		}
 		if err != nil {
-			rep.Warn(fmt.Sprintf("Skipped %s: %v", relOrPath(parent, path), unwrapPathError(err)))
+			rep.Warn(fmt.Sprintf("Skipped %s: %v", name, unwrapPathError(err)))
 			if d != nil && d.IsDir() {
 				return fs.SkipDir
 			}
@@ -99,18 +133,13 @@ func writeSiteArchive(ctx context.Context, srcDir, dest string, rep *Reporter) (
 		}
 		fi, err := d.Info()
 		if err != nil {
-			rep.Warn(fmt.Sprintf("Skipped %s: %v", relOrPath(parent, path), unwrapPathError(err)))
+			rep.Warn(fmt.Sprintf("Skipped %s: %v", name, unwrapPathError(err)))
 			return nil
 		}
 		mode := fi.Mode()
 		if !(mode.IsRegular() || mode.IsDir() || mode&fs.ModeSymlink != 0) {
 			return nil // sockets, devices, pipes
 		}
-		rel, err := filepath.Rel(parent, path)
-		if err != nil {
-			return err
-		}
-		name := filepath.ToSlash(rel)
 
 		link := ""
 		if mode&fs.ModeSymlink != 0 {
@@ -162,21 +191,7 @@ func writeSiteArchive(ctx context.Context, srcDir, dest string, rep *Reporter) (
 		}
 		return nil
 	})
-	if walkErr != nil {
-		return 0, walkErr
-	}
-
-	rep.SetFiles(entries)
-	if err := tw.Close(); err != nil {
-		return 0, err
-	}
-	if err := gz.Close(); err != nil {
-		return 0, err
-	}
-	if err := out.Sync(); err != nil {
-		return 0, err
-	}
-	return entries, out.Close()
+	return entries, walkErr
 }
 
 type zeroReader struct{}

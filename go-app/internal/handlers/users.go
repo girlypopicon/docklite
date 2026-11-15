@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -115,11 +116,35 @@ func (h *Handlers) Users(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "Invalid transfer user")
 			return
 		}
-		var ownedPaths []string
+		newOwner, _ := h.store.GetUserByIDFull(transferTo)
+		if newOwner == nil {
+			writeError(w, http.StatusBadRequest, "Invalid transfer user")
+			return
+		}
+		// The sites go to the new owner, folders included: each one is copied to
+		// /var/www/sites/<new owner>/<domain>, its container switched over, and the
+		// old folder trashed. A site that can't be moved keeps its folder and only
+		// changes owner in the database (reported as a warning, never a failure).
+		var ownedPaths, warnings []string
 		if sites, lerr := h.store.ListSites(); lerr == nil {
-			for _, st := range sites {
-				if st.UserID == targetID && st.CodePath != "" {
+			for i := range sites {
+				st := sites[i]
+				if st.UserID != targetID || st.CodePath == "" {
+					continue
+				}
+				to := getSitePath(newOwner.Username, st.Domain)
+				if !isWithinBase(st.CodePath) || filepath.Clean(st.CodePath) == filepath.Clean(to) {
 					ownedPaths = append(ownedPaths, st.CodePath)
+					continue
+				}
+				if err := h.relocateSite(&st, transferTo, newOwner.Username, st.CodePath, to); err != nil {
+					warnings = append(warnings, st.Domain+": "+err.Error()+" (its folder stays at "+st.CodePath+")")
+					ownedPaths = append(ownedPaths, st.CodePath)
+					continue
+				}
+				ownedPaths = append(ownedPaths, to)
+				if _, err := moveToTrash(st.CodePath); err != nil {
+					warnings = append(warnings, st.Domain+": "+err.Error())
 				}
 			}
 		}
@@ -131,8 +156,22 @@ func (h *Handlers) Users(w http.ResponseWriter, r *http.Request) {
 		for _, path := range ownedPaths {
 			RecordPreviousOwner(path, targetUser.Username, "user-deleted", by)
 		}
-		h.audit(r, "user.delete", targetUser.Username, map[string]any{"userId": targetID, "sitesMovedTo": transferTo})
-		writeJSON(w, http.StatusOK, map[string]any{"success": true})
+		// The deleted user's own folder: gone if it is empty now, trashed if something is still in it.
+		if dir := filepath.Join(siteBaseDir, targetUser.Username); isSafeLayoutName(targetUser.Username) && dirExists(dir) {
+			if dirHasEntries(dir) {
+				if _, err := moveToTrash(dir); err != nil {
+					warnings = append(warnings, "the folder "+dir+" could not be tidied away: "+err.Error())
+				}
+			} else {
+				_ = os.Remove(dir)
+			}
+		}
+		h.audit(r, "user.delete", targetUser.Username, map[string]any{"userId": targetID, "sitesMovedTo": transferTo, "warnings": warnings})
+		resp := map[string]any{"success": true, "sites_moved_to": newOwner.Username}
+		if len(warnings) > 0 {
+			resp["warnings"] = warnings
+		}
+		writeJSON(w, http.StatusOK, resp)
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}

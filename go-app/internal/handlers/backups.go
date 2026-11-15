@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -34,36 +34,42 @@ func (h *Handlers) Backups(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// BackupExport backs up a selection of sites and databases into one .litpkg, kept on the server ("local") or offered as
+// a download for an hour ("download"). It answers straight away with the backup's id; the dashboard then polls
+// /api/backups/progress. With "wait": true it answers when the backup is done (the CLI does this).
+//
+// The older single-target form (target_type + target_id or domain, optionally with_databases) still works and makes a
+// package of that one site or database.
 func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 	var body struct {
-		TargetType    string `json:"target_type"`
-		TargetID      int64  `json:"target_id"`
-		Delivery      string `json:"delivery"`
-		RetentionDays *int   `json:"retention_days"`
-		Notes         string `json:"notes"`
-		Domain        string `json:"domain"` // alternative to target_id for a site: its domain name
+		Selection     *backup.Selection `json:"selection"`
+		TargetType    string            `json:"target_type"`
+		TargetID      int64             `json:"target_id"`
+		Domain        string            `json:"domain"` // alternative to target_id for a site: its domain name
+		WithDatabases bool              `json:"with_databases"`
+		Delivery      string            `json:"delivery"`
+		RetentionDays *int              `json:"retention_days"`
+		Notes         string            `json:"notes"`
+		Wait          bool              `json:"wait"`
 	}
 	if err := readJSON(w, r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if body.TargetType == "" && body.Domain != "" {
-		body.TargetType = "site"
+	sel, status, err := h.exportSelection(body.Selection, body.TargetType, body.TargetID, body.Domain, body.WithDatabases)
+	if err != nil {
+		writeError(w, status, err.Error())
+		return
 	}
-	if body.TargetType == "site" && body.TargetID <= 0 && body.Domain != "" {
-		site, err := h.store.GetSiteByDomain(strings.ToLower(strings.TrimSpace(body.Domain)))
-		if err != nil || site == nil {
-			writeError(w, http.StatusNotFound, "there is no site called "+body.Domain)
-			return
-		}
-		body.TargetID = site.ID
-	}
-	if body.TargetType == "" || body.TargetID <= 0 {
-		writeError(w, http.StatusBadRequest, "missing required fields: target_type, target_id")
+	if allowed, err := h.selectionAllowed(r, sel); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	} else if !allowed {
+		writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 
@@ -76,99 +82,26 @@ func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.TargetType == "site" {
-		if !isAdminRole(r) {
-			writeError(w, http.StatusForbidden, "forbidden")
-			return
-		}
-	} else if body.TargetType == "database" {
-		if !isAdminRole(r) {
-			userID, ok := readUserIDFromContext(r)
-			if !ok || userID <= 0 {
-				writeError(w, http.StatusUnauthorized, "unauthorized")
-				return
-			}
-			allowed, err := h.store.HasDatabaseAccess(userID, body.TargetID)
-			if err != nil {
-				writeError(w, http.StatusInternalServerError, err.Error())
-				return
-			}
-			if !allowed {
-				writeError(w, http.StatusForbidden, "forbidden")
-				return
-			}
-		}
-	} else {
-		writeError(w, http.StatusBadRequest, "invalid target_type")
-		return
-	}
-
 	dest, err := h.ensureLocalDestination()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	record := store.BackupRecord{
-		JobID:       nil,
-		Destination: dest.ID,
-		TargetType:  body.TargetType,
-		TargetID:    body.TargetID,
-		BackupPath:  "",
-		SizeBytes:   0,
-		Status:      "in_progress",
+	// A backup made by hand always goes in this agent's own backup folder, where the list and downloads look.
+	dest.Config = ""
+	subDir := backup.PackageSubDir
+	if delivery == "download" {
+		subDir = "downloads"
 	}
-	backupID, err := h.store.CreateBackup(record)
+	backupID, res, err := h.startPackage(nil, *dest, sel, subDir, body.Notes, delivery == "download", body.Wait)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	subDir := "downloads"
-	if delivery == "local" {
-		if body.TargetType == "site" {
-			subDir = "sites"
-		} else {
-			subDir = "databases"
-		}
-	}
-
-	var artifact *backup.ArtifactResult
-	switch body.TargetType {
-	case "site":
-		artifact, err = backup.CreateSiteBackup(r.Context(), h.store, h.backupBaseDir, subDir, body.TargetID, body.Notes)
-	case "database":
-		artifact, err = backup.CreateDatabaseBackup(r.Context(), h.store, h.docker, h.backupBaseDir, subDir, body.TargetID, body.Notes)
-	}
-
-	if err != nil {
-		message := err.Error()
-		_ = h.store.UpdateBackupStatus(backupID, "failed", &message, nil, nil)
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	if artifact != nil {
-		_ = h.store.UpdateBackupStatus(backupID, "success", nil, &artifact.Size, &artifact.Path)
-	}
-
-	if delivery == "download" && artifact != nil {
-		downloadURL := "/api/backups/local/download?file=" + url.QueryEscape(artifact.RelativePath)
-		time.AfterFunc(time.Hour, func() {
-			_ = backup.RemoveBackupArtifacts(artifact.Path)
-			_ = h.store.DeleteBackup(backupID)
-		})
-		writeJSON(w, http.StatusOK, map[string]any{
-			"backup_id":    backupID,
-			"download_url": downloadURL,
-		})
 		return
 	}
 
 	if delivery == "local" && body.RetentionDays != nil && *body.RetentionDays > 0 {
 		cutoff := time.Now().UTC().AddDate(0, 0, -*body.RetentionDays).Format("2006-01-02 15:04:05")
-		records, err := h.store.ListOldBackups(dest.ID, cutoff)
-		if err == nil {
+		if records, err := h.store.ListOldBackups(dest.ID, cutoff); err == nil {
 			for _, record := range records {
 				_ = backup.RemoveBackupArtifacts(record.BackupPath)
 				_ = h.store.DeleteBackup(record.ID)
@@ -176,7 +109,54 @@ func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"backup_id": backupID})
+	out := map[string]any{"backup_id": backupID, "progress_url": "/api/backups/progress?id=" + strconv.FormatInt(backupID, 10)}
+	if res != nil {
+		out["file"] = res.RelativePath
+		out["size"] = res.Size
+		out["description"] = res.Description
+		out["problems"] = res.Problems
+		if delivery == "download" {
+			out["download_url"] = "/api/backups/local/download?file=" + url.QueryEscape(res.RelativePath)
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// exportSelection turns an export request into a selection, accepting the older single-target form too.
+func (h *Handlers) exportSelection(sel *backup.Selection, targetType string, targetID int64, domain string, withDatabases bool) (backup.Selection, int, error) {
+	if sel != nil {
+		if sel.Empty() {
+			return backup.Selection{}, http.StatusBadRequest, fmt.Errorf("nothing was selected to back up")
+		}
+		return *sel, 0, nil
+	}
+	if targetType == "" && domain != "" {
+		targetType = "site"
+	}
+	if targetType == "site" && targetID <= 0 && domain != "" {
+		site, err := h.store.GetSiteByDomain(strings.ToLower(strings.TrimSpace(domain)))
+		if err != nil || site == nil {
+			return backup.Selection{}, http.StatusNotFound, fmt.Errorf("there is no site called %s", domain)
+		}
+		targetID = site.ID
+	}
+	switch {
+	case targetType == "all-sites":
+		return backup.Selection{AllSites: true, AllDatabases: withDatabases}, 0, nil
+	case targetType == "all-databases":
+		return backup.Selection{AllDatabases: true}, 0, nil
+	case targetID <= 0:
+		return backup.Selection{}, http.StatusBadRequest, fmt.Errorf("missing required fields: selection, or target_type and target_id")
+	case targetType == "site":
+		out := backup.Selection{Sites: []int64{targetID}}
+		if withDatabases {
+			out.SiteDatabases = []int64{targetID}
+		}
+		return out, 0, nil
+	case targetType == "database":
+		return backup.Selection{Databases: []int64{targetID}}, 0, nil
+	}
+	return backup.Selection{}, http.StatusBadRequest, fmt.Errorf("invalid target_type")
 }
 
 func (h *Handlers) BackupDestinations(w http.ResponseWriter, r *http.Request) {
@@ -295,7 +275,7 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 				writeError(w, http.StatusInternalServerError, err.Error())
 				return
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"jobs": describeJobs(jobs)})
+			writeJSON(w, http.StatusOK, map[string]any{"jobs": h.describeJobs(jobs)})
 			return
 		}
 		jobs, err := h.store.GetBackupJobs()
@@ -303,16 +283,17 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"jobs": describeJobs(jobs)})
+		writeJSON(w, http.StatusOK, map[string]any{"jobs": h.describeJobs(jobs)})
 	case http.MethodPost:
 		var body struct {
-			DestinationID int64  `json:"destination_id"`
-			TargetType    string `json:"target_type"`
-			TargetID      *int64 `json:"target_id"`
-			Domain        string `json:"domain"` // alternative to target_id for a site
-			Frequency     string `json:"frequency"`
-			RetentionDays *int   `json:"retention_days"`
-			Enabled       *int   `json:"enabled"`
+			DestinationID int64             `json:"destination_id"`
+			Selection     *backup.Selection `json:"selection"` // what to back up; replaces target_type/target_id
+			TargetType    string            `json:"target_type"`
+			TargetID      *int64            `json:"target_id"`
+			Domain        string            `json:"domain"` // alternative to target_id for a site
+			Frequency     string            `json:"frequency"`
+			RetentionDays *int              `json:"retention_days"`
+			Enabled       *int              `json:"enabled"`
 		}
 		if err := readJSON(w, r, &body); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid request body")
@@ -325,6 +306,25 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			body.TargetID = &site.ID
+		}
+		selection := ""
+		if body.Selection != nil {
+			if body.Selection.Empty() {
+				writeError(w, http.StatusBadRequest, "nothing was selected to back up")
+				return
+			}
+			var id int64
+			body.TargetType, id = body.Selection.LegacyTarget(true)
+			body.TargetID = nil
+			if id > 0 {
+				body.TargetID = &id
+			}
+			selection = body.Selection.JSON()
+		}
+		if body.DestinationID == 0 {
+			if dest, err := h.ensureLocalDestination(); err == nil {
+				body.DestinationID = dest.ID
+			}
 		}
 		if body.DestinationID == 0 || body.TargetType == "" || body.Frequency == "" {
 			writeError(w, http.StatusBadRequest, "missing required fields: destination_id, target_type, frequency")
@@ -342,7 +342,7 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 		if body.Enabled != nil {
 			enabled = *body.Enabled
 		}
-		id, err := h.store.CreateBackupJob(body.DestinationID, body.TargetType, body.TargetID, body.Frequency, retention, enabled)
+		id, err := h.store.CreateBackupJob(body.DestinationID, body.TargetType, body.TargetID, body.Frequency, retention, enabled, selection)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -350,13 +350,14 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"id": id, "message": "Backup job created successfully"})
 	case http.MethodPut:
 		var body struct {
-			ID            int64   `json:"id"`
-			DestinationID *int64  `json:"destination_id"`
-			TargetType    *string `json:"target_type"`
-			TargetID      *int64  `json:"target_id"`
-			Frequency     *string `json:"frequency"`
-			RetentionDays *int    `json:"retention_days"`
-			Enabled       *int    `json:"enabled"`
+			ID            int64             `json:"id"`
+			DestinationID *int64            `json:"destination_id"`
+			Selection     *backup.Selection `json:"selection"`
+			TargetType    *string           `json:"target_type"`
+			TargetID      *int64            `json:"target_id"`
+			Frequency     *string           `json:"frequency"`
+			RetentionDays *int              `json:"retention_days"`
+			Enabled       *int              `json:"enabled"`
 		}
 		if err := readJSON(w, r, &body); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid request body")
@@ -375,6 +376,19 @@ func (h *Handlers) BackupJobs(w http.ResponseWriter, r *http.Request) {
 		}
 		if body.TargetID != nil {
 			params["target_id"] = *body.TargetID
+		}
+		if body.Selection != nil {
+			if body.Selection.Empty() {
+				writeError(w, http.StatusBadRequest, "nothing was selected to back up")
+				return
+			}
+			targetType, id := body.Selection.LegacyTarget(true)
+			params["target_type"] = targetType
+			params["target_id"] = nil
+			if id > 0 {
+				params["target_id"] = id
+			}
+			params["selection"] = body.Selection.JSON()
 		}
 		if body.Frequency != nil {
 			if _, err := backup.ParseSchedule(*body.Frequency); err != nil {
@@ -458,10 +472,27 @@ func (h *Handlers) BackupTrigger(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "missing required field: job_id")
 		return
 	}
-	go func() {
-		_ = backup.TriggerJob(context.Background(), h.store, h.docker, h.backupBaseDir, body.JobID)
-	}()
-	writeJSON(w, http.StatusOK, map[string]any{"message": "Backup job triggered successfully"})
+	job, err := h.store.GetBackupJobByID(body.JobID)
+	if err != nil || job == nil {
+		writeError(w, http.StatusNotFound, "schedule not found")
+		return
+	}
+	dest, err := h.store.GetBackupDestinationByID(job.Destination)
+	if err != nil || dest == nil {
+		writeError(w, http.StatusNotFound, "the schedule's destination is gone")
+		return
+	}
+	sel, err := backup.SelectionForJob(*job)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	backupID, _, err := h.startPackage(job, *dest, sel, "", "", false, false)
+	if err != nil {
+		writeError(w, http.StatusConflict, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"message": "Backup job triggered successfully", "backup_id": backupID})
 }
 
 func (h *Handlers) LocalBackups(w http.ResponseWriter, r *http.Request) {
@@ -738,10 +769,10 @@ func (h *Handlers) listBackupFiles() ([]map[string]any, error) {
 			return nil
 		}
 		rel = filepath.ToSlash(rel)
-		if !strings.HasPrefix(rel, "sites/") && !strings.HasPrefix(rel, "databases/") && !strings.HasPrefix(rel, "downloads/") {
+		if !strings.HasPrefix(rel, "sites/") && !strings.HasPrefix(rel, "databases/") && !strings.HasPrefix(rel, "downloads/") && !strings.HasPrefix(rel, backup.PackageSubDir+"/") {
 			return nil
 		}
-		if !strings.HasSuffix(rel, ".tar.gz") && !strings.HasSuffix(rel, ".dump.gz") {
+		if !strings.HasSuffix(rel, ".tar.gz") && !strings.HasSuffix(rel, ".dump.gz") && !backup.IsPackage(rel) {
 			return nil
 		}
 		info, infoErr := entry.Info()
@@ -758,18 +789,27 @@ func (h *Handlers) listBackupFiles() ([]map[string]any, error) {
 	return files, err
 }
 
-// jobView is a backup job plus its schedule in plain words, so the dashboard and terminal needn't parse the frequency text.
+// jobView is a backup job plus its schedule and what it backs up in plain words, so the dashboard and terminal needn't
+// parse the frequency text or the selection.
 type jobView struct {
 	store.BackupJob
-	ScheduleText  string `json:"schedule_text"`
-	ScheduleValid bool   `json:"schedule_valid"`
-	KeepLast      int    `json:"keep_last"`
+	ScheduleText  string            `json:"schedule_text"`
+	ScheduleValid bool              `json:"schedule_valid"`
+	KeepLast      int               `json:"keep_last"`
+	What          string            `json:"what"`           // "example.com + 2 databases"
+	SelectionData *backup.Selection `json:"selection_data"` // the selection, also for schedules made before packages
 }
 
-func describeJobs(jobs []store.BackupJob) []jobView {
+func (h *Handlers) describeJobs(jobs []store.BackupJob) []jobView {
 	out := make([]jobView, 0, len(jobs))
 	for _, j := range jobs {
 		v := jobView{BackupJob: j}
+		if sel, err := backup.SelectionForJob(j); err == nil {
+			v.SelectionData = &sel
+			if res, err := sel.Resolve(h.store); err == nil {
+				v.What = sel.Describe(res)
+			}
+		}
 		if sched, err := backup.ParseSchedule(j.Frequency); err == nil {
 			v.ScheduleText, v.ScheduleValid, v.KeepLast = sched.Describe(), true, sched.KeepLast
 		} else {

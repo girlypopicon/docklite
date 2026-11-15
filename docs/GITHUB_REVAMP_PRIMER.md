@@ -68,7 +68,7 @@ Check each against the code or the live dashboard before claiming it:
 - Safer adoption of existing servers: `inventory.sh`, `docklite sites layout` (normalize folders), `docklite repair`.
 - Appearance: themes, customizable sidebar/top bar.
 
-**Planned / not built (label as roadmap, never as features):** backup scheduler + restore UI, `.dklpkg` bundles
+**Planned / not built (label as roadmap, never as features):** backup scheduler + restore UI, `.litpkg` bundles
 (tar.gz with manifest + files, optionally image and DB dump), adopt/cleanup GUI ("Site folders"), activity log
 viewer, MongoDB/other database types, template catalog (media-server style capsules), TUI revamp, mail hosting
 via providers, packaged installer (a 2.0 idea).

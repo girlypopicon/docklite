@@ -36,6 +36,7 @@ func main() {
 	if err := sqliteStore.InitializeAgentTables(); err != nil {
 		log.Fatalf("failed to initialize agent tables: %v", err)
 	}
+	_ = sqliteStore.FailUnfinishedBackups() // no backups table yet on a brand-new server
 
 	if err := handlers.EnsureBootstrapToken(sqliteStore, cfg.Token); err != nil {
 		log.Fatalf("failed to ensure bootstrap token: %v", err)
@@ -53,6 +54,8 @@ func main() {
 	go handlers.RunUpstreamSync(context.Background())
 	// Make existing site folders usable by the docklite group, once.
 	go handlers.RunSitePermissionsOnce()
+	// Delete trashed site folders (/var/www/sites/.trash) once they are old enough.
+	go handlers.RunTrashPurge(context.Background())
 
 	server := &http.Server{
 		Addr:              cfg.ListenAddr,
