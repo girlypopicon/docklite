@@ -99,7 +99,16 @@ func (s *SQLiteStore) InitializeAgentTables() error {
 	if err != nil {
 		return err
 	}
-	return s.EnsureBackupPackageSchema()
+	if err := s.EnsureSettingsSchema(); err != nil {
+		return err
+	}
+	if err := s.EnsureBoxStyleSchema(); err != nil {
+		return err
+	}
+	if err := s.EnsureBackupPackageSchema(); err != nil {
+		return err
+	}
+	return s.EnsureTwoFactorSchema()
 }
 
 // EnsureBackupPackageSchema adds what .litpkg backups need: which databases belong to which site, a scope on each

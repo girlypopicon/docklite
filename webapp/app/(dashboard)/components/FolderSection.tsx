@@ -24,6 +24,7 @@ interface FolderSectionProps {
   onRefresh: () => void;
   onMoveFolder?: (containerId: string, containerName: string) => void;
   onToggleTracking?: (containerId: string, tracked: boolean) => void;
+  onStyle?: (containerId: string, style: { color: string; icon: string }) => void;
   onAddSubfolder?: (parentId: number, parentName: string) => void;
   onDeleteFolder?: (folderId: number, folderName: string) => void;
 }
@@ -39,6 +40,7 @@ function SortableContainer({
   canAssign,
   onMoveFolder,
   onToggleTracking,
+  onStyle,
 }: {
   container: ContainerInfo;
   folderId: number;
@@ -49,6 +51,7 @@ function SortableContainer({
   canAssign?: boolean;
   onMoveFolder?: (containerId: string, containerName: string) => void;
   onToggleTracking?: (containerId: string, tracked: boolean) => void;
+  onStyle?: (containerId: string, style: { color: string; icon: string }) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const {
@@ -84,6 +87,7 @@ function SortableContainer({
           canAssign={canAssign}
           onMoveFolder={onMoveFolder}
           onToggleTracking={onToggleTracking}
+                onStyle={onStyle}
           onMenuOpenChange={setMenuOpen}
         />
       </div>
@@ -101,6 +105,7 @@ export default function FolderSection({
   onRefresh,
   onMoveFolder,
   onToggleTracking,
+  onStyle,
   onAddSubfolder,
   onDeleteFolder,
 }: FolderSectionProps) {
@@ -199,7 +204,7 @@ export default function FolderSection({
         <SortableContext items={localContainers.map(c => c.id)} strategy={rectSortingStrategy}>
           <div
             ref={setDroppableRef}
-            className={`grid min-h-[120px] grid-cols-[repeat(auto-fill,minmax(min(100%,220px),1fr))] gap-3 p-2 sm:p-3 rounded-xl border-2 ${
+            className={`grid min-h-[120px] grid-cols-[repeat(auto-fill,minmax(min(100%,148px),1fr))] sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))] gap-3 sm:gap-4 p-2 sm:p-3 rounded-xl border-2 ${
               isOver ? 'drag-over' : 'border-transparent'
             }`}
           >
@@ -215,6 +220,7 @@ export default function FolderSection({
                 canAssign={canAssign}
                 onMoveFolder={onMoveFolder}
                 onToggleTracking={onToggleTracking}
+                onStyle={onStyle}
               />
             ))}
           </div>
@@ -243,6 +249,7 @@ export default function FolderSection({
               onRefresh={onRefresh}
               onMoveFolder={onMoveFolder}
               onToggleTracking={onToggleTracking}
+                onStyle={onStyle}
               onAddSubfolder={onAddSubfolder}
             />
           ))}

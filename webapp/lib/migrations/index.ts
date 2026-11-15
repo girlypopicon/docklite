@@ -22,6 +22,7 @@ import * as migration013 from './013_add_container_tracking';
 import * as migration014 from './014_create_tokens';
 import * as migration015 from './015_add_sqlite_support';
 import * as migration016 from './016_backup_packages';
+import * as migration017 from './017_two_factor';
 
 const allMigrations: Migration[] = [
   migration001,
@@ -40,6 +41,7 @@ const allMigrations: Migration[] = [
   migration014,
   migration015,
   migration016,
+  migration017,
 ];
 
 function ensureMigrationsTable(db: Database.Database): void {

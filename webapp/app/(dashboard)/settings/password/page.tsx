@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useInSettingsModal, useSettingsModal } from '@/lib/settings-modal';
+import TwoFactorCard from '../../components/TwoFactorCard';
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -115,12 +116,12 @@ export default function ChangePasswordPage() {
               type="password"
               id="newPassword"
               required
-              minLength={6}
+              minLength={10}
               value={formData.newPassword}
               onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
               className="input-vapor w-full"
             />
-            <p className="mt-2 text-xs font-mono text-ink-muted">Minimum 6 characters</p>
+            <p className="mt-2 text-xs font-mono text-ink-muted">At least 10 characters</p>
           </div>
 
           <div>
@@ -148,6 +149,8 @@ export default function ChangePasswordPage() {
           </div>
         </form>
       </div>
+
+      <TwoFactorCard />
     </div>
   );
 }

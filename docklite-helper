@@ -68,7 +68,8 @@ nginx_path_ok() {
     return 1
 }
 
-# One line per server block: FILE <TAB> server names <TAB> proxy_pass ports (local upstreams only)
+# One line per server block: FILE <TAB> server names <TAB> proxy_pass ports (local upstreams only) <TAB> "down" if the
+# block already has the stopped-box page (or its own 502 page), "-" if not
 nginx_upstream_scan() {
     awk -v FILE="$1" '
     function strip(s) { sub(/#.*/, "", s); return s }
@@ -76,8 +77,9 @@ nginx_upstream_scan() {
     {
         line = strip($0)
         n_open = gsub(/\{/, "{", line); n_close = gsub(/\}/, "}", line)
-        if (!inserver && match(line, /(^|[ \t;])server[ \t]*\{/)) { inserver = 1; sdepth = depth; names = ""; ports = "" }
+        if (!inserver && match(line, /(^|[ \t;])server[ \t]*\{/)) { inserver = 1; sdepth = depth; names = ""; ports = ""; down = "-" }
         if (inserver) {
+            if (line ~ /docklite-down/ || line ~ /error_page[ \t][^;]*502/) down = "down"
             if (match(line, /server_name[ \t]+[^;]+;/)) {
                 t = substr(line, RSTART, RLENGTH); sub(/server_name[ \t]+/, "", t); sub(/;.*/, "", t); names = names " " t
             }
@@ -88,7 +90,7 @@ nginx_upstream_scan() {
             }
         }
         depth += n_open - n_close
-        if (inserver && depth <= sdepth) { print FILE "\t" names "\t" ports; inserver = 0 }
+        if (inserver && depth <= sdepth) { print FILE "\t" names "\t" ports "\t" down; inserver = 0 }
     }' "$1"
 }
 
@@ -125,6 +127,67 @@ nginx_fix_port_stream() {
             }
         }
         for (i = 1; i <= NR; i++) print lines[i]
+    }' "$1"
+}
+
+# ── the "this box isn't running" page ────────────────────────────────────────
+# A stopped box leaves its port closed and nginx answers 502. Every DockLite site's server block includes a snippet that
+# swaps that for one branded page (sent as a 503). The page is written by `nginx-down-write`; `nginx-down-patch` adds
+# the one include line to a site's server block. Visitors see the page, so it must never name anything about the server.
+DOWN_PAGE=/var/lib/docklite/down.html
+DOWN_SNIPPET=/etc/nginx/snippets/docklite-down.conf
+# A wildcard include matches nothing, instead of failing `nginx -t`, while the snippet file doesn't exist.
+DOWN_INCLUDE='include /etc/nginx/snippets/docklite-down*.conf;'
+
+down_snippet_text() {
+    cat <<'SNIP'
+# Written by DockLite. When a site's box isn't running, nginx would show a plain "502 Bad Gateway"; this shows DockLite's
+# page instead (as a 503, so search engines treat it as "back soon"). Edit the wording in DockLite: Settings.
+error_page 502 =503 /__docklite_down;
+location = /__docklite_down {
+    internal;
+    alias /var/lib/docklite/down.html;
+    default_type text/html;
+    add_header Retry-After 60 always;
+    add_header Cache-Control "no-store" always;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+}
+SNIP
+}
+
+# Print the file with the include added after the server_name line of every server block that names DOMAIN, proxies to a
+# local upstream and has neither the include nor a 502 page of its own. A server_name on a line that also holds braces is
+# left alone (the include has to land inside the block).
+nginx_down_patch_stream() {
+    awk -v DOM="$2" -v INC="$DOWN_INCLUDE" '
+    function strip(s) { sub(/#.*/, "", s); return s }
+    { lines[NR] = $0 }
+    END {
+        depth = 0; inserver = 0; want = tolower(DOM)
+        for (i = 1; i <= NR; i++) {
+            line = strip(lines[i])
+            n_open = gsub(/\{/, "{", line); n_close = gsub(/\}/, "}", line)
+            if (!inserver && match(line, /(^|[ \t;])server[ \t]*\{/)) { inserver = 1; sdepth = depth; names = ""; snline = 0; proxy = 0; has = 0 }
+            if (inserver) {
+                if (match(line, /server_name[ \t]+[^;]+;/)) {
+                    t = substr(line, RSTART, RLENGTH); sub(/server_name[ \t]+/, "", t); sub(/;.*/, "", t); names = names " " t
+                    if (!snline && n_open == 0 && n_close == 0) snline = i
+                }
+                if (line ~ /proxy_pass[ \t]+https?:\/\/(127\.0\.0\.1|localhost):[0-9]+/) proxy = 1
+                if (line ~ /docklite-down/ || line ~ /error_page[ \t][^;]*502/) has = 1
+            }
+            depth += n_open - n_close
+            if (inserver && depth <= sdepth) {
+                hit = 0; n = split(names, arr, " ")
+                for (k = 1; k <= n; k++) { a = tolower(arr[k]); if (a == want || a == "www." want) hit = 1 }
+                if (hit && proxy && !has && snline) ins[snline] = 1
+                inserver = 0
+            }
+        }
+        for (i = 1; i <= NR; i++) {
+            print lines[i]
+            if (ins[i]) { match(lines[i], /^[ \t]*/); print substr(lines[i], 1, RLENGTH) INC }
+        }
     }' "$1"
 }
 
@@ -382,6 +445,51 @@ case "$cmd" in
             die "nginx rejected the change, so it was undone"
         fi
         ;;
+    nginx-down-write) # nginx-down-write   (the page's HTML on stdin; also installs the nginx snippet that serves it)
+        mkdir -p /var/lib/docklite /etc/nginx/snippets; chmod 755 /var/lib/docklite
+        tmp="$(mktemp /var/lib/docklite/down.html.XXXXXX)"
+        head -c 65537 > "$tmp"
+        size="$(stat -c %s "$tmp")"
+        if (( size < 1 || size > 65536 )); then rm -f "$tmp"; die "the page is empty or over 64 KB"; fi
+        chmod 644 "$tmp"; mv -f "$tmp" "$DOWN_PAGE"
+        snip="$(mktemp)"; down_snippet_text > "$snip"
+        if ! cmp -s "$snip" "$DOWN_SNIPPET"; then
+            prev=""
+            [[ -f "$DOWN_SNIPPET" ]] && { prev="$(mktemp)"; cp -p "$DOWN_SNIPPET" "$prev"; }
+            install -m 644 "$snip" "$DOWN_SNIPPET"
+            if nginx -t >/dev/null 2>&1; then
+                nginx -s reload
+            else
+                if [[ -n "$prev" ]]; then cp -p "$prev" "$DOWN_SNIPPET"; else rm -f "$DOWN_SNIPPET"; fi
+                rm -f "$snip" "$prev"
+                die "nginx rejected the stopped-box snippet, so it was undone"
+            fi
+            [[ -n "$prev" ]] && rm -f "$prev"
+        fi
+        rm -f "$snip"
+        echo "ok: stopped-box page written"
+        ;;
+    nginx-down-patch) # nginx-down-patch FILE DOMAIN   (adds the include to that site's server block(s))
+        file="$(readlink -f "${1:-/nonexistent}" 2>/dev/null || true)"
+        nginx_path_ok "$file" && [[ -f "$file" ]] || die "not an nginx config file: ${1:-}"
+        check_domain "${2:-}"
+        tmp="$(mktemp "${file}.docklite-tmp.XXXXXX")"
+        nginx_down_patch_stream "$file" "$2" > "$tmp"
+        if cmp -s "$file" "$tmp"; then rm -f "$tmp"; die "nothing to change in $(basename "$file") for $2"; fi
+        mkdir -p /var/backups/docklite
+        bak="/var/backups/docklite/nginx-$(basename "$file")-$(date +%Y%m%d-%H%M%S).bak"
+        cp -p "$file" "$bak"
+        chmod --reference="$file" "$tmp"; chown --reference="$file" "$tmp"
+        mv -f "$tmp" "$file"
+        if nginx -t >/dev/null 2>&1; then
+            nginx -s reload
+            ls -1t /var/backups/docklite/nginx-*.bak 2>/dev/null | tail -n +41 | xargs -r rm -f
+            echo "ok: stopped-box page added for $2 in $(basename "$file")"
+        else
+            cp -p "$bak" "$file"
+            die "nginx rejected the change, so it was undone"
+        fi
+        ;;
     update-start)     # update-start vX.Y.Z   (runs the update as a detached systemd job)
         check_release_tag "${1:-}"
         mkdir -p /var/log/docklite /var/lib/docklite; chmod 755 /var/log/docklite /var/lib/docklite
@@ -500,6 +608,6 @@ case "$cmd" in
         cat "${LE_LIVE}/$1/cert.pem"
         ;;
     *)
-        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|site-trash|site-purge|nginx-test|nginx-reload|nginx-restart|cert-issue|cert-obtain|cert-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
+        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|site-trash|site-purge|nginx-test|nginx-reload|nginx-restart|nginx-upstreams|nginx-fix-port|nginx-down-write|nginx-down-patch|cert-issue|cert-obtain|cert-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
         ;;
 esac

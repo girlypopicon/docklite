@@ -4,6 +4,7 @@ import { DesktopTower, Cube, Gear } from '@phosphor-icons/react';
 import ShellAccessCard from '../../components/ShellAccessCard';
 import UpdateCard from '../../components/UpdateCard';
 import SiteFoldersPanel from '../../components/SiteFoldersPanel';
+import DownPageCard from '../../components/DownPageCard';
 
 export default function SystemSettingsPage() {
   return (
@@ -71,6 +72,9 @@ export default function SystemSettingsPage() {
 
       {/* DockLite Updates */}
       <UpdateCard />
+
+      {/* What visitors see when a site's box is stopped */}
+      <DownPageCard />
 
       {/* Site folders: strays, adoption, trash */}
       <SiteFoldersPanel />

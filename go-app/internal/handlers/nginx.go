@@ -32,6 +32,7 @@ func nginxVhostConfig(domain string, includeWww bool, upstreamPort int) string {
     listen 80;
     listen [::]:80;
     server_name %s;
+    %s
 
     client_max_body_size 100M;
 
@@ -48,14 +49,20 @@ func nginxVhostConfig(domain string, includeWww bool, upstreamPort int) string {
         proxy_buffering off;
     }
 }
-`, serverNames, upstreamPort)
+`, serverNames, downIncludeLine, upstreamPort)
 }
 
 // rootHelper is the only command DockLite runs through sudo; see
 // docklite-helper at the repo root and setup_sudoers in install.sh.
 const rootHelper = "/usr/local/sbin/docklite-helper"
 
+// rootHelperHook lets tests stand in for the root helper (never set outside tests).
+var rootHelperHook func(stdin io.Reader, args ...string) ([]byte, error)
+
 func runRootHelper(stdin io.Reader, args ...string) ([]byte, error) {
+	if rootHelperHook != nil {
+		return rootHelperHook(stdin, args...)
+	}
 	if demo.On {
 		return demoRootHelper(stdin, args...)
 	}

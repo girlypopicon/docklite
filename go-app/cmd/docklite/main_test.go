@@ -254,6 +254,42 @@ func TestLoginSavesTokenAndConfigShowHidesIt(t *testing.T) {
 	}
 }
 
+func TestLoginAsksForTwoFactorCode(t *testing.T) {
+	agent := newFakeAgent(t)
+	agent.routes["POST /api/auth/login"] = func(w http.ResponseWriter, body string) {
+		if !strings.Contains(body, `"code":"654321"`) {
+			w.WriteHeader(401)
+			_, _ = w.Write([]byte(`{"error":"Enter the code from your authenticator app","two_factor_required":true}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"success":true,"token":{"secret":"TOKEN-AFTER-2FA"}}`))
+	}
+	dir := t.TempDir()
+	t.Setenv("DOCKLITE_CONFIG", filepath.Join(dir, "config.json"))
+	t.Setenv("DOCKLITE_CONF", filepath.Join(dir, "none"))
+	t.Setenv("DOCKLITE_TOKEN", "")
+	t.Setenv("DOCKLITE_HOST", "")
+
+	// Password on the first line, then the code when asked.
+	var out, errOut bytes.Buffer
+	code := run([]string{"--host", agent.URL, "login", "--username", "me", "--password-stdin"}, strings.NewReader("s3cret\n654321\n"), &out, &errOut)
+	if code != 0 {
+		t.Fatalf("login exit %d: %s", code, errOut.String())
+	}
+	saved, _ := os.ReadFile(filepath.Join(dir, "config.json"))
+	if !strings.Contains(string(saved), "TOKEN-AFTER-2FA") {
+		t.Fatalf("token not saved after the code: %s", saved)
+	}
+
+	// A wrong code says so, and doesn't tell the person to run `docklite login` (that's what they just did).
+	out.Reset()
+	errOut.Reset()
+	code = run([]string{"--host", agent.URL, "login", "--username", "me", "--password-stdin", "--code", "111111"}, strings.NewReader("s3cret\n"), &out, &errOut)
+	if code == 0 || strings.Contains(errOut.String(), "Run: docklite login") {
+		t.Fatalf("wrong code: exit %d, %q", code, errOut.String())
+	}
+}
+
 func TestLocalAdminAccessAndExplicitHostOptOut(t *testing.T) {
 	agent := newFakeAgent(t)
 	agent.json("GET", "/api/auth/me", 200, `{"user":{"username":"superadmin","role":"super_admin"}}`)

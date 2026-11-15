@@ -3,10 +3,13 @@
 import { ContainerInfo } from '@/types';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import Link from 'next/link';
-import { Clock, Plug, Eye, Trash, Play, ArrowsClockwise, Stop, DotsThree, Copy, UserCircle, Folder, TerminalWindow } from '@phosphor-icons/react';
+import {
+  Clock, Plug, Eye, Trash, Play, ArrowsClockwise, Stop, DotsThree, Copy, UserCircle, Folder, TerminalWindow,
+  PaintBrush, Shapes, CaretRight, CaretLeft, Check,
+} from '@phosphor-icons/react';
 import { useToast } from '@/lib/hooks/useToast';
 import { containerDisplayName } from '@/lib/container-names';
+import { BOX_COLORS, BOX_COLOR_RGB, BOX_ICONS, boxIconFor, boxNameFontSize } from '@/lib/box-styles';
 
 interface ContainerCardProps {
   container: ContainerInfo;
@@ -19,8 +22,16 @@ interface ContainerCardProps {
   onMoveFolder?: (containerId: string, containerName: string) => void;
   onToggleTracking?: (containerId: string, tracked: boolean) => void;
   isTracked?: boolean;
+  // Save the colour and icon this box was given (the card already shows them; this is for keeping them).
+  onStyle?: (containerId: string, style: { color: string; icon: string }) => void;
 }
 
+type MenuView = 'main' | 'colour' | 'icon';
+
+/**
+ * A box, as a playing card: portrait (5:7), a big muted icon behind it, one line for its name and one `⋯` menu for
+ * everything else. Click the card for its details.
+ */
 export default function ContainerCard({
   container,
   onAction,
@@ -32,50 +43,49 @@ export default function ContainerCard({
   onMoveFolder,
   onToggleTracking,
   isTracked = true,
+  onStyle,
 }: ContainerCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [view, setView] = useState<MenuView>('main');
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuPopupRef = useRef<HTMLDivElement>(null);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+  const downAt = useRef<{ x: number; y: number } | null>(null);
   const stopDnd = (event: React.PointerEvent) => event.stopPropagation();
   const toast = useToast();
 
+  // What this card looks like. Starts from what's saved; changes show at once and are saved in the background.
+  const [style, setStyle] = useState({ color: container.style?.color || '', icon: container.style?.icon || '' });
+  useEffect(() => {
+    setStyle({ color: container.style?.color || '', icon: container.style?.icon || '' });
+  }, [container.style?.color, container.style?.icon]);
+
   const isRunning = container.state === 'running';
-  const statusColor = isRunning ? 'var(--neon-green)' : 'var(--status-error)';
   const displayName = containerDisplayName(container);
   // Docker lists a published port once per address family (IPv4 and IPv6); show each mapping once.
   const ports = Array.from(new Set((container.ports || '').split(',').map((p) => p.trim()).filter(Boolean))).join(', ');
 
-  // Determine container type from labels
   const containerType = container.labels?.['docklite.type'] || 'other';
   const isSite = ['static', 'php', 'node'].includes(containerType);
   const isDatabase = ['postgres', 'mariadb', 'mongodb', 'redis'].includes(containerType);
-
-  // The card's color. Glow comes from the .docklite-neon classes, which take an "r, g, b" so alpha works.
-  const shadowColor = isSite
-    ? 'var(--neon-pink)'
-    : isDatabase
-    ? 'var(--neon-green)'
-    : 'var(--neon-cyan)';
+  // The card's colour: the one picked, or one by what the box is. `--c` ("r, g, b") drives the glow and the icon.
   const neonClass = isSite ? 'docklite-neon-pink' : isDatabase ? 'docklite-neon-green' : 'docklite-neon-cyan';
-  const textColor = isSite ? 'var(--text-pink)' : isDatabase ? 'var(--text-green)' : 'var(--text-cyan)';
-  const rgbVar = isSite ? 'var(--neon-pink-rgb)' : isDatabase ? 'var(--neon-green-rgb)' : 'var(--neon-cyan-rgb)';
-  const actionStyle = {
-    background: 'transparent',
-    border: `1px solid ${shadowColor}`,
-    color: textColor,
-    boxShadow: `0 0 4px rgba(${rgbVar}, 0.45)`,
+  const pickedRgb = style.color ? BOX_COLOR_RGB[style.color] : undefined;
+  const BigIcon = boxIconFor(style.icon);
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setView('main');
+    onMenuOpenChange?.(false);
   };
 
-  // Close menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
-      const inButton = menuRef.current?.contains(target);
-      const inMenu = menuPopupRef.current?.contains(target);
-      if (!inButton && !inMenu) {
+      if (!menuRef.current?.contains(target) && !menuPopupRef.current?.contains(target)) {
         setMenuOpen(false);
+        setView('main');
         onMenuOpenChange?.(false);
       }
     }
@@ -86,340 +96,291 @@ export default function ContainerCard({
   useEffect(() => {
     if (!menuOpen || !menuButtonRef.current) return;
     const rect = menuButtonRef.current.getBoundingClientRect();
-    const menuWidth = 200;
+    const width = 232;
     const margin = 12;
-    const maxLeft = window.innerWidth - menuWidth - margin;
-    const left = Math.min(Math.max(margin, rect.right - menuWidth), maxLeft);
-    setMenuPosition({
-      top: rect.bottom + 8,
-      left,
-    });
+    const left = Math.min(Math.max(margin, rect.right - width), window.innerWidth - width - margin);
+    // Open downwards, or upwards from the button when the card is in the lower half of the screen.
+    if (rect.bottom > window.innerHeight * 0.55) setMenuPos({ left, bottom: window.innerHeight - rect.top + 6 });
+    else setMenuPos({ left, top: rect.bottom + 6 });
   }, [menuOpen]);
 
-  return (
-    <div
-      className={`docklite-container-card docklite-neon ${neonClass} p-3 rounded-xl transition-all group relative min-h-[132px] h-full flex flex-col`}
-      style={{
-        background: 'var(--surface-dim)',
-        backdropFilter: 'blur(12px)',
-        overflow: 'visible',
+  const pick = (next: { color?: string; icon?: string }) => {
+    const merged = { color: next.color ?? style.color, icon: next.icon ?? style.icon };
+    setStyle(merged);
+    onStyle?.(container.id, merged);
+  };
+
+  const copyName = async () => {
+    let copied = false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(container.name);
+        copied = true;
+      } else {
+        const input = document.createElement('textarea');
+        input.value = container.name;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+    } catch {
+      copied = false;
+    }
+    if (copied) toast.success('Copied name');
+    else toast.error('Copy failed');
+  };
+
+  // One menu row. Closing is the default; the colour and icon rows move to their own view instead.
+  const item = (label: string, icon: React.ReactNode, onClick: () => void, opts?: { danger?: boolean; arrow?: boolean; keepOpen?: boolean }) => (
+    <button
+      key={label}
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!opts?.keepOpen) closeMenu();
+        onClick();
       }}
+      onPointerDown={stopDnd}
+      className="w-full px-3 py-2 text-left text-sm font-bold transition-colors hover:bg-white/5 flex items-center gap-3"
+      style={{ color: opts?.danger ? 'var(--status-error)' : 'var(--text-primary)' }}
     >
-      {/* 3-Dot Menu - Top right */}
+      <span className="shrink-0 flex" style={{ color: opts?.danger ? 'var(--status-error)' : 'var(--text-cyan)' }}>{icon}</span>
+      <span className="flex-1 min-w-0 truncate">{label}</span>
+      {opts?.arrow && <CaretRight size={14} weight="bold" className="shrink-0 opacity-60" />}
+    </button>
+  );
+
+  const backRow = (title: string) => (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        setView('main');
+      }}
+      onPointerDown={stopDnd}
+      className="w-full px-3 py-2 text-left text-sm font-bold flex items-center gap-2 border-b hover:bg-white/5"
+      style={{ color: 'var(--text-primary)', borderColor: 'rgba(var(--neon-purple-rgb), 0.25)' }}
+    >
+      <CaretLeft size={14} weight="bold" />
+      {title}
+    </button>
+  );
+
+  const menu = (
+    <div
+      className="fixed inset-0 z-[10000]"
+      onClick={closeMenu}
+      onPointerDown={stopDnd}
+      onPointerDownCapture={stopDnd}
+    >
       <div
-        className="absolute top-2 right-2 z-20 pointer-events-auto"
-        ref={menuRef}
+        ref={menuPopupRef}
+        className="absolute rounded-lg overflow-hidden overflow-y-auto animate-slide-down"
+        style={{
+          ...menuPos,
+          width: 232,
+          maxWidth: 'calc(100vw - 24px)',
+          maxHeight: 'calc(100vh - 24px)',
+          background: 'var(--bg-darker)',
+          border: '1px solid rgba(var(--neon-purple-rgb), 0.9)',
+          boxShadow: '0 0 28px rgba(var(--neon-purple-rgb), 0.65)',
+        }}
+        onClick={(e) => e.stopPropagation()}
         onPointerDown={stopDnd}
         onPointerDownCapture={stopDnd}
       >
-        <button
-          ref={menuButtonRef}
-          onClick={(e) => {
-            e.stopPropagation();
-            const nextOpen = !menuOpen;
-            setMenuOpen(nextOpen);
-            onMenuOpenChange?.(nextOpen);
-          }}
-          onPointerDown={stopDnd}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-all"
-          style={{
-            background: 'transparent',
-            border: `1px solid ${shadowColor}`,
-            color: textColor,
-            boxShadow: `
-              0 0 5px rgba(${rgbVar}, 0.85),
-              0 0 10px rgba(${rgbVar}, 0.38),
-              inset 0 0 5px rgba(${rgbVar}, 0.25)
-            `
-          }}
-          title="More options"
-          aria-label="More options"
-        >
-          <DotsThree size={16} weight="bold" />
-        </button>
-
-        {/* Dropdown Menu */}
-        {menuOpen && menuPosition && typeof document !== 'undefined' &&
-          createPortal(
-            <div
-              className="fixed inset-0 z-[10000]"
-              onClick={() => {
-                setMenuOpen(false);
-                onMenuOpenChange?.(false);
-              }}
-              onPointerDown={stopDnd}
-              onPointerDownCapture={stopDnd}
-            >
-              <div
-                ref={menuPopupRef}
-                className="absolute rounded-lg overflow-hidden animate-slide-down"
-                style={{
-                  top: menuPosition.top,
-                  left: menuPosition.left,
-                  background: 'var(--bg-darker)',
-                  border: '1px solid rgba(var(--neon-purple-rgb), 0.9)',
-                  boxShadow: '0 0 28px rgba(var(--neon-purple-rgb), 0.65)',
-                  width: '200px',
-                  maxWidth: 'calc(100vw - 24px)',
-                }}
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={stopDnd}
-                onPointerDownCapture={stopDnd}
-              >
-              {onViewDetails && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(false);
-                    onMenuOpenChange?.(false);
-                    onViewDetails(container.id, container.name);
-                  }}
-                  onPointerDown={stopDnd}
-                  className="w-full px-4 py-3 text-left text-sm font-bold transition-all hover:bg-white/5 flex items-center gap-3"
-                  style={{ color: 'var(--text-cyan)' }}
-                >
-                  <Eye size={16} weight="duotone" />
-                  View Details
-                </button>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onMenuOpenChange?.(false);
-                  window.dispatchEvent(new CustomEvent('docklite-open-terminal', {
-                    detail: {
-                      containerId: container.id,
-                      containerName: container.name,
-                    },
-                  }));
-                }}
-                onPointerDown={stopDnd}
-                className="w-full px-4 py-3 text-left text-sm font-bold transition-all hover:bg-white/5 flex items-center gap-3"
-                style={{ color: 'var(--text-green)' }}
-              >
-                <TerminalWindow size={16} weight="duotone" />
-                Open in Terminal
-              </button>
-              <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  let copied = false;
-                  try {
-                    if (navigator.clipboard?.writeText) {
-                      await navigator.clipboard.writeText(container.name);
-                      copied = true;
-                    } else {
-                      const input = document.createElement('textarea');
-                      input.value = container.name;
-                      input.style.position = 'fixed';
-                      input.style.opacity = '0';
-                      input.style.pointerEvents = 'none';
-                      document.body.appendChild(input);
-                      input.focus();
-                      input.select();
-                      copied = document.execCommand('copy');
-                      document.body.removeChild(input);
-                    }
-                  } catch (err) {
-                    copied = false;
-                  }
-
-                  if (copied) {
-                    toast.success('Copied name');
-                  } else {
-                    toast.error('Copy failed');
-                  }
-
-                  setMenuOpen(false);
-                  onMenuOpenChange?.(false);
-                }}
-                onPointerDown={stopDnd}
-                className="w-full px-4 py-3 text-left text-sm font-bold transition-all hover:bg-white/5 flex items-center gap-3"
-                style={{ color: 'var(--text-purple)' }}
-              >
-                <Copy size={16} weight="duotone" />
-                Copy name
-              </button>
-              {canAssign && onAssign && isSite && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(false);
-                    onMenuOpenChange?.(false);
-                    onAssign(container.id, container.name);
-                  }}
-                  onPointerDown={stopDnd}
-                  className="w-full px-4 py-3 text-left text-sm font-bold transition-all flex items-center gap-3"
-                  style={{ color: 'var(--text-green)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-dim)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <UserCircle size={16} weight="duotone" />
-                  Assign to user
-                </button>
-              )}
-              {onMoveFolder && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(false);
-                    onMenuOpenChange?.(false);
-                    onMoveFolder(container.id, container.name);
-                  }}
-                  onPointerDown={stopDnd}
-                  className="w-full px-4 py-3 text-left text-sm font-bold transition-all flex items-center gap-3"
-                  style={{ color: 'var(--text-cyan)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-dim)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <Folder size={16} weight="duotone" />
-                  Move to folder
-                </button>
-              )}
-              {onToggleTracking && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(false);
-                    onMenuOpenChange?.(false);
-                    onToggleTracking(container.id, isTracked);
-                  }}
-                  onPointerDown={stopDnd}
-                  className="w-full px-4 py-3 text-left text-sm font-bold transition-all flex items-center gap-3"
-                  style={{ color: isTracked ? 'var(--status-error)' : 'var(--text-green)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-dim)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <Eye size={16} weight="duotone" />
-                  {isTracked ? 'Untrack' : 'Track'}
-                </button>
-              )}
-              {onDelete && isSite && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(false);
-                    onMenuOpenChange?.(false);
-                    onDelete(container.id, container.labels?.['docklite.domain'] || container.name);
-                  }}
-                  onPointerDown={stopDnd}
-                  className="w-full px-4 py-3 text-left text-sm font-bold transition-all flex items-center gap-3"
-                  style={{ color: 'var(--status-error)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(var(--status-error-rgb), 0.2)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <Trash size={16} weight="duotone" />
-                  Delete
-                </button>
-              )}
-              </div>
-            </div>,
-            document.body
-          )}
-      </div>
-
-
-      {/* Title: status dot, then the name people know it by (a site's domain), then what it runs */}
-      <div className="flex items-start gap-2 pr-10 min-w-0">
-        <span
-          className="mt-1.5 shrink-0 w-2.5 h-2.5 rounded-full"
-          role="img"
-          aria-label={isRunning ? 'Running' : 'Stopped'}
-          title={isRunning ? 'Running' : 'Stopped'}
-          style={{ background: statusColor, boxShadow: isRunning ? `0 0 8px ${statusColor}` : 'none' }}
-        />
-        <div className="min-w-0 flex-1">
-          <h3
-            className="docklite-container-name font-bold text-base leading-snug line-clamp-2"
-            style={{ color: 'var(--text-cyan)', overflowWrap: 'anywhere' }}
-            title={container.name}
-          >
-            {/* Let a long domain wrap at its dots rather than mid-word */}
-            {displayName.split('.').map((part, i) => (
-              <span key={i}>{i > 0 && <><wbr />.</>}{part}</span>
-            ))}
-          </h3>
-          <p className="text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>
-            {container.image.split(':')[0]}
-            {container.owner_username ? ` · ${container.owner_username}` : ''}
-          </p>
-        </div>
-      </div>
-
-      {/* Uptime and port on one line */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 mb-3 text-xs font-mono min-w-0">
-        <span className="flex items-center gap-1 min-w-0" style={{ color: isRunning ? 'var(--text-secondary)' : 'var(--status-error)' }}>
-          <Clock size={14} weight="duotone" className="shrink-0" />
-          <span className="truncate">{isRunning ? container.uptime || 'Running' : 'Stopped'}</span>
-        </span>
-        {ports && (
-          <span className="flex items-center gap-1 min-w-0" style={{ color: 'var(--text-purple)' }}>
-            <Plug size={14} weight="duotone" className="shrink-0" />
-            <span className="truncate">{ports}</span>
-          </span>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-2 mt-auto">
-        {!isRunning ? (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAction(container.id, 'start');
-            }}
-            onPointerDown={stopDnd}
-            className="flex-1 h-9 px-3 rounded-lg text-sm font-bold transition-all group/btn flex items-center justify-center gap-1"
-            style={actionStyle}
-            title="Start container"
-          >
-            <Play size={16} weight="duotone" />
-            <span>Start</span>
-          </button>
-        ) : (
+        {view === 'main' && (
           <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAction(container.id, 'restart');
-              }}
-              onPointerDown={stopDnd}
-              className="flex-1 h-9 px-3 rounded-lg text-sm font-bold transition-all group/btn flex items-center justify-center"
-              style={actionStyle}
-              title="Restart container"
-              aria-label="Restart container"
-            >
-              <ArrowsClockwise size={16} weight="duotone" className="group-hover/btn:rotate-180 transition-transform duration-500" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAction(container.id, 'stop');
-              }}
-              onPointerDown={stopDnd}
-              className="flex-1 h-9 px-3 rounded-lg text-sm font-bold transition-all group/btn flex items-center justify-center"
-              style={actionStyle}
-              title="Stop container"
-              aria-label="Stop container"
-            >
-              <Stop size={16} weight="duotone" />
-            </button>
+            {!isRunning
+              ? item('Start', <Play size={16} weight="duotone" />, () => onAction(container.id, 'start'))
+              : (
+                <>
+                  {item('Restart', <ArrowsClockwise size={16} weight="duotone" />, () => onAction(container.id, 'restart'))}
+                  {item('Stop', <Stop size={16} weight="duotone" />, () => onAction(container.id, 'stop'))}
+                </>
+              )}
+            {onViewDetails && item('View details', <Eye size={16} weight="duotone" />, () => onViewDetails(container.id, container.name))}
+            {item('Open in terminal', <TerminalWindow size={16} weight="duotone" />, () =>
+              window.dispatchEvent(new CustomEvent('docklite-open-terminal', { detail: { containerId: container.id, containerName: container.name } })),
+            )}
+            <div className="my-1 border-t" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.25)' }} />
+            {onStyle && item('Colour', <PaintBrush size={16} weight="duotone" />, () => setView('colour'), { arrow: true, keepOpen: true })}
+            {onStyle && item('Icon', <Shapes size={16} weight="duotone" />, () => setView('icon'), { arrow: true, keepOpen: true })}
+            {item('Copy name', <Copy size={16} weight="duotone" />, copyName)}
+            {canAssign && onAssign && isSite && item('Assign to user', <UserCircle size={16} weight="duotone" />, () => onAssign(container.id, container.name))}
+            {onMoveFolder && item('Move to folder', <Folder size={16} weight="duotone" />, () => onMoveFolder(container.id, container.name))}
+            {onToggleTracking && item(isTracked ? 'Untrack' : 'Track', <Eye size={16} weight="duotone" />, () => onToggleTracking(container.id, isTracked), { danger: isTracked })}
+            {onDelete && isSite && item('Delete', <Trash size={16} weight="duotone" />, () => onDelete(container.id, container.labels?.['docklite.domain'] || container.name), { danger: true })}
           </>
         )}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewDetails?.(container.id, container.name);
-          }}
-          onPointerDown={stopDnd}
-          className="flex-1 h-9 px-3 rounded-lg text-sm font-bold transition-all group/btn flex items-center justify-center"
-          style={actionStyle}
-          title="View container details"
-          aria-label="View container details"
+
+        {view === 'colour' && (
+          <>
+            {backRow('Colour')}
+            <div className="grid grid-cols-4 gap-3 p-4" role="radiogroup" aria-label="Card colour">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={!style.color}
+                aria-label="Automatic colour"
+                title="Automatic (by type)"
+                onClick={(e) => { e.stopPropagation(); pick({ color: '' }); }}
+                onPointerDown={stopDnd}
+                className="h-9 w-9 rounded-full grid place-items-center text-[10px] font-bold"
+                style={{ border: '2px dashed var(--text-secondary)', color: 'var(--text-secondary)', outline: !style.color ? '2px solid var(--text-primary)' : 'none', outlineOffset: 2 }}
+              >
+                Auto
+              </button>
+              {BOX_COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={style.color === c.id}
+                  aria-label={c.label}
+                  title={c.label}
+                  onClick={(e) => { e.stopPropagation(); pick({ color: c.id }); }}
+                  onPointerDown={stopDnd}
+                  className="h-9 w-9 rounded-full grid place-items-center"
+                  style={{
+                    background: `rgb(${c.rgb})`,
+                    boxShadow: `0 0 10px rgba(${c.rgb}, 0.7)`,
+                    outline: style.color === c.id ? '2px solid var(--text-primary)' : 'none',
+                    outlineOffset: 2,
+                  }}
+                >
+                  {style.color === c.id && <Check size={16} weight="bold" color="#160a1f" />}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {view === 'icon' && (
+          <>
+            {backRow('Icon')}
+            <div className="grid grid-cols-4 gap-2 p-3" role="radiogroup" aria-label="Card icon">
+              {BOX_ICONS.map(({ id, label, Icon }) => (
+                <button
+                  key={id || 'box'}
+                  type="button"
+                  role="radio"
+                  aria-checked={style.icon === id}
+                  aria-label={label}
+                  title={label}
+                  onClick={(e) => { e.stopPropagation(); pick({ icon: id }); }}
+                  onPointerDown={stopDnd}
+                  className="h-11 rounded-lg grid place-items-center hover:bg-white/5"
+                  style={{
+                    color: 'var(--text-primary)',
+                    border: style.icon === id ? '2px solid var(--text-primary)' : '1px solid rgba(var(--neon-purple-rgb), 0.3)',
+                  }}
+                >
+                  <Icon size={24} weight="duotone" />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      className={`docklite-container-card docklite-neon ${pickedRgb ? '' : neonClass} group relative w-full aspect-[5/7] rounded-xl cursor-pointer select-none transition-transform hover:-translate-y-0.5`}
+      style={{
+        ...(pickedRgb ? ({ '--c': pickedRgb } as React.CSSProperties) : {}),
+        background: 'var(--surface-dim)',
+        backdropFilter: 'blur(12px)',
+        opacity: isRunning ? 1 : 0.8,
+        containerType: 'inline-size', // lets the name size itself to the card's width
+      }}
+      title={container.name}
+      onPointerDown={(e) => {
+        downAt.current = { x: e.clientX, y: e.clientY };
+      }}
+      onClick={(e) => {
+        // A drag ends in a click too; only a real tap opens the details.
+        const d = downAt.current;
+        if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6) return;
+        onViewDetails?.(container.id, container.name);
+      }}
+    >
+      {/* The big icon, muted, bleeding off the bottom right corner. Clipped by its own box so the glow isn't. */}
+      <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true">
+        <BigIcon
+          weight="duotone"
+          className="absolute -right-6 -bottom-6"
+          style={{ width: '82%', height: 'auto', aspectRatio: '1', color: 'rgba(var(--c), 0.16)' }}
+        />
+      </div>
+
+      <div className="relative z-10 flex flex-col h-full p-3 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-wider"
+            style={{ color: isRunning ? 'var(--text-green)' : 'var(--status-error)' }}
+          >
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ background: isRunning ? 'var(--neon-green)' : 'var(--status-error)', boxShadow: isRunning ? '0 0 8px var(--neon-green)' : 'none' }}
+            />
+            {isRunning ? 'Running' : 'Stopped'}
+          </span>
+
+          <div ref={menuRef} onPointerDown={stopDnd} onPointerDownCapture={stopDnd} onClick={(e) => e.stopPropagation()}>
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = !menuOpen;
+                setMenuOpen(next);
+                if (!next) setView('main');
+                onMenuOpenChange?.(next);
+              }}
+              onPointerDown={stopDnd}
+              className="w-7 h-7 rounded-full grid place-items-center transition-colors hover:bg-white/10"
+              style={{ border: '1px solid rgba(var(--c), 0.6)', color: 'var(--text-primary)', background: 'transparent' }}
+              title="More options"
+              aria-label={`Options for ${displayName}`}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              <DotsThree size={18} weight="bold" />
+            </button>
+            {menuOpen && menuPos && typeof document !== 'undefined' && createPortal(menu, document.body)}
+          </div>
+        </div>
+
+        <h3
+          className="docklite-container-name mt-3 font-bold leading-tight truncate whitespace-nowrap"
+          style={{ color: 'var(--text-primary)', fontSize: boxNameFontSize(displayName) }}
+          title={container.name}
         >
-          <Eye size={16} weight="duotone" />
-        </button>
+          {displayName}
+        </h3>
+        <p className="text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>
+          {container.image.split(':')[0]}
+          {container.owner_username ? ` · ${container.owner_username}` : ''}
+        </p>
+
+        <div className="mt-auto space-y-1 text-xs font-mono min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0" style={{ color: 'var(--text-secondary)' }}>
+            <Clock size={14} weight="duotone" className="shrink-0" />
+            <span className="truncate">{isRunning ? container.uptime || 'Running' : 'Not running'}</span>
+          </div>
+          {ports && (
+            <div className="flex items-center gap-1.5 min-w-0" style={{ color: 'var(--text-purple)' }}>
+              <Plug size={14} weight="duotone" className="shrink-0" />
+              <span className="truncate">{ports}</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

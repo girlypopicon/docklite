@@ -28,6 +28,7 @@ const (
 type loginRequest struct {
 	Username   string  `json:"username"`
 	Password   string  `json:"password"`
+	Code       string  `json:"code"` // authenticator or recovery code, for users with two-factor login on
 	IssueToken bool    `json:"issue_token"`
 	TokenName  string  `json:"token_name"`
 	ExpiresAt  *string `json:"expires_at"`
@@ -72,6 +73,7 @@ func (h *Handlers) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Username = strings.TrimSpace(r.FormValue("username"))
 		req.Password = r.FormValue("password")
+		req.Code = strings.TrimSpace(r.FormValue("code"))
 		req.IssueToken = parseFormBool(r.FormValue("issue_token"))
 		req.TokenName = strings.TrimSpace(r.FormValue("token_name"))
 		if expires := strings.TrimSpace(r.FormValue("expires_at")); expires != "" {
@@ -101,6 +103,28 @@ func (h *Handlers) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		recordAttempt(rateKey)
 		respondLoginError(w, r, shouldRedirect, http.StatusUnauthorized, "invalid username or password")
 		return
+	}
+
+	// Two-factor login: the password was right, now the code. Nothing (no session, no token) is issued without it.
+	tf, err := h.store.GetTwoFactor(user.ID)
+	if err != nil {
+		respondLoginError(w, r, shouldRedirect, http.StatusInternalServerError, "could not check two-factor login")
+		return
+	}
+	if tf != nil && tf.Enabled {
+		if req.Code == "" {
+			respondTwoFactorRequired(w, r, shouldRedirect, "Enter the code from your authenticator app")
+			return
+		}
+		ok, kind := h.verifySecondFactor(tf, req.Code)
+		if !ok {
+			recordAttempt(rateKey)
+			respondTwoFactorRequired(w, r, shouldRedirect, "That code didn't work. Use the newest code, or a recovery code")
+			return
+		}
+		if kind == "recovery" {
+			h.audit(r, "user.2fa-recovery-used", user.Username, map[string]any{"left": len(tf.RecoveryHashes) - 1})
+		}
 	}
 
 	clearAttempts(rateKey)
@@ -267,6 +291,16 @@ func shouldUseSecureCookies(r *http.Request) bool {
 	}
 	proto = strings.Split(proto, ",")[0]
 	return strings.EqualFold(strings.TrimSpace(proto), "https")
+}
+
+// respondTwoFactorRequired says the password was right but a code is needed (or the code was wrong). The client shows
+// the code box and sends the same request again with "code".
+func respondTwoFactorRequired(w http.ResponseWriter, r *http.Request, shouldRedirect bool, message string) {
+	if shouldRedirect {
+		http.Redirect(w, r, "/login?two_factor=1", http.StatusSeeOther)
+		return
+	}
+	writeJSON(w, http.StatusUnauthorized, map[string]any{"error": message, "two_factor_required": true})
 }
 
 func respondLoginError(w http.ResponseWriter, r *http.Request, shouldRedirect bool, status int, message string) {

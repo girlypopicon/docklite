@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"sort"
@@ -81,7 +83,7 @@ func init() {
 
 	register(command{
 		Path: []string{"login"}, Summary: "Log in with your DockLite account and save a token",
-		Usage: "login [--username NAME] [--password-stdin] [--token-name NAME] [--expires-at RFC3339]",
+		Usage: "login [--username NAME] [--password-stdin] [--code CODE] [--token-name NAME] [--expires-at RFC3339]",
 		Examples: []string{
 			"docklite login",
 			"docklite --host https://xxl.docklite.net login",
@@ -267,13 +269,14 @@ func (a *app) printCommandHelp(c *command) {
 // login / logout / config
 
 func runLogin(a *app, args []string) error {
-	var username, tokenName, expiresAt string
+	var username, tokenName, expiresAt, code string
 	var passwordStdin bool
 	if _, err := a.flags("login", args, func(fs *flag.FlagSet) {
 		fs.StringVar(&username, "username", "", "")
 		fs.StringVar(&tokenName, "token-name", "cli", "")
 		fs.StringVar(&expiresAt, "expires-at", "", "")
 		fs.BoolVar(&passwordStdin, "password-stdin", false, "")
+		fs.StringVar(&code, "code", "", "")
 	}); err != nil {
 		return err
 	}
@@ -301,9 +304,23 @@ func runLogin(a *app, args []string) error {
 	loginClient := *a.client
 	loginClient.Token = ""
 	a.client = &loginClient
-	data, err := a.post("/api/auth/login", payload)
+	if code != "" {
+		payload["code"] = strings.TrimSpace(code)
+	}
+	data, err := a.loginCall(payload)
+	// Two-factor login: the password was right and the server wants the code from the authenticator app.
+	if needsTwoFactorCode(err) && code == "" {
+		if code, err = a.readLine("Code from your authenticator app (or a recovery code): "); err != nil {
+			return fmt.Errorf("could not read the code: %w", err)
+		}
+		payload["code"] = strings.TrimSpace(code)
+		data, err = a.loginCall(payload)
+	}
 	if err != nil {
-		return err
+		if needsTwoFactorCode(err) {
+			return &exitError{code: exitAuth, msg: err.Error()}
+		}
+		return a.classify(err)
 	}
 
 	var resp struct {
@@ -342,6 +359,23 @@ func runLogin(a *app, args []string) error {
 		a.say("logged in; token saved for %s (%s)", name, server.Host)
 	})
 	return nil
+}
+
+// loginCall posts the login without classify's "not logged in, run docklite login" wording, which would be wrong here.
+func (a *app) loginCall(payload map[string]any) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), a.opts.Timeout)
+	defer cancel()
+	return a.client.Do(ctx, "POST", "/api/auth/login", payload)
+}
+
+// needsTwoFactorCode is the agent saying "right password, now the code" (or "that code didn't work").
+func needsTwoFactorCode(err error) bool {
+	var apiErr *cli.APIError
+	if !errors.As(err, &apiErr) || apiErr.Status != 401 {
+		return false
+	}
+	m := strings.ToLower(apiErr.Message)
+	return strings.Contains(m, "authenticator") || strings.Contains(m, "code didn't work")
 }
 
 func runLogout(a *app, args []string) error {

@@ -13,12 +13,16 @@ import {
   Info,
   CheckCircle,
   SignIn,
+  ShieldCheck,
 } from '@phosphor-icons/react';
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  // Two-factor login: after a right password the agent asks for the code, and the form shows the code box.
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -36,12 +40,20 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(needsCode ? { username, password, code } : { username, password }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.two_factor_required) {
+          // First time it just asks for the code; after a wrong code it says so.
+          if (needsCode) setError(data.error || 'That code didn\'t work');
+          setNeedsCode(true);
+          setCode('');
+          setLoading(false);
+          return;
+        }
         setError(data.error || 'Login failed');
         setLoading(false);
         return;
@@ -127,6 +139,32 @@ export default function LoginPage() {
                 style={{ color: 'var(--text-primary)' }}
               />
             </div>
+
+            {needsCode && (
+              <div>
+                <label htmlFor="code" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <ShieldCheck size={18} weight="duotone" />
+                  CODE FROM YOUR AUTHENTICATOR APP
+                </label>
+                <input
+                  id="code"
+                  name="code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  required
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  className="input-vapor w-full font-mono text-center text-2xl tracking-[0.3em]"
+                  placeholder="123456"
+                  style={{ color: 'var(--text-primary)' }}
+                />
+                <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
+                  Lost your phone? Type one of your recovery codes here instead.
+                </p>
+              </div>
+            )}
           </div>
 
           <button
@@ -137,7 +175,7 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : (
               <span className="inline-flex items-center gap-2">
                 <SignIn size={18} weight="duotone" />
-                Sign In
+                {needsCode ? 'Verify' : 'Sign In'}
               </span>
             )}
           </button>
