@@ -225,21 +225,21 @@ on('POST', /^\/api\/databases$/, (r, _m, s) => {
   if (s.dbs.length >= 12) return err(400, 'The demo is limited to a few databases. Delete one first.');
   if ((s.nextDbId ?? 4) > 60) return err(400, 'The demo has made enough databases. Press Reset to start fresh.');
   const id = (s.nextDbId = (s.nextDbId ?? 4) + 1) - 1;
-  const type = (['postgres', 'mariadb', 'mongodb', 'redis'].includes(String(r.body?.type)) ? r.body.type : 'postgres') as NonNullable<DemoDb['type']>;
+  const type = (['postgres', 'mysql', 'mariadb', 'mongodb', 'redis'].includes(String(r.body?.type)) ? r.body.type : 'postgres') as NonNullable<DemoDb['type']>;
   const db: DemoDb = { id, containerId: fakeHex(100 + id), name, username: type === 'redis' ? 'default' : r.body?.username || `${name}_user`, password: r.body?.password || fakeHex(id, 20), port: 32780 + id, running: true, startedAt: Date.now(), createdAt: Date.now(), tables: [], type };
   s.dbs.push(db); save();
-  const inner = { postgres: 5432, mariadb: 3306, mongodb: 27017, redis: 6379 }[type];
+  const inner = { postgres: 5432, mysql: 3306, mariadb: 3306, mongodb: 27017, redis: 6379 }[type];
   const host = `docklite-db-${name.replace(/_/g, '-')}`;
   const url = (h: string, port: number) =>
     type === 'redis' ? `redis://:${db.password}@${h}:${port}`
     : type === 'mongodb' ? `mongodb://${db.username}:${db.password}@${h}:${port}/${name}?authSource=admin`
-    : `${type === 'mariadb' ? 'mysql' : 'postgresql'}://${db.username}:${db.password}@${h}:${port}/${name}`;
+    : `${type === 'mariadb' || type === 'mysql' ? 'mysql' : 'postgresql'}://${db.username}:${db.password}@${h}:${port}/${name}`;
   return { status: 201, body: {
     database: { id, name, type, port: db.port, username: db.username, password: db.password },
     connection: { type, host: 'localhost', port: db.port, database: name, username: db.username, password: db.password, url: url('localhost', db.port), container_host: host, container_port: inner, container_url: url(host, inner) },
   } };
 });
-const LABELS = { postgres: 'PostgreSQL', mariadb: 'MariaDB', mongodb: 'MongoDB', redis: 'Redis' } as const;
+const LABELS = { postgres: 'PostgreSQL', mysql: 'MySQL', mariadb: 'MariaDB', mongodb: 'MongoDB', redis: 'Redis' } as const;
 const notBrowsable = (d: DemoDb) => err(400, `browsing and editing data isn't available for ${LABELS[d.type ?? 'postgres']} yet: connect with your own client using the connection details`);
 const dbById = (s: DemoState, id: string) => s.dbs.find((d) => String(d.id) === id);
 on('GET', new RegExp(`^/api/databases/${ID}$`), (_r, m, s) => { const d = dbById(s, m[1]); return d ? ok({ database: { id: d.id, name: d.name, type: d.type ?? 'postgres', container_id: d.containerId, postgres_port: d.port, created_at: iso(d.createdAt) } }) : err(400, 'invalid database id'); });

@@ -12,7 +12,7 @@ export interface DemoTable { name: string; columns: DemoColumn[]; rows: Record<s
 export interface DemoDb {
   id: number; containerId: string; name: string; username: string; password: string; port: number;
   running: boolean; startedAt: number; createdAt: number; tables: DemoTable[];
-  type?: 'postgres' | 'mariadb' | 'mongodb' | 'redis';
+  type?: 'postgres' | 'mysql' | 'mariadb' | 'mongodb' | 'redis';
   style?: { color?: string; icon?: string };
 }
 export interface DemoBackup { id: number; jobId: number | null; targetType: 'site' | 'database'; targetId: number; path: string; sizeBytes: number; status: string; createdAt: number }

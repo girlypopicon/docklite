@@ -6,12 +6,12 @@ import (
 )
 
 func TestEngineFor(t *testing.T) {
-	for _, in := range []string{"", "postgres", "POSTGRES", "mariadb", "mongodb", "redis"} {
+	for _, in := range []string{"", "postgres", "POSTGRES", "mysql", "mariadb", "mongodb", "redis"} {
 		if _, ok := EngineFor(in); !ok {
 			t.Errorf("%q should be a known type", in)
 		}
 	}
-	for _, in := range []string{"mysql", "sqlite", "oracle", "postgres; drop"} {
+	for _, in := range []string{"sqlite", "oracle", "postgres; drop"} {
 		if _, ok := EngineFor(in); ok {
 			t.Errorf("%q must not be accepted as a container engine", in)
 		}
@@ -44,6 +44,16 @@ func TestEngineEnvAndCmd(t *testing.T) {
 			t.Errorf("mariadb env missing %s: %s", want, env)
 		}
 	}
+	my, _ := EngineFor("mysql")
+	env = strings.Join(my.ContainerEnv("shop", "app", "pw1", "rootpw"), " ")
+	for _, want := range []string{"MYSQL_DATABASE=shop", "MYSQL_USER=app", "MYSQL_PASSWORD=pw1", "MYSQL_ROOT_PASSWORD=rootpw"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("mysql env missing %s: %s", want, env)
+		}
+	}
+	if my.Image != "mysql:8.4" || my.Port != 3306 || !my.Loopback {
+		t.Errorf("mysql should be the 8.4 LTS image on 3306, loopback only: %+v", my)
+	}
 	mongo, _ := EngineFor("mongodb")
 	env = strings.Join(mongo.ContainerEnv("shop", "app", "pw1", ""), " ")
 	if !strings.Contains(env, "MONGO_INITDB_ROOT_USERNAME=app") || !strings.Contains(env, "MONGO_INITDB_ROOT_PASSWORD=pw1") {
@@ -62,6 +72,7 @@ func TestEngineEnvAndCmd(t *testing.T) {
 func TestConnectionURLs(t *testing.T) {
 	cases := map[string]string{
 		"postgres": "postgresql://u:p@db:5432/shop",
+		"mysql":    "mysql://u:p@db:3306/shop",
 		"mariadb":  "mysql://u:p@db:3306/shop",
 		"mongodb":  "mongodb://u:p@db:27017/shop?authSource=admin",
 		"redis":    "redis://:p@db:6379",

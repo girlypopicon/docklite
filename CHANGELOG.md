@@ -5,6 +5,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+- **MySQL** is now a database type beside PostgreSQL, MariaDB, MongoDB, Redis and SQLite: its own box (MySQL 8.4), listening on this
+  server only, with a checked dump for backups and `docklite databases create <name> --type mysql`.
+
 ### Added
 - **Groups, the first half.** The agent now has groups (`/api/groups`): cards that hold boxes, with a Linked switch, a colour and
   an icon. Your existing folders are turned into groups the first time DockLite starts (nested ones become top-level groups; the

@@ -109,7 +109,7 @@ func (h *Handlers) createDatabase(w http.ResponseWriter, r *http.Request) {
 
 	engine, ok := docker.EngineFor(req.Type)
 	if !ok {
-		writeError(w, http.StatusBadRequest, "unsupported database type (use postgres, mariadb, mongodb, redis or sqlite)")
+		writeError(w, http.StatusBadRequest, "unsupported database type (use postgres, mysql, mariadb, mongodb, redis or sqlite)")
 		return
 	}
 

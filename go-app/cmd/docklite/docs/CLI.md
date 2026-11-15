@@ -88,7 +88,7 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Let a server user run docklite | `docklite access grant alice --yes` (they must log out and in once) |
 | Remove that access | `docklite access revoke alice --yes` |
 | See the databases and their types | `docklite databases list` |
-| Create a database (postgres, mariadb, mongodb or redis) | `docklite databases create wordpress --type mariadb` (shows the connection details once) |
+| Create a database (postgres, mysql, mariadb, mongodb or redis) | `docklite databases create wordpress --type mariadb` (shows the connection details once) |
 | Delete a database and its data | `docklite databases delete wordpress --yes` |
 | See all backups | `docklite backups list` |
 | See the backup files on the server | `docklite backups files` |

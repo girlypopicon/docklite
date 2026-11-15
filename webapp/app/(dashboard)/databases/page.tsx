@@ -31,11 +31,12 @@ import {
 } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 
-type DbType = 'postgres' | 'mariadb' | 'mongodb' | 'redis' | 'sqlite';
+type DbType = 'postgres' | 'mysql' | 'mariadb' | 'mongodb' | 'redis' | 'sqlite';
 
 // What each kind of database is for, in plain words (shown under the picker).
 const DB_ENGINES: { id: DbType; label: string; blurb: string; hasUser: boolean }[] = [
   { id: 'postgres', label: 'PostgreSQL', hasUser: true, blurb: 'Tables of rows and columns, like a spreadsheet with rules. A strong all-round choice for most apps.' },
+  { id: 'mysql', label: 'MySQL', hasUser: true, blurb: 'The most widely used open-source database. What WordPress and most PHP sites expect.' },
   { id: 'mariadb', label: 'MariaDB', hasUser: true, blurb: 'Also tables of rows and columns (MySQL-compatible). What WordPress and most PHP sites expect.' },
   { id: 'mongodb', label: 'MongoDB', hasUser: true, blurb: 'Stores flexible "documents" instead of tables, like contact cards that can each have different fields. NoSQL.' },
   { id: 'redis', label: 'Redis', hasUser: false, blurb: 'Very fast key-and-value storage held in memory. Used for caching, logins and queues. NoSQL.' },
@@ -491,7 +492,7 @@ export default function DatabasesPage() {
               <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {DB_ENGINES.find((e) => e.id === dbType)?.blurb}
               </p>
-              {(dbType === 'mariadb' || dbType === 'mongodb' || dbType === 'redis') && (
+              {(dbType === 'mysql' || dbType === 'mariadb' || dbType === 'mongodb' || dbType === 'redis') && (
                 <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
                   Only reachable from this server and from your sites (it isn&apos;t open to the internet).
                 </p>

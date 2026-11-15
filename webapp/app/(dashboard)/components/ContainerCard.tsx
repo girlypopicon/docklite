@@ -9,6 +9,7 @@ import {
 } from '@phosphor-icons/react';
 import { useToast } from '@/lib/hooks/useToast';
 import { containerDisplayName } from '@/lib/container-names';
+import { DB_CONTAINER_TYPES } from '@/lib/database-engines';
 import { BOX_COLORS, BOX_COLOR_RGB, BOX_ICONS, boxIconFor, boxNameFontSize } from '@/lib/box-styles';
 
 interface ContainerCardProps {
@@ -68,7 +69,7 @@ export default function ContainerCard({
 
   const containerType = container.labels?.['docklite.type'] || 'other';
   const isSite = ['static', 'php', 'node'].includes(containerType);
-  const isDatabase = ['postgres', 'mariadb', 'mongodb', 'redis'].includes(containerType);
+  const isDatabase = DB_CONTAINER_TYPES.includes(containerType);
   // The card's colour: the one picked, or one by what the box is. `--c` ("r, g, b") drives the glow and the icon.
   const neonClass = isSite ? 'docklite-neon-pink' : isDatabase ? 'docklite-neon-green' : 'docklite-neon-cyan';
   const pickedRgb = style.color ? BOX_COLOR_RGB[style.color] : undefined;

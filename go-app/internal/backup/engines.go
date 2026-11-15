@@ -22,6 +22,8 @@ func DumpCommand(engine, dbName, user, pass string) (cmd []string, env []string,
 		return []string{"pg_dump", "-U", user, "-d", dbName, "-F", "c"}, env, nil
 	case "mariadb":
 		return []string{"mariadb-dump", "--single-transaction", "--routines", "--triggers", "-u", user, dbName}, []string{"MYSQL_PWD=" + pass}, nil
+	case "mysql":
+		return []string{"mysqldump", "--single-transaction", "--routines", "--triggers", "-u", user, dbName}, []string{"MYSQL_PWD=" + pass}, nil
 	case "mongodb":
 		return []string{"mongodump", "--archive", "-u", user, "-p", pass, "--authenticationDatabase", "admin", "--db", dbName}, nil, nil
 	case "redis":
@@ -83,10 +85,10 @@ func checkDump(r io.Reader, engine string) error {
 }
 
 // dumpExt is the file extension a dump of each engine gets inside a package, so a person who unpacks one knows which
-// tool reads it back (pg_restore, mariadb, mongorestore, redis).
+// tool reads it back (pg_restore, mysql/mariadb, mongorestore, redis).
 func dumpExt(engine string) string {
 	switch engine {
-	case "mariadb":
+	case "mariadb", "mysql":
 		return ".sql"
 	case "mongodb":
 		return ".archive"
@@ -99,6 +101,11 @@ func dumpExt(engine string) string {
 // checkDumpShape recognises each engine's dump by its first and last bytes.
 func checkDumpShape(engine string, head, tail []byte) error {
 	switch engine {
+	case "mysql":
+		// mysqldump ends with "-- Dump completed on <date>" when it finished; a cut-off dump lacks it.
+		if len(head) == 0 || !bytes.Contains(tail, []byte("-- Dump completed")) {
+			return fmt.Errorf("the dump is empty or was cut off, so it isn't a complete MySQL backup")
+		}
 	case "mariadb":
 		// mariadb-dump ends with "-- Dump completed on <date>" when it finished; a cut-off dump lacks it.
 		if len(head) == 0 || !bytes.Contains(tail, []byte("-- Dump completed")) {

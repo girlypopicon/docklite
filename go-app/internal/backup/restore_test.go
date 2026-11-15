@@ -215,7 +215,7 @@ func TestCheckAgainstManifest(t *testing.T) {
 }
 
 func TestDumpCommandsAndShapeChecks(t *testing.T) {
-	for _, e := range []string{"postgres", "mariadb", "mongodb", "redis"} {
+	for _, e := range []string{"postgres", "mysql", "mariadb", "mongodb", "redis"} {
 		cmd, env, err := DumpCommand(e, "shop", "app", "s3cret")
 		if err != nil || len(cmd) == 0 {
 			t.Fatalf("%s: %v", e, err)
@@ -233,6 +233,7 @@ func TestDumpCommandsAndShapeChecks(t *testing.T) {
 		t.Error("an unknown engine must be refused")
 	}
 	good := map[string][2][]byte{
+		"mysql":   {[]byte("-- MySQL dump 10.13  Distrib 8.4"), []byte("...\n-- Dump completed on 2026-11-15 1:00:00\n")},
 		"mariadb": {[]byte("/*M!999999\\- enable the sandbox mode */"), []byte("...\n-- Dump completed on 2026-10-15 1:00:00\n")}, // real dumps start with a /* comment
 		"mongodb": {{0x6d, 0xe2, 0x99, 0x81, 1, 2}, nil},
 		"redis":   {[]byte("REDIS0011"), nil},
@@ -243,7 +244,8 @@ func TestDumpCommandsAndShapeChecks(t *testing.T) {
 		}
 	}
 	bad := map[string][2][]byte{
-		"mariadb": {[]byte("-- MariaDB dump"), []byte("INSERT INTO t VALUES (1")}, // cut off
+		"mysql":   {[]byte("-- MySQL dump 10.13"), []byte("INSERT INTO t VALUES (1")}, // cut off
+		"mariadb": {[]byte("-- MariaDB dump"), []byte("INSERT INTO t VALUES (1")},     // cut off
 		"mongodb": {[]byte("not an archive"), nil},
 		"redis":   {[]byte("<html>"), nil},
 	}

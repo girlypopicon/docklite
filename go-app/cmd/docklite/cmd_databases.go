@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var databaseTypes = []string{"postgres", "mariadb", "mongodb", "redis"}
+var databaseTypes = []string{"postgres", "mysql", "mariadb", "mongodb", "redis"}
 
 type dbStatsRow struct {
 	ID    int64  `json:"id"`
@@ -37,13 +37,13 @@ func init() {
 		Path: []string{"databases", "types"}, Summary: "The kinds of database you can create",
 		Usage: "databases types",
 		Run: func(a *app, args []string) error {
-			a.say("postgres  PostgreSQL: tables of rows and columns; a strong all-round choice\nmariadb   MariaDB: tables, MySQL-compatible; what WordPress and most PHP sites expect\nmongodb   MongoDB: flexible \"documents\" instead of tables (NoSQL)\nredis     Redis: very fast key/value storage in memory, for caching and sessions (NoSQL)")
+			a.say("postgres  PostgreSQL: tables of rows and columns; a strong all-round choice\nmysql     MySQL: tables; the most widely used open-source database, what WordPress and most PHP sites expect\nmariadb   MariaDB: a MySQL-compatible fork with the same tools and many of the same users\nmongodb   MongoDB: flexible \"documents\" instead of tables (NoSQL)\nredis     Redis: very fast key/value storage in memory, for caching and sessions (NoSQL)")
 			return nil
 		},
 	})
 	register(command{
 		Path: []string{"databases", "create"}, Summary: "Create a database (its own container; reachable from this server and from your sites)",
-		Usage: "databases create <name> [--type postgres|mariadb|mongodb|redis] [--username NAME] [--password-stdin]", AdminOnly: true,
+		Usage: "databases create <name> [--type postgres|mysql|mariadb|mongodb|redis] [--username NAME] [--password-stdin]", AdminOnly: true,
 		Examples: []string{"docklite databases create wordpress --type mariadb", "docklite databases create events --type mongodb --json"},
 		Run: func(a *app, args []string) error {
 			var typ, user string
