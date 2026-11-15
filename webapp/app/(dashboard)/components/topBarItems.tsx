@@ -1,7 +1,6 @@
 import {
   Archive,
   ArrowsHorizontal,
-  Database,
   Gear,
   Globe,
   HardDrives,
@@ -16,7 +15,6 @@ import {
 
 export const TOP_BAR_ICONS: Record<string, (size: number) => React.ReactNode> = {
   containers: (size) => <Package size={size} weight="duotone" />,
-  databases: (size) => <Database size={size} weight="duotone" />,
   backups: (size) => <Archive size={size} weight="duotone" />,
   network: (size) => <Globe size={size} weight="duotone" />,
   // A server rack, so the cog can mean Settings and only Settings.
@@ -30,7 +28,6 @@ export const TOP_BAR_ICONS: Record<string, (size: number) => React.ReactNode> = 
 
 export const TOP_BAR_LINKS: Record<string, string> = {
   containers: '/',
-  databases: '/databases',
   backups: '/backups',
   network: '/network',
   server: '/server',

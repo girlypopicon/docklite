@@ -81,7 +81,7 @@ deployed together, so it is the established term; and "what's your stack? nginx 
 settings. Unticked, a group only keeps the desktop tidy. Ticked, its boxes are meant to talk to each other (a website and its
 database). A box is in at most one group, groups don't nest, and there is no "Default" group: a box in none sits on the desktop.
 Boxes are tracked by container name, so they stay in their group when recreated. Built in stages:
-1. **Groups and the merged desktop** (1.6.0): the groups API and tables (done: `box_groups`, `/api/groups`, old folders converted
+1. **Groups and the merged desktop** (1.6.0, built): the groups API and tables (`box_groups`, `/api/groups`, old folders converted
    once at start, "Default" dropped); group cards and the modal that opens them; drag a box onto another and hold to make a group;
    Containers and Databases merged into one page with database boxes among the rest; "View DockLite database" moves to Settings;
    one **New box** dialog that asks what kind (website, or a database: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, SQLite).

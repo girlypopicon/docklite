@@ -7,6 +7,7 @@ export interface DemoSite {
   startedAt: number; stoppedAt: number | null; createdAt: number; includeWww: boolean; internalPort: number; hostPort: number; containerId: string; tracked: boolean;
   style?: { color?: string; icon?: string }; // card colour and icon
 }
+export interface DemoGroup { id: number; name: string; linked: boolean; color: string; icon: string; members: string[] }
 export interface DemoColumn { name: string; type: string; nullable: boolean; key: string; default: string | null }
 export interface DemoTable { name: string; columns: DemoColumn[]; rows: Record<string, unknown>[] }
 export interface DemoDb {
@@ -19,6 +20,7 @@ export interface DemoBackup { id: number; jobId: number | null; targetType: 'sit
 export interface DemoJob { id: number; name: string; targetType: 'site' | 'database' | 'all-sites' | 'all-databases'; targetId: number; schedule: string; enabled: boolean; createdAt: number }
 export type FsNode = { dir: true } | { dir: false; content: string };
 export interface DemoState {
+  groups?: DemoGroup[]; nextGroupId?: number;
   nextId: number; nextDbId: number; users: DemoUser[]; sites: DemoSite[]; dbs: DemoDb[]; backups: DemoBackup[]; jobs: DemoJob[];
   nginx: Record<string, { enabled: boolean; config: string }>;
   certs: Record<string, { issuedAt: number; expiresAt: number }>;

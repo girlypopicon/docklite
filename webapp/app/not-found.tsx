@@ -91,17 +91,6 @@ export default function NotFound() {
             </div>
           </Link>
           <Link
-            href="/databases"
-            className="card-vapor p-4 rounded-lg border border-purple-500/20 hover:border-purple-500/60 transition-all hover:scale-105"
-          >
-            <div className="flex justify-center mb-2">
-              <Database size={28} weight="duotone" color="var(--neon-purple)" />
-            </div>
-            <div className="text-xs font-bold" style={{ color: 'var(--text-purple)' }}>
-              Databases
-            </div>
-          </Link>
-          <Link
             href="/server"
             className="card-vapor p-4 rounded-lg border border-purple-500/20 hover:border-green-500/60 transition-all hover:scale-105"
           >

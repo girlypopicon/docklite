@@ -5,12 +5,13 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Clock, Plug, Eye, Trash, Play, ArrowsClockwise, Stop, DotsThree, Copy, UserCircle, Folder, TerminalWindow,
-  PaintBrush, Shapes, CaretRight, CaretLeft, Check,
+  PaintBrush, Shapes, CaretRight, CaretLeft, FolderSimple, FolderMinus,
 } from '@phosphor-icons/react';
 import { useToast } from '@/lib/hooks/useToast';
 import { containerDisplayName } from '@/lib/container-names';
 import { DB_CONTAINER_TYPES } from '@/lib/database-engines';
-import { BOX_COLORS, BOX_COLOR_RGB, BOX_ICONS, boxIconFor, boxNameFontSize } from '@/lib/box-styles';
+import { BOX_COLOR_RGB, boxIconFor, boxNameFontSize } from '@/lib/box-styles';
+import { ColourGrid, IconGrid } from './BoxStylePickers';
 
 interface ContainerCardProps {
   container: ContainerInfo;
@@ -20,7 +21,9 @@ interface ContainerCardProps {
   onMenuOpenChange?: (open: boolean) => void;
   canAssign?: boolean;
   onAssign?: (containerId: string, containerName: string) => void;
-  onMoveFolder?: (containerId: string, containerName: string) => void;
+  onMoveGroup?: (containerId: string, containerName: string) => void;
+  // When the card is shown inside a group's window: take the box out of the group.
+  onRemoveFromGroup?: (containerId: string, containerName: string) => void;
   onToggleTracking?: (containerId: string, tracked: boolean) => void;
   isTracked?: boolean;
   // Save the colour and icon this box was given (the card already shows them; this is for keeping them).
@@ -41,7 +44,8 @@ export default function ContainerCard({
   onMenuOpenChange,
   canAssign,
   onAssign,
-  onMoveFolder,
+  onMoveGroup,
+  onRemoveFromGroup,
   onToggleTracking,
   isTracked = true,
   onStyle,
@@ -53,7 +57,7 @@ export default function ContainerCard({
   const menuPopupRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
   const downAt = useRef<{ x: number; y: number } | null>(null);
-  const stopDnd = (event: React.PointerEvent) => event.stopPropagation();
+  const stopDnd = (event: React.SyntheticEvent) => event.stopPropagation();
   const toast = useToast();
 
   // What this card looks like. Starts from what's saved; changes show at once and are saved in the background.
@@ -63,6 +67,8 @@ export default function ContainerCard({
   }, [container.style?.color, container.style?.icon]);
 
   const isRunning = container.state === 'running';
+  // A SQLite database is a file inside a site, not a container: no start/stop, terminal, colour or grouping.
+  const isVirtual = (container.labels?.['docklite.type'] || '') === 'sqlite';
   const displayName = containerDisplayName(container);
   // Docker lists a published port once per address family (IPv4 and IPv6); show each mapping once.
   const ports = Array.from(new Set((container.ports || '').split(',').map((p) => p.trim()).filter(Boolean))).join(', ');
@@ -144,7 +150,7 @@ export default function ContainerCard({
         if (!opts?.keepOpen) closeMenu();
         onClick();
       }}
-      onPointerDown={stopDnd}
+      onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd}
       className="w-full px-3 py-2 text-left text-sm font-bold transition-colors hover:bg-white/5 flex items-center gap-3"
       style={{ color: opts?.danger ? 'var(--status-error)' : 'var(--text-primary)' }}
     >
@@ -161,7 +167,7 @@ export default function ContainerCard({
         e.stopPropagation();
         setView('main');
       }}
-      onPointerDown={stopDnd}
+      onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd}
       className="w-full px-3 py-2 text-left text-sm font-bold flex items-center gap-2 border-b hover:bg-white/5"
       style={{ color: 'var(--text-primary)', borderColor: 'rgba(var(--neon-purple-rgb), 0.25)' }}
     >
@@ -174,8 +180,8 @@ export default function ContainerCard({
     <div
       className="fixed inset-0 z-[10000]"
       onClick={closeMenu}
-      onPointerDown={stopDnd}
-      onPointerDownCapture={stopDnd}
+      onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd}
+      onPointerDownCapture={stopDnd} onMouseDownCapture={stopDnd} onTouchStartCapture={stopDnd}
     >
       <div
         ref={menuPopupRef}
@@ -190,30 +196,31 @@ export default function ContainerCard({
           boxShadow: '0 0 28px rgba(var(--neon-purple-rgb), 0.65)',
         }}
         onClick={(e) => e.stopPropagation()}
-        onPointerDown={stopDnd}
-        onPointerDownCapture={stopDnd}
+        onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd}
+        onPointerDownCapture={stopDnd} onMouseDownCapture={stopDnd} onTouchStartCapture={stopDnd}
       >
         {view === 'main' && (
           <>
-            {!isRunning
+            {!isVirtual && (!isRunning
               ? item('Start', <Play size={16} weight="duotone" />, () => onAction(container.id, 'start'))
               : (
                 <>
                   {item('Restart', <ArrowsClockwise size={16} weight="duotone" />, () => onAction(container.id, 'restart'))}
                   {item('Stop', <Stop size={16} weight="duotone" />, () => onAction(container.id, 'stop'))}
                 </>
-              )}
+              ))}
             {onViewDetails && item('View details', <Eye size={16} weight="duotone" />, () => onViewDetails(container.id, container.name))}
-            {item('Open in terminal', <TerminalWindow size={16} weight="duotone" />, () =>
+            {!isVirtual && item('Open in terminal', <TerminalWindow size={16} weight="duotone" />, () =>
               window.dispatchEvent(new CustomEvent('docklite-open-terminal', { detail: { containerId: container.id, containerName: container.name } })),
             )}
             <div className="my-1 border-t" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.25)' }} />
-            {onStyle && item('Colour', <PaintBrush size={16} weight="duotone" />, () => setView('colour'), { arrow: true, keepOpen: true })}
-            {onStyle && item('Icon', <Shapes size={16} weight="duotone" />, () => setView('icon'), { arrow: true, keepOpen: true })}
+            {onStyle && !isVirtual && item('Colour', <PaintBrush size={16} weight="duotone" />, () => setView('colour'), { arrow: true, keepOpen: true })}
+            {onStyle && !isVirtual && item('Icon', <Shapes size={16} weight="duotone" />, () => setView('icon'), { arrow: true, keepOpen: true })}
             {item('Copy name', <Copy size={16} weight="duotone" />, copyName)}
             {canAssign && onAssign && isSite && item('Assign to user', <UserCircle size={16} weight="duotone" />, () => onAssign(container.id, container.name))}
-            {onMoveFolder && item('Move to folder', <Folder size={16} weight="duotone" />, () => onMoveFolder(container.id, container.name))}
-            {onToggleTracking && item(isTracked ? 'Untrack' : 'Track', <Eye size={16} weight="duotone" />, () => onToggleTracking(container.id, isTracked), { danger: isTracked })}
+            {onRemoveFromGroup && item('Take out of group', <FolderMinus size={16} weight="duotone" />, () => onRemoveFromGroup(container.id, container.name))}
+            {onMoveGroup && !isVirtual && item('Move to group', <FolderSimple size={16} weight="duotone" />, () => onMoveGroup(container.id, container.name))}
+            {onToggleTracking && !isVirtual && item(isTracked ? 'Untrack' : 'Track', <Eye size={16} weight="duotone" />, () => onToggleTracking(container.id, isTracked), { danger: isTracked })}
             {onDelete && isSite && item('Delete', <Trash size={16} weight="duotone" />, () => onDelete(container.id, container.labels?.['docklite.domain'] || container.name), { danger: true })}
           </>
         )}
@@ -221,69 +228,14 @@ export default function ContainerCard({
         {view === 'colour' && (
           <>
             {backRow('Colour')}
-            <div className="grid grid-cols-4 gap-3 p-4" role="radiogroup" aria-label="Card colour">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={!style.color}
-                aria-label="Automatic colour"
-                title="Automatic (by type)"
-                onClick={(e) => { e.stopPropagation(); pick({ color: '' }); }}
-                onPointerDown={stopDnd}
-                className="h-9 w-9 rounded-full grid place-items-center text-[10px] font-bold"
-                style={{ border: '2px dashed var(--text-secondary)', color: 'var(--text-secondary)', outline: !style.color ? '2px solid var(--text-primary)' : 'none', outlineOffset: 2 }}
-              >
-                Auto
-              </button>
-              {BOX_COLORS.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={style.color === c.id}
-                  aria-label={c.label}
-                  title={c.label}
-                  onClick={(e) => { e.stopPropagation(); pick({ color: c.id }); }}
-                  onPointerDown={stopDnd}
-                  className="h-9 w-9 rounded-full grid place-items-center"
-                  style={{
-                    background: `rgb(${c.rgb})`,
-                    boxShadow: `0 0 10px rgba(${c.rgb}, 0.7)`,
-                    outline: style.color === c.id ? '2px solid var(--text-primary)' : 'none',
-                    outlineOffset: 2,
-                  }}
-                >
-                  {style.color === c.id && <Check size={16} weight="bold" color="#160a1f" />}
-                </button>
-              ))}
-            </div>
+            <ColourGrid value={style.color} onPick={(id) => pick({ color: id })} />
           </>
         )}
 
         {view === 'icon' && (
           <>
             {backRow('Icon')}
-            <div className="grid grid-cols-4 gap-2 p-3" role="radiogroup" aria-label="Card icon">
-              {BOX_ICONS.map(({ id, label, Icon }) => (
-                <button
-                  key={id || 'box'}
-                  type="button"
-                  role="radio"
-                  aria-checked={style.icon === id}
-                  aria-label={label}
-                  title={label}
-                  onClick={(e) => { e.stopPropagation(); pick({ icon: id }); }}
-                  onPointerDown={stopDnd}
-                  className="h-11 rounded-lg grid place-items-center hover:bg-white/5"
-                  style={{
-                    color: 'var(--text-primary)',
-                    border: style.icon === id ? '2px solid var(--text-primary)' : '1px solid rgba(var(--neon-purple-rgb), 0.3)',
-                  }}
-                >
-                  <Icon size={24} weight="duotone" />
-                </button>
-              ))}
-            </div>
+            <IconGrid value={style.icon} onPick={(id) => pick({ icon: id })} />
           </>
         )}
       </div>
@@ -330,10 +282,10 @@ export default function ContainerCard({
               className="w-2 h-2 rounded-full"
               style={{ background: isRunning ? 'var(--neon-green)' : 'var(--status-error)', boxShadow: isRunning ? '0 0 8px var(--neon-green)' : 'none' }}
             />
-            {isRunning ? 'Running' : 'Stopped'}
+            {isVirtual ? 'File' : isRunning ? 'Running' : 'Stopped'}
           </span>
 
-          <div ref={menuRef} onPointerDown={stopDnd} onPointerDownCapture={stopDnd} onClick={(e) => e.stopPropagation()}>
+          <div ref={menuRef} onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd} onPointerDownCapture={stopDnd} onMouseDownCapture={stopDnd} onTouchStartCapture={stopDnd} onClick={(e) => e.stopPropagation()}>
             <button
               ref={menuButtonRef}
               type="button"
@@ -344,7 +296,7 @@ export default function ContainerCard({
                 if (!next) setView('main');
                 onMenuOpenChange?.(next);
               }}
-              onPointerDown={stopDnd}
+              onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd}
               className="w-7 h-7 rounded-full grid place-items-center transition-colors hover:bg-white/10"
               style={{ border: '1px solid rgba(var(--c), 0.6)', color: 'var(--text-primary)', background: 'transparent' }}
               title="More options"

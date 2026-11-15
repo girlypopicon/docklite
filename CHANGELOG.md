@@ -5,13 +5,30 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+This release is **1.6.0**: groups, and one page for every kind of box.
+
+### Added
+- **Groups replace folders.** A group is a card the same shape as a box; instead of one box's details it lists the boxes inside, and
+  clicking it opens them in a window. There is no more "Default" section and no folders inside folders: a box that is in no group
+  simply sits on the desktop. Your old folders are turned into groups the first time DockLite starts (nested ones become top-level
+  groups, "Default" goes away, and what was in it is on the desktop). Each group has a **Linked** switch for boxes that belong
+  together, like a website and its database (it only marks the group for now; what linking does comes in a later release), and a
+  colour and an icon like any box.
+- **Make a group by dragging.** Drag a box onto a group and it goes in. Drag a box onto another box and hold it there for a moment
+  and they become a new group (you name it). On a phone, use a box's `⋯` menu → **Move to group**, which can also make a new group.
+- **Databases are boxes.** PostgreSQL, MySQL, MariaDB, MongoDB and Redis databases sit on the Boxes page with everything else, and a
+  SQLite database is a card too. Click one for how to connect, the table editor, a download, a new password and delete; they all
+  used to be on the Databases page.
+- **One "New box" window** that asks what kind of box you want: a website, or a database (PostgreSQL, MySQL, MariaDB, MongoDB, Redis
+  or SQLite), each with a plain-words description.
 - **MySQL** is now a database type beside PostgreSQL, MariaDB, MongoDB, Redis and SQLite: its own box (MySQL 8.4), listening on this
   server only, with a checked dump for backups and `docklite databases create <name> --type mysql`.
 
-### Added
-- **Groups, the first half.** The agent now has groups (`/api/groups`): cards that hold boxes, with a Linked switch, a colour and
-  an icon. Your existing folders are turned into groups the first time DockLite starts (nested ones become top-level groups; the
-  "Default" folder goes away and what was in it is simply on the desktop). The dashboard cards for groups come next.
+### Changed
+- **The Databases page is gone** (the address still works and takes you to Boxes). "View DockLite database", the look inside
+  DockLite's own data, is now in Settings → System.
+- The Containers page is now called **Boxes**, and "New container" and "New folder" are **New box** and **New group**.
+- Escape closes the new windows.
 
 ## 1.5.0 (2026-11-15)
 

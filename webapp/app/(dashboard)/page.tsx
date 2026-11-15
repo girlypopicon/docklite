@@ -1,164 +1,293 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { ContainerInfo, FolderNode } from '@/types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ContainerInfo, BoxGroup } from '@/types';
 import ContainerDetailsModal from './components/ContainerDetailsModal';
 import AllContainersModal from './components/AllContainersModal';
-import AddFolderModal from './components/AddFolderModal';
-import FolderSection from './components/FolderSection';
-import { useToast } from '@/lib/hooks/useToast';
-import { Database, Lightning, Package, ArrowsClockwise, FolderPlus, PlusCircle, WarningCircle, SpinnerGap } from '@phosphor-icons/react';
-import AddContainerModal from './components/AddContainerModal';
+import ContainerCard from './components/ContainerCard';
+import GroupCard from './components/GroupCard';
+import GroupModal from './components/GroupModal';
+import GroupNameModal from './components/GroupNameModal';
+import MoveToGroupModal from './components/MoveToGroupModal';
+import AssignBoxModal from './components/AssignBoxModal';
+import NewBoxModal from './components/NewBoxModal';
+import DatabaseBoxModal from './components/DatabaseBoxModal';
+import ConfirmModal from './components/ConfirmModal';
 import { ContainersPageSkeleton } from './components/PageSkeletons';
-import ContainerFilterTabs, { type StatusFilter } from './components/ContainerFilterTabs';
-import { containerKind, sortFolderTree } from '@/lib/container-sort';
+import ContainerFilterTabs, { type StatusFilter, type TypeFilter } from './components/ContainerFilterTabs';
+import { useToast } from '@/lib/hooks/useToast';
+import { containerKind, sortContainers } from '@/lib/container-sort';
+import { formatBytes, type DatabaseRecord } from '@/lib/database-engines';
+import { PlusCircle, FolderPlus, Package, ArrowsClockwise, WarningCircle } from '@phosphor-icons/react';
 import {
   DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
   useSensor,
   useSensors,
-  DragEndEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
-type ContainerType = 'all' | 'sites' | 'databases' | 'other';
+// How long a box has to be held over another box before they become a group.
+const HOLD_MS = 900;
+
+const boxKey = (id: string) => `box:${id}`;
+const groupKey = (id: number) => `group:${id}`;
+
+/**
+ * One card on the desktop. A box can be picked up and dropped on another box (hold it there to make a group) or on a group
+ * (it goes in). Groups are only drop targets. A SQLite file card is neither: it lives inside a site.
+ */
+function Tile({
+  id,
+  draggable,
+  droppable,
+  children,
+}: {
+  id: string;
+  draggable: boolean;
+  droppable: boolean;
+  children: (state: { isOver: boolean; isDragging: boolean }) => React.ReactNode;
+}) {
+  const drag = useDraggable({ id, disabled: !draggable });
+  const drop = useDroppable({ id, disabled: !droppable });
+  return (
+    <div
+      ref={(el) => {
+        drag.setNodeRef(el);
+        drop.setNodeRef(el);
+      }}
+      {...(draggable ? drag.listeners : {})}
+      style={{ opacity: drag.isDragging ? 0.35 : 1 }}
+    >
+      {children({ isOver: drop.isOver && !drag.isDragging, isDragging: drag.isDragging })}
+    </div>
+  );
+}
+
+type Me = { userId: number; username: string; isAdmin: boolean; role: string };
 
 export default function DashboardPage() {
-  const [foldersData, setFoldersData] = useState<FolderNode[]>([]);
+  const [boxes, setBoxes] = useState<ContainerInfo[]>([]);
+  const [groups, setGroups] = useState<BoxGroup[]>([]);
+  const [databases, setDatabases] = useState<DatabaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [currentUser, setCurrentUser] = useState<{ userId: number; username: string; isAdmin: boolean; role: string } | null>(null);
-  const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
-  const [selectedContainerName, setSelectedContainerName] = useState<string>('');
-  const [showAllContainersModal, setShowAllContainersModal] = useState(false);
-  const [showAddFolderModal, setShowAddFolderModal] = useState(false);
-  const [subfolderParent, setSubfolderParent] = useState<{ id: number; name: string } | null>(null);
-  const [showAddContainerModal, setShowAddContainerModal] = useState(false);
-  const [filterType, setFilterType] = useState<ContainerType>('all');
+  const [me, setMe] = useState<Me | null>(null);
+  const [filterType, setFilterType] = useState<TypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('any');
+
+  // windows
+  const [details, setDetails] = useState<{ id: string; name: string } | null>(null);
+  const [dbOpen, setDbOpen] = useState<{ db: DatabaseRecord; box?: ContainerInfo } | null>(null);
+  const [openGroupId, setOpenGroupId] = useState<number | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [showNewBox, setShowNewBox] = useState(false);
+  const [nameDialog, setNameDialog] = useState<
+    | { kind: 'new' }
+    | { kind: 'rename'; group: BoxGroup }
+    | { kind: 'make'; ids: string[]; names: string[] }
+    | null
+  >(null);
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [moveTarget, setMoveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [moveBusy, setMoveBusy] = useState(false);
+  const [moveError, setMoveError] = useState('');
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState<BoxGroup | null>(null);
   const [assignTarget, setAssignTarget] = useState<{ id: string; name: string } | null>(null);
   const [assignUsers, setAssignUsers] = useState<Array<{ id: number; username: string }>>([]);
-  const [assignUserId, setAssignUserId] = useState<string>('');
-  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignUserId, setAssignUserId] = useState('');
+  const [assignBusy, setAssignBusy] = useState(false);
   const [assignError, setAssignError] = useState('');
-  const [moveTarget, setMoveTarget] = useState<{ id: string; name: string } | null>(null);
-  const [moveFolderId, setMoveFolderId] = useState<string>('');
-  const [moveError, setMoveError] = useState('');
+
+  // dragging
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [armed, setArmed] = useState(false);
+  const armedRef = useRef(false);
+  armedRef.current = armed;
+
   const toast = useToast();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch('/api/containers');
-      if (!res.ok) {
-        throw new Error('Failed to fetch data');
-      }
+      if (!res.ok) throw new Error('Failed to fetch data');
       const data = await res.json();
-      // Running before stopped, then site → database → other.
-      setFoldersData(sortFolderTree<FolderNode>(data.folders || []));
-    } catch (err) {
-      setError('Failed to load containers');
+      setBoxes(data.boxes || []);
+      setGroups(data.groups || []);
+      setError('');
+    } catch {
+      setError('Failed to load your boxes');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const fetchDatabases = useCallback(async () => {
+    try {
+      const res = await fetch('/api/databases/stats');
+      if (!res.ok) return;
+      const data = await res.json();
+      setDatabases(data.databases || []);
+    } catch {
+      /* database details just stay as they were */
+    }
+  }, []);
 
   useEffect(() => {
     fetchData();
-    const loadUser = async () => {
-      try {
-        const res = await fetch('/api/auth/me');
-        if (!res.ok) return;
-        const data = await res.json();
-        setCurrentUser(data.user || null);
-      } catch {
-        setCurrentUser(null);
-      }
+    fetchDatabases();
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setMe(d?.user || null))
+      .catch(() => setMe(null));
+    const a = setInterval(fetchData, 10000);
+    const b = setInterval(fetchDatabases, 30000);
+    return () => {
+      clearInterval(a);
+      clearInterval(b);
     };
-    loadUser();
-    const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [fetchData, fetchDatabases]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+  const refresh = () => {
+    fetchData();
+    fetchDatabases();
+  };
+
+  // ---- what is on the desktop ------------------------------------------------------------------------------------
+
+  // A SQLite database is a file inside a site, not a container: it gets a card of its own so it can still be opened.
+  const sqliteBoxes: ContainerInfo[] = useMemo(
+    () =>
+      databases
+        .filter((d) => d.type === 'sqlite')
+        .map((d) => ({
+          id: `sqlite-${d.id}`,
+          name: `docklite-sqlite-${d.name}`,
+          image: 'sqlite',
+          status: '',
+          state: 'running',
+          uptime: formatBytes(d.size),
+          ports: '',
+          labels: { 'docklite.type': 'sqlite', 'docklite.database': d.name },
+        })),
+    [databases],
   );
 
-  const handleAction = async (containerId: string, action: 'start' | 'stop' | 'restart') => {
+  const allBoxes = useMemo(() => [...boxes, ...sqliteBoxes], [boxes, sqliteBoxes]);
+  const boxByName = useMemo(() => new Map(allBoxes.map((b) => [b.name, b])), [allBoxes]);
+  const groupOfBox = useMemo(() => {
+    const m = new Map<string, BoxGroup>();
+    for (const g of groups) for (const n of g.members) m.set(n, g);
+    return m;
+  }, [groups]);
+  const dbByContainer = useMemo(() => new Map(databases.filter((d) => d.container_id).map((d) => [d.container_id as string, d])), [databases]);
+
+  const matchesStatus = (b: ContainerInfo) => statusFilter === 'any' || (statusFilter === 'running' ? b.state === 'running' : b.state !== 'running');
+  const matchesFilters = (b: ContainerInfo) => {
+    if (!matchesStatus(b)) return false;
+    const kind = containerKind(b);
+    if (filterType === 'sites') return kind === 'site';
+    if (filterType === 'databases') return kind === 'database';
+    if (filterType === 'other') return kind === 'other';
+    return true;
+  };
+  const filtering = filterType !== 'all' || statusFilter !== 'any';
+
+  const typeCounts = useMemo(() => {
+    const c = { all: 0, sites: 0, databases: 0, other: 0 };
+    for (const b of allBoxes) {
+      if (!matchesStatus(b)) continue;
+      c.all += 1;
+      const k = containerKind(b);
+      if (k === 'site') c.sites += 1;
+      else if (k === 'database') c.databases += 1;
+      else c.other += 1;
+    }
+    return c;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allBoxes, statusFilter]);
+
+  const membersOf = (g: BoxGroup) => g.members.map((n) => boxByName.get(n)).filter(Boolean) as ContainerInfo[];
+
+  const visibleGroups = groups.filter((g) => !filtering || membersOf(g).some(matchesFilters));
+  const looseBoxes = sortContainers(allBoxes.filter((b) => !groupOfBox.has(b.name) && matchesFilters(b)));
+  const nothingAtAll = allBoxes.length === 0 && groups.length === 0;
+  const nothingMatches = !nothingAtAll && visibleGroups.length === 0 && looseBoxes.length === 0;
+  const openGroup = groups.find((g) => g.id === openGroupId) || null;
+
+  // ---- actions on boxes -----------------------------------------------------------------------------------------
+
+  const handleAction = async (id: string, action: 'start' | 'stop' | 'restart') => {
     try {
-      const res = await fetch(`/api/containers/${containerId}/${action}`, {
-        method: 'POST',
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Failed to ${action} container`);
-      }
-      toast.success(`Container ${action}ed successfully!`);
+      const res = await fetch(`/api/containers/${id}/${action}`, { method: 'POST' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Could not ${action} the box`);
+      toast.success(`Box ${action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted'}`);
       fetchData();
     } catch (err: any) {
       toast.error(`Error: ${err.message || err}`);
     }
   };
 
-  const handleDeleteContainer = async (containerId: string, containerName: string) => {
-    if (!confirm(`Delete "${containerName}"? This will stop and remove the container.`)) {
-      return;
-    }
-
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Delete "${name}"? This stops and removes the box.`)) return;
     try {
-      const res = await fetch(`/api/containers/${containerId}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to delete container');
-      }
-      toast.success(`Deleted ${containerName}`);
+      const res = await fetch(`/api/containers/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not delete the box');
+      toast.success(`Deleted ${name}`);
+      refresh();
+    } catch (err: any) {
+      toast.error(`Error: ${err.message || err}`);
+    }
+  };
+
+  const handleToggleTracking = async (id: string, tracked: boolean) => {
+    try {
+      const res = await fetch(`/api/containers/${id}/${tracked ? 'untrack' : 'track'}`, { method: 'POST' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not change tracking');
+      toast.success(tracked ? 'Box untracked' : 'Box tracked');
       fetchData();
     } catch (err: any) {
       toast.error(`Error: ${err.message || err}`);
     }
   };
 
-  const loadAssignUsers = async () => {
+  const handleBoxStyle = async (id: string, style: { color: string; icon: string }) => {
     try {
-      const res = await fetch('/api/users');
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to load users');
-      }
-      const data = await res.json();
-      setAssignUsers(data.users || []);
+      const res = await fetch(`/api/containers/${id}/style`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(style) });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not save the card style');
     } catch (err: any) {
-      setAssignError(err.message || 'Failed to load users');
+      toast.error(`Error: ${err.message || err}`);
+      fetchData();
     }
   };
 
-  const openAssignModal = async (containerId: string, containerName: string) => {
-    setAssignTarget({ id: containerId, name: containerName });
+  const openAssign = async (id: string, name: string) => {
+    setAssignTarget({ id, name });
     setAssignError('');
     setAssignUserId('');
     if (assignUsers.length === 0) {
-      await loadAssignUsers();
+      try {
+        const res = await fetch('/api/users');
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not load users');
+        setAssignUsers((await res.json()).users || []);
+      } catch (err: any) {
+        setAssignError(err.message || 'Could not load users');
+      }
     }
   };
 
-  const handleAssignSubmit = async () => {
-    if (!assignTarget) return;
-    if (!assignUserId) {
-      setAssignError('Please select a user to assign this container to.');
-      return;
-    }
-    setAssignLoading(true);
+  const submitAssign = async () => {
+    if (!assignTarget || !assignUserId) return;
+    setAssignBusy(true);
     setAssignError('');
-
     try {
       const res = await fetch(`/api/containers/${assignTarget.id}/assign`, {
         method: 'POST',
@@ -166,358 +295,212 @@ export default function DashboardPage() {
         body: JSON.stringify({ user_id: Number(assignUserId) }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to assign container');
-      }
-      if (data.warning) {
-        toast.warning(`Assigned ${assignTarget.name}, but: ${data.warning}`, 12000);
-      } else {
-        toast.success(data.old_folder_moved_to ? `Assigned ${assignTarget.name}; the old folder is in the trash` : `Assigned ${assignTarget.name}`);
-      }
+      if (!res.ok) throw new Error(data.error || 'Could not assign the box');
+      if (data.warning) toast.warning(`Assigned ${assignTarget.name}, but: ${data.warning}`, 12000);
+      else toast.success(data.old_folder_moved_to ? `Assigned ${assignTarget.name}; the old folder is in the trash` : `Assigned ${assignTarget.name}`);
       setAssignTarget(null);
-      setAssignUserId('');
-      fetchData();
+      refresh();
     } catch (err: any) {
-      setAssignError(err.message || 'Failed to assign container');
+      setAssignError(err.message || 'Could not assign the box');
     } finally {
-      setAssignLoading(false);
+      setAssignBusy(false);
     }
   };
 
-  const handleToggleTracking = async (containerId: string, tracked: boolean) => {
-    try {
-      const endpoint = tracked ? 'untrack' : 'track';
-      const res = await fetch(`/api/containers/${containerId}/${endpoint}`, {
-        method: 'POST',
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Failed to ${endpoint} container`);
-      }
-      toast.success(tracked ? 'Container untracked' : 'Container tracked');
-      fetchData();
-    } catch (err: any) {
-      toast.error(`Error: ${err.message || err}`);
-    }
-  };
-
-  // Colour and icon a box was given; the card already shows them, this keeps them for everyone.
-  const handleStyle = async (containerId: string, style: { color: string; icon: string }) => {
-    try {
-      const res = await fetch(`/api/containers/${containerId}/style`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(style),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Could not save the card style');
-      }
-    } catch (err: any) {
-      toast.error(`Error: ${err.message || err}`);
-      fetchData(); // put the card back the way the server has it
-    }
-  };
-
-  const getContainerType = containerKind;
-
-  const matchesStatus = (container: ContainerInfo) =>
-    statusFilter === 'any' || (statusFilter === 'running' ? container.state === 'running' : container.state !== 'running');
-
-  const filterContainers = (containers: ContainerInfo[]): ContainerInfo[] => {
-    return containers.filter((container) => {
-      if (!matchesStatus(container)) return false;
-      const type = getContainerType(container);
-      if (filterType === 'sites') return type === 'site';
-      if (filterType === 'databases') return type === 'database';
-      if (filterType === 'other') return type === 'other';
-      return true;
-    });
-  };
-
-  // Recursively count all containers in the tree
-  const countContainers = (nodes: FolderNode[]): number => {
-    return nodes.reduce((total, node) => {
-      return total + node.containers.length + countContainers(node.children);
-    }, 0);
-  };
-
-  // Recursively filter folders and their containers
-  const filterFolderTree = (nodes: FolderNode[]): FolderNode[] => {
-    return nodes.map(node => ({
-      ...node,
-      containers: filterContainers(node.containers),
-      children: filterFolderTree(node.children)
-    })).filter(node => {
-      // Only hide folders if we're actively filtering AND they have no matches
-      if (filterType === 'all' && statusFilter === 'any') {
-        return true; // Show all folders when not filtering
-      }
-      return node.containers.length > 0 || node.children.length > 0;
-    });
-  };
-
-  const totalContainers = countContainers(foldersData);
-
-  // Tab counts follow the state switch, so each number matches what that tab will show.
-  const typeCounts = useMemo(() => {
-    const counts = { all: 0, sites: 0, databases: 0, other: 0 };
-    const walk = (nodes: FolderNode[]) => {
-      for (const node of nodes) {
-        for (const container of node.containers) {
-          if (!matchesStatus(container)) continue;
-          counts.all += 1;
-          const type = getContainerType(container);
-          if (type === 'site') counts.sites += 1;
-          else if (type === 'database') counts.databases += 1;
-          else counts.other += 1;
-        }
-        walk(node.children);
-      }
-    };
-    walk(foldersData);
-    return counts;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [foldersData, statusFilter]);
-  const filteredFolders = filterFolderTree(foldersData);
-
-  const flattenedFolders = useMemo(() => {
-    const result: Array<{ id: number; name: string; depth: number }> = [];
-    const walk = (nodes: FolderNode[]) => {
-      for (const node of nodes) {
-        result.push({ id: node.id, name: node.name, depth: node.depth });
-        if (node.children?.length) walk(node.children);
-      }
-    };
-    walk(foldersData);
-    return result;
-  }, [foldersData]);
-
-  type ContainerLocation = { folderId: number; index: number; container: ContainerInfo };
-
-  const findContainerLocation = (nodes: FolderNode[], containerId: string): ContainerLocation | null => {
-    for (const node of nodes) {
-      const index = node.containers.findIndex(container => container.id === containerId);
-      if (index !== -1) {
-        return { folderId: node.id, index, container: node.containers[index] };
-      }
-      if (node.children?.length) {
-        const childResult = findContainerLocation(node.children, containerId);
-        if (childResult) return childResult;
-      }
-    }
-    return null;
-  };
-
-  const findFolderNode = (nodes: FolderNode[], folderId: number): FolderNode | null => {
-    for (const node of nodes) {
-      if (node.id === folderId) return node;
-      if (node.children?.length) {
-        const found = findFolderNode(node.children, folderId);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-
-  const updateFolderTree = (
-    nodes: FolderNode[],
-    folderId: number,
-    updater: (containers: ContainerInfo[]) => ContainerInfo[]
-  ): FolderNode[] => {
-    return nodes.map(node => {
-      if (node.id === folderId) {
-        return { ...node, containers: updater(node.containers) };
-      }
-      if (node.children?.length) {
-        return { ...node, children: updateFolderTree(node.children, folderId, updater) };
-      }
-      return node;
-    });
-  };
-
-  const handleMoveSubmit = async () => {
-    if (!moveTarget) return;
-    if (!moveFolderId) {
-      setMoveError('Please select a folder.');
+  const openBox = (id: string, name: string) => {
+    const box = allBoxes.find((b) => b.id === id);
+    const sqlite = id.startsWith('sqlite-') ? databases.find((d) => `sqlite-${d.id}` === id) : undefined;
+    if (sqlite) {
+      setDbOpen({ db: sqlite, box: undefined });
       return;
     }
+    const db = dbByContainer.get(id);
+    if (db) {
+      setDbOpen({ db, box });
+      return;
+    }
+    setDetails({ id, name });
+  };
+
+  // ---- groups ------------------------------------------------------------------------------------------------------
+
+  const api = async (path: string, method: string, body?: unknown) => {
+    const res = await fetch(path, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong');
+    return data;
+  };
+
+  const submitName = async (name: string) => {
+    if (!nameDialog) return;
+    setNameBusy(true);
+    setNameError('');
+    try {
+      if (nameDialog.kind === 'rename') await api(`/api/groups/${nameDialog.group.id}`, 'PUT', { name });
+      else await api('/api/groups', 'POST', { name, container_ids: nameDialog.kind === 'make' ? nameDialog.ids : [] });
+      setNameDialog(null);
+      fetchData();
+    } catch (err: any) {
+      setNameError(err.message);
+    } finally {
+      setNameBusy(false);
+    }
+  };
+
+  const setLinked = async (g: BoxGroup, linked: boolean) => {
+    setGroups((prev) => prev.map((x) => (x.id === g.id ? { ...x, linked } : x)));
+    try {
+      await api(`/api/groups/${g.id}`, 'PUT', { linked });
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+      fetchData();
+    }
+  };
+
+  const styleGroup = async (g: BoxGroup, style: { color: string; icon: string }) => {
+    try {
+      await api(`/api/groups/${g.id}`, 'PUT', style);
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+      fetchData();
+    }
+  };
+
+  const deleteGroup = async () => {
+    if (!deleteGroupTarget) return;
+    try {
+      await api(`/api/groups/${deleteGroupTarget.id}`, 'DELETE');
+      toast.success(`Group "${deleteGroupTarget.name}" deleted. Its boxes are back on the desktop`);
+      if (openGroupId === deleteGroupTarget.id) setOpenGroupId(null);
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    }
+    setDeleteGroupTarget(null);
+    fetchData();
+  };
+
+  const addToGroup = async (g: BoxGroup, box: ContainerInfo) => {
+    try {
+      await api(`/api/groups/${g.id}/members`, 'POST', { container_id: box.id });
+      toast.success(`${box.labels?.['docklite.domain'] || box.name} is in ${g.name}`);
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    }
+    fetchData();
+  };
+
+  const removeFromGroup = async (id: string) => {
+    const box = boxes.find((b) => b.id === id);
+    const g = box && groupOfBox.get(box.name);
+    if (!g) return;
+    try {
+      await api(`/api/groups/${g.id}/members?container_id=${encodeURIComponent(id)}`, 'DELETE');
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    }
+    fetchData();
+  };
+
+  const submitMove = async (target: { groupId: number | null } | { newName: string }) => {
+    if (!moveTarget) return;
+    setMoveBusy(true);
     setMoveError('');
     try {
-      const res = await fetch(`/api/folders/${moveFolderId}/containers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ containerId: moveTarget.id }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to move container');
+      if ('newName' in target) {
+        await api('/api/groups', 'POST', { name: target.newName, container_ids: [moveTarget.id] });
+      } else if (target.groupId === null) {
+        const box = boxes.find((b) => b.id === moveTarget.id);
+        const g = box && groupOfBox.get(box.name);
+        if (g) await api(`/api/groups/${g.id}/members?container_id=${encodeURIComponent(moveTarget.id)}`, 'DELETE');
+      } else {
+        await api(`/api/groups/${target.groupId}/members`, 'POST', { container_id: moveTarget.id });
       }
-      toast.success(`Moved ${moveTarget.name}`);
       setMoveTarget(null);
-      setMoveFolderId('');
       fetchData();
     } catch (err: any) {
-      setMoveError(err.message || 'Failed to move container');
+      setMoveError(err.message);
+    } finally {
+      setMoveBusy(false);
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
+  // ---- dragging ----------------------------------------------------------------------------------------------------
 
-    if (!over || active.id === over.id) return;
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 6 } }),
+  );
 
-    const activeId = String(active.id);
-    const overId = String(over.id);
-    const activeLocation = findContainerLocation(foldersData, activeId);
-    if (!activeLocation) return;
+  // A box held over another box for a moment arms "make a group"; moving away disarms it.
+  useEffect(() => {
+    setArmed(false);
+    if (!activeId || !overId || !overId.startsWith('box:') || overId === activeId) return;
+    const t = setTimeout(() => setArmed(true), HOLD_MS);
+    return () => clearTimeout(t);
+  }, [activeId, overId]);
 
-    let targetFolderId = activeLocation.folderId;
-    let targetIndex = activeLocation.index;
-
-    if (overId.startsWith('folder-')) {
-      targetFolderId = Number(overId.replace('folder-', ''));
-      const targetFolderData = findFolderNode(foldersData, targetFolderId);
-      targetIndex = targetFolderData ? targetFolderData.containers.length : 0;
-    } else {
-      const overLocation = findContainerLocation(foldersData, overId);
-      if (!overLocation) return;
-      targetFolderId = overLocation.folderId;
-      targetIndex = overLocation.index;
-    }
-
-    if (activeLocation.folderId === targetFolderId) {
-      if (activeLocation.index === targetIndex) return;
-      const adjustedIndex = targetIndex > activeLocation.index ? targetIndex - 1 : targetIndex;
-      setFoldersData(prev =>
-        updateFolderTree(prev, activeLocation.folderId, containers => {
-          const next = [...containers];
-          const [moved] = next.splice(activeLocation.index, 1);
-          next.splice(adjustedIndex, 0, moved);
-          return next;
-        })
-      );
-      try {
-        await handleContainerReorder(activeLocation.folderId, activeId, adjustedIndex);
-      } catch {
-        fetchData();
-      }
+  const handleDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
+  const handleDragOver = (e: DragOverEvent) => setOverId(e.over ? String(e.over.id) : null);
+  const handleDragEnd = (e: DragEndEvent) => {
+    const wasArmed = armedRef.current;
+    const from = String(e.active.id);
+    const to = e.over ? String(e.over.id) : null;
+    setActiveId(null);
+    setOverId(null);
+    setArmed(false);
+    if (!to || to === from || !from.startsWith('box:')) return;
+    const fromBox = allBoxes.find((b) => boxKey(b.id) === from);
+    if (!fromBox) return;
+    if (to.startsWith('group:')) {
+      const g = groups.find((x) => groupKey(x.id) === to);
+      if (g) addToGroup(g, fromBox);
       return;
     }
-
-    setFoldersData(prev => {
-      let moving: ContainerInfo | null = null;
-      let next = updateFolderTree(prev, activeLocation.folderId, containers => {
-        const remaining = [];
-        for (const container of containers) {
-          if (container.id === activeId) {
-            moving = container;
-          } else {
-            remaining.push(container);
-          }
-        }
-        return remaining;
-      });
-      if (!moving) return prev;
-      next = updateFolderTree(next, targetFolderId, containers => {
-        const nextContainers = [...containers];
-        nextContainers.splice(targetIndex, 0, moving!);
-        return nextContainers;
-      });
-      return next;
-    });
-
-    try {
-      await handleContainerDrop(activeId, targetFolderId);
-    } catch {
-      fetchData();
+    if (to.startsWith('box:') && wasArmed) {
+      const other = allBoxes.find((b) => boxKey(b.id) === to);
+      if (other) setNameDialog({ kind: 'make', ids: [fromBox.id, other.id], names: [fromBox.labels?.['docklite.domain'] || fromBox.name, other.labels?.['docklite.domain'] || other.name] });
     }
   };
+  const activeBox = activeId ? allBoxes.find((b) => boxKey(b.id) === activeId) : undefined;
 
-  const handleContainerDrop = async (containerId: string, targetFolderId: number) => {
-    try {
-      // Add container to target folder
-      const res = await fetch(`/api/folders/${targetFolderId}/containers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ containerId }),
-      });
+  // ---- drawing -----------------------------------------------------------------------------------------------------
 
-      if (!res.ok) throw new Error('Failed to move container to folder');
+  const card = (b: ContainerInfo, opts?: { inGroup?: boolean }) => (
+    <ContainerCard
+      container={b}
+      onAction={handleAction}
+      onViewDetails={openBox}
+      onDelete={handleDelete}
+      onAssign={openAssign}
+      canAssign={Boolean(me?.isAdmin)}
+      onMoveGroup={(id, name) => {
+        setMoveTarget({ id, name });
+        setMoveError('');
+      }}
+      onRemoveFromGroup={opts?.inGroup ? (id) => removeFromGroup(id) : undefined}
+      onToggleTracking={me?.isAdmin ? handleToggleTracking : undefined}
+      onStyle={handleBoxStyle}
+    />
+  );
 
-      toast.success('Container moved successfully!');
-      fetchData(); // Refresh to show new organization
-    } catch (err: any) {
-      toast.error(`Error: ${err.message || err}`);
-    }
-  };
+  if (loading) return <ContainersPageSkeleton />;
 
-  const handleContainerReorder = async (folderId: number, containerId: string, newPosition: number) => {
-    try {
-      const res = await fetch(`/api/folders/${folderId}/containers/reorder`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ containerId, newPosition }),
-      });
-
-      if (!res.ok) throw new Error('Failed to reorder container');
-
-      toast.success('Container reordered!');
-    } catch (err: any) {
-      toast.error(`Error: ${err.message || err}`);
-      throw err; // Re-throw so FolderSection can revert
-    }
-  };
-
-  const handleAddSubfolder = (parentId: number, parentName: string) => {
-    setSubfolderParent({ id: parentId, name: parentName });
-    setShowAddFolderModal(true);
-  };
-
-  const handleDeleteFolder = async (folderId: number, folderName: string) => {
-    if (!confirm(`Are you sure you want to delete the folder "${folderName}"? This will also delete all subfolders and their container assignments.`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/folders/${folderId}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to delete folder');
-      }
-
-      toast.success(`Folder "${folderName}" deleted successfully!`);
-      fetchData();
-    } catch (err: any) {
-      toast.error(`Error: ${err.message || err}`);
-    }
-  };
-
-  if (loading) {
-    return <ContainersPageSkeleton />;
-  }
-
-  if (error) {
+  if (error && allBoxes.length === 0) {
     return (
       <div className="text-center py-16">
-        <div className="mb-8">
-          <div className="flex justify-center mb-4 animate-pulse">
-            <WarningCircle size={48} weight="duotone" color="var(--status-error)" />
-          </div>
-          <div className="text-xl font-bold mb-2" style={{ color: 'var(--status-error)' }}>
-            System Error Detected
-          </div>
-          <button onClick={fetchData} className="btn-neon px-6 py-3 font-bold inline-flex items-center gap-2">
-            <ArrowsClockwise size={20} weight="duotone" />
-            Retry Connection
-          </button>
+        <div className="flex justify-center mb-4 animate-pulse">
+          <WarningCircle size={48} weight="duotone" color="var(--status-error)" />
         </div>
+        <div className="text-xl font-bold mb-4" style={{ color: 'var(--status-error)' }}>{error}</div>
+        <button onClick={refresh} className="btn-neon px-6 py-3 font-bold inline-flex items-center gap-2">
+          <ArrowsClockwise size={20} weight="duotone" />
+          Try again
+        </button>
       </div>
     );
   }
+
+  const gridClass = 'grid gap-3 sm:gap-4 p-2 sm:p-3 grid-cols-[repeat(auto-fill,minmax(min(100%,148px),1fr))] sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))]';
 
   return (
     <div className="max-w-[1400px] mx-auto">
@@ -525,107 +508,65 @@ export default function DashboardPage() {
         <div>
           <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Package size={26} weight="duotone" />
-            Containers
+            Boxes
           </h1>
           <div className="flex items-center gap-3">
-            <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-              System status: online
-            </p>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{
-              background: 'rgba(var(--status-success-rgb), 0.2)',
-              color: 'var(--text-green)',
-              border: '1px solid var(--neon-green)'
-            }}>
-              {totalContainers} containers
+            <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>System status: online</p>
+            <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(var(--status-success-rgb), 0.2)', color: 'var(--text-green)', border: '1px solid var(--neon-green)' }}>
+              {allBoxes.length} {allBoxes.length === 1 ? 'box' : 'boxes'}
+              {groups.length > 0 ? ` · ${groups.length} ${groups.length === 1 ? 'group' : 'groups'}` : ''}
             </span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 sm:gap-3">
-          <button
-            onClick={() => setShowAddContainerModal(true)}
-            className="btn-neon inline-flex items-center gap-2 whitespace-nowrap"
-          >
+          <button onClick={() => setShowNewBox(true)} className="btn-neon inline-flex items-center gap-2 whitespace-nowrap">
             <PlusCircle size={20} weight="duotone" />
-            New Container
+            New box
           </button>
           <button
-            onClick={() => setShowAddFolderModal(true)}
-            className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 text-sm font-bold rounded-lg transition-all hover:scale-105"
-            style={{
-              background: 'linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 100%)',
-              color: 'var(--button-text)',
-              boxShadow: '0 0 12px rgba(var(--neon-pink-rgb), 0.4)',
+            onClick={() => {
+              setNameDialog({ kind: 'new' });
+              setNameError('');
             }}
+            className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 text-sm font-bold rounded-lg transition-all hover:scale-105"
+            style={{ background: 'linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 100%)', color: 'var(--button-text)', boxShadow: '0 0 12px rgba(var(--neon-pink-rgb), 0.4)' }}
           >
             <FolderPlus size={20} weight="duotone" />
-            New Folder
+            New group
           </button>
-          <button
-            onClick={() => setShowAllContainersModal(true)}
-            className="btn-neon inline-flex items-center gap-2 whitespace-nowrap"
-          >
+          <button onClick={() => setShowAll(true)} className="btn-neon inline-flex items-center gap-2 whitespace-nowrap">
             <Package size={20} weight="duotone" />
-            All Containers
+            All containers
           </button>
         </div>
       </div>
 
-      {/* Filter: type tabs with counts, and a Running/Stopped switch */}
-      <ContainerFilterTabs
-        type={filterType}
-        onType={setFilterType}
-        status={statusFilter}
-        onStatus={setStatusFilter}
-        counts={typeCounts}
-      />
+      <ContainerFilterTabs type={filterType} onType={setFilterType} status={statusFilter} onStatus={setStatusFilter} counts={typeCounts} />
 
-      {totalContainers === 0 ? (
+      {nothingAtAll ? (
         <div className="mt-12 text-center py-20 card-vapor max-w-3xl mx-auto animate-fade-in">
           <div className="flex justify-center mb-6 animate-float">
             <Package size={80} weight="duotone" style={{ color: 'var(--text-cyan)', filter: 'drop-shadow(0 0 20px var(--neon-cyan))' }} />
           </div>
-          <h2 className="text-3xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>
-            Welcome to DockLite!
-          </h2>
-          <p className="text-lg mb-2" style={{ color: 'var(--text-secondary)' }}>
-            No containers detected yet
-          </p>
-          <p className="text-sm mb-8 max-w-md mx-auto" style={{ color: 'var(--text-muted)' }}>
-            Get started by viewing all running containers on your system, or create a new one from our templates.
-          </p>
+          <h2 className="text-3xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>Welcome to DockLite!</h2>
+          <p className="text-lg mb-8" style={{ color: 'var(--text-secondary)' }}>No boxes yet. Make a website or a database to get started.</p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <button
-              onClick={() => setShowAllContainersModal(true)}
-              className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3"
-            >
-              <Package size={22} weight="duotone" />
-              View All Containers
-            </button>
-            <button
-              onClick={() => setShowAddContainerModal(true)}
-              className="inline-flex items-center gap-2 text-base px-6 py-3 rounded-xl font-bold transition-all hover:scale-105"
-              style={{
-                background: 'linear-gradient(135deg, var(--neon-purple) 0%, var(--neon-pink) 100%)',
-                color: 'var(--button-text)',
-                boxShadow: '0 0 20px rgba(var(--neon-purple-rgb), 0.4)'
-              }}
-            >
+            <button onClick={() => setShowNewBox(true)} className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3">
               <PlusCircle size={22} weight="duotone" />
-              Create Container
+              New box
+            </button>
+            <button onClick={() => setShowAll(true)} className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3">
+              <Package size={22} weight="duotone" />
+              See all containers
             </button>
           </div>
         </div>
-      ) : filteredFolders.length === 0 ? (
+      ) : nothingMatches ? (
         <div className="mt-12 text-center py-16 card-vapor max-w-2xl mx-auto animate-fade-in">
           <div className="flex justify-center mb-4 opacity-50">
             <WarningCircle size={64} weight="duotone" style={{ color: 'var(--text-yellow)' }} />
           </div>
-          <p className="text-xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>
-            No containers match this filter
-          </p>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-            Try selecting a different filter to see your containers
-          </p>
+          <p className="text-xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>No boxes match this filter</p>
           <button
             onClick={() => {
               setFilterType('all');
@@ -634,218 +575,144 @@ export default function DashboardPage() {
             className="btn-neon inline-flex items-center gap-2"
           >
             <ArrowsClockwise size={20} weight="duotone" />
-            Show All Containers
+            Show everything
           </button>
         </div>
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="space-y-8">
-            {filteredFolders.map((folderNode) => (
-              <FolderSection
-                key={folderNode.id}
-                folderNode={folderNode}
-                onAction={handleAction}
-                onViewDetails={(id, name) => {
-                  setSelectedContainerId(id);
-                  setSelectedContainerName(name);
-                }}
-                onDelete={handleDeleteContainer}
-                onAssign={openAssignModal}
-                canAssign={Boolean(currentUser?.isAdmin)}
-                onRefresh={fetchData}
-                onMoveFolder={(id, name) => {
-                  setMoveTarget({ id, name });
-                  setMoveFolderId('');
-                  setMoveError('');
-                }}
-                onToggleTracking={currentUser?.isAdmin ? handleToggleTracking : undefined}
-                onStyle={handleStyle}
-                onAddSubfolder={handleAddSubfolder}
-                onDeleteFolder={handleDeleteFolder}
-              />
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={() => { setActiveId(null); setOverId(null); setArmed(false); }}>
+          <div className={gridClass}>
+            {visibleGroups.map((g) => (
+              <Tile key={groupKey(g.id)} id={groupKey(g.id)} draggable={false} droppable>
+                {({ isOver }) => (
+                  <GroupCard
+                    group={g}
+                    boxes={membersOf(g)}
+                    highlight={isOver && Boolean(activeId)}
+                    showOwner={Boolean(me?.isAdmin)}
+                    onOpen={(x) => setOpenGroupId(x.id)}
+                    onRename={(x) => {
+                      setNameDialog({ kind: 'rename', group: x });
+                      setNameError('');
+                    }}
+                    onToggleLinked={setLinked}
+                    onStyle={styleGroup}
+                    onDelete={setDeleteGroupTarget}
+                  />
+                )}
+              </Tile>
             ))}
+            {looseBoxes.map((b) => {
+              const isFile = b.id.startsWith('sqlite-');
+              return (
+                <Tile key={boxKey(b.id)} id={boxKey(b.id)} draggable={!isFile} droppable={!isFile}>
+                  {({ isOver }) => {
+                    const hovering = isOver && Boolean(activeId) && activeId !== boxKey(b.id);
+                    return (
+                      <div
+                        className="relative rounded-xl"
+                        style={hovering ? { outline: `3px ${armed ? 'solid' : 'dashed'} rgba(255,255,255,${armed ? 0.95 : 0.5})`, outlineOffset: 4, transform: 'scale(1.03)', transition: 'transform .15s' } : undefined}
+                      >
+                        {card(b)}
+                        {hovering && armed && (
+                          <div className="absolute inset-0 rounded-xl grid place-items-center pointer-events-none text-center px-3 font-bold text-sm" style={{ background: 'rgba(11,11,22,0.78)', color: 'var(--text-primary)' }}>
+                            Let go to make a group
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }}
+                </Tile>
+              );
+            })}
           </div>
+          <DragOverlay dropAnimation={null}>
+            {activeBox ? (
+              <div style={{ pointerEvents: 'none', opacity: 0.92, transform: 'rotate(2deg)' }}>
+                <ContainerCard container={activeBox} onAction={() => undefined} />
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       )}
 
-      {selectedContainerId && (
-        <ContainerDetailsModal
-          containerId={selectedContainerId}
-          containerName={selectedContainerName}
-          onClose={() => {
-            setSelectedContainerId(null);
-            setSelectedContainerName('');
+      {details && <ContainerDetailsModal containerId={details.id} containerName={details.name} onClose={() => setDetails(null)} />}
+      {dbOpen && (
+        <DatabaseBoxModal
+          db={dbOpen.db}
+          container={dbOpen.box}
+          onClose={() => setDbOpen(null)}
+          onChanged={refresh}
+          onOpenContainer={(b) => {
+            setDbOpen(null);
+            setDetails({ id: b.id, name: b.name });
           }}
         />
       )}
-
-
-      {showAllContainersModal && (
-        <AllContainersModal onClose={() => setShowAllContainersModal(false)} />
+      {showAll && <AllContainersModal onClose={() => setShowAll(false)} />}
+      {showNewBox && (
+        <NewBoxModal
+          sites={boxes.filter((b) => containerKind(b) === 'site')}
+          onClose={() => setShowNewBox(false)}
+          onCreated={refresh}
+        />
       )}
-      {showAddContainerModal && (
-        <AddContainerModal
-          onClose={() => setShowAddContainerModal(false)}
-          onCreated={() => {
-            fetchData();
-          }}
+
+      {openGroup && (
+        <GroupModal
+          group={openGroup}
+          boxes={membersOf(openGroup)}
+          addable={boxes.filter((b) => !groupOfBox.has(b.name))}
+          renderBox={(b) => card(b, { inGroup: true })}
+          onAdd={(b) => addToGroup(openGroup, b)}
+          onClose={() => setOpenGroupId(null)}
+        />
+      )}
+
+      {nameDialog && (
+        <GroupNameModal
+          title={nameDialog.kind === 'rename' ? 'Rename group' : nameDialog.kind === 'make' ? 'Make a group' : 'New group'}
+          intro={nameDialog.kind === 'make' ? `${nameDialog.names.join(' and ')} will go in it. Linked groups are for boxes that belong together.` : undefined}
+          initial={nameDialog.kind === 'rename' ? nameDialog.group.name : ''}
+          confirmLabel={nameDialog.kind === 'rename' ? 'Rename' : 'Make group'}
+          busy={nameBusy}
+          error={nameError}
+          onSubmit={submitName}
+          onClose={() => setNameDialog(null)}
+        />
+      )}
+
+      {moveTarget && (
+        <MoveToGroupModal
+          boxName={moveTarget.name}
+          groups={groups}
+          currentGroupId={groupOfBox.get(moveTarget.name)?.id ?? null}
+          busy={moveBusy}
+          error={moveError}
+          onMove={submitMove}
+          onClose={() => setMoveTarget(null)}
+        />
+      )}
+
+      {deleteGroupTarget && (
+        <ConfirmModal
+          title="Delete group"
+          message={`Delete the group "${deleteGroupTarget.name}"? Its ${deleteGroupTarget.members.length} ${deleteGroupTarget.members.length === 1 ? 'box goes' : 'boxes go'} back on the desktop. Nothing is stopped or deleted.`}
+          confirmText="Delete group"
+          onConfirm={deleteGroup}
+          onCancel={() => setDeleteGroupTarget(null)}
         />
       )}
 
       {assignTarget && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000] p-4">
-          <div className="cyber-card max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold neon-text-pink">
-                Assign Container
-              </h2>
-              <button
-                onClick={() => setAssignTarget(null)}
-                className="transition-colors"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Assign <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>{assignTarget.name}</span> to a user.
-            </p>
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2 text-accent-cyan">
-                Select User
-              </label>
-              <select
-                value={assignUserId}
-                onChange={(e) => setAssignUserId(e.target.value)}
-                className="input-vapor w-full"
-              >
-                <option value="">Choose a user...</option>
-                {assignUsers.map((user) => (
-                  <option key={user.id} value={String(user.id)}>
-                    {user.username}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {assignError && (
-              <div className="mb-4 p-3 rounded-lg" style={{
-                background: 'rgba(var(--status-error-rgb), 0.2)',
-                border: '1px solid rgba(var(--status-error-rgb), 0.5)'
-              }}>
-                <p className="text-sm" style={{ color: 'var(--status-error)' }}>{assignError}</p>
-              </div>
-            )}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setAssignTarget(null)}
-                className="flex-1 px-4 py-2 rounded-lg font-bold border-2 transition-colors"
-                style={{
-                  borderColor: 'var(--surface-dim)',
-                  color: 'var(--text-primary)'
-                }}
-                disabled={assignLoading}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleAssignSubmit}
-                className="flex-1 cyber-button"
-                disabled={assignLoading || !assignUserId}
-              >
-                {assignLoading ? 'Assigning...' : 'Assign'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {moveTarget && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000] p-4">
-          <div className="cyber-card max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold neon-text-pink">
-                Move Container
-              </h2>
-              <button
-                onClick={() => setMoveTarget(null)}
-                className="transition-colors"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Move <span className="font-bold" style={{ color: 'var(--text-cyan)' }}>{moveTarget.name}</span> to a folder.
-            </p>
-            <div className="mb-4">
-              <label className="block text-sm font-bold mb-2 text-accent-cyan">
-                Select Folder
-              </label>
-              <select
-                value={moveFolderId}
-                onChange={(e) => setMoveFolderId(e.target.value)}
-                className="input-vapor w-full"
-              >
-                <option value="">Choose a folder...</option>
-                {flattenedFolders.map((folder) => (
-                  <option key={folder.id} value={String(folder.id)}>
-                    {`${'—'.repeat(folder.depth)} ${folder.name}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {moveError && (
-              <div className="mb-4 p-3 rounded-lg" style={{
-                background: 'rgba(var(--status-error-rgb), 0.2)',
-                border: '1px solid rgba(var(--status-error-rgb), 0.5)'
-              }}>
-                <p className="text-sm" style={{ color: 'var(--status-error)' }}>{moveError}</p>
-              </div>
-            )}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setMoveTarget(null)}
-                className="flex-1 px-4 py-2 rounded-lg font-bold border-2 transition-colors"
-                style={{
-                  borderColor: 'var(--surface-dim)',
-                  color: 'var(--text-primary)'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleMoveSubmit}
-                className="flex-1 cyber-button"
-                disabled={!moveFolderId}
-              >
-                Move
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showAddFolderModal && (
-        <AddFolderModal
-          onClose={() => {
-            setShowAddFolderModal(false);
-            setSubfolderParent(null);
-          }}
-          onSuccess={() => {
-            fetchData();
-            toast.success(subfolderParent ? 'Subfolder created successfully!' : 'Folder created successfully!');
-            setSubfolderParent(null);
-          }}
-          parentFolderId={subfolderParent?.id}
-          parentFolderName={subfolderParent?.name}
+        <AssignBoxModal
+          boxName={assignTarget.name}
+          users={assignUsers}
+          userId={assignUserId}
+          onUserId={setAssignUserId}
+          error={assignError}
+          busy={assignBusy}
+          onSubmit={submitAssign}
+          onClose={() => setAssignTarget(null)}
         />
       )}
 
