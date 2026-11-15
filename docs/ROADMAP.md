@@ -77,6 +77,20 @@ deployed together, so it is the established term; and "what's your stack? nginx 
   already talk into a stack together (linked in `site_databases`, or named in the site's config), or list them and stop.
 
 ### The desktop: boxes, folders and one place to make things (owner's direction, 2026-11-15)
+**Groups (decided 2026-11-15).** Folders become **groups**: one flat kind of card that holds boxes, with a **Linked** checkbox in its
+settings. Unticked, a group only keeps the desktop tidy. Ticked, its boxes are meant to talk to each other (a website and its
+database). A box is in at most one group, groups don't nest, and there is no "Default" group: a box in none sits on the desktop.
+Boxes are tracked by container name, so they stay in their group when recreated. Built in stages:
+1. **Groups and the merged desktop** (1.6.0): the groups API and tables (done: `box_groups`, `/api/groups`, old folders converted
+   once at start, "Default" dropped); group cards and the modal that opens them; drag a box onto another and hold to make a group;
+   Containers and Databases merged into one page with database boxes among the rest; "View DockLite database" moves to Settings;
+   one **New box** dialog that asks what kind (website, or a database: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, SQLite).
+2. **Linked groups for real** (1.7.0): a linked group gets its own private Docker network, its boxes reach each other by name, and
+   connection strings are filled in for the site. Then the shared `docklite_network` goes away ("isolated by default, connected on
+   purpose", see Stacks below), with boxes that already talk (a site and its linked database; `imoverit.me` and `imoverit-db` on
+   smoll) put into linked groups automatically by the update, so nothing stops working.
+3. More engines on request (Elasticsearch/OpenSearch, a Redis-compatible Valkey, and servers beyond websites).
+
 *Done in the card release: the playing-card shape, the single `⋯` menu with Colour and Icon, click-to-open details, one-line names,
 matching loading cards and the two-per-row phone grid. Still to do: folders as cards (no "Default" section), drag to make a
 folder, the Databases tab merged away, the SSL padlock and SSL tab, one "New box" dialog, and the phone's own menu layout.*

@@ -52,6 +52,10 @@ func main() {
 	dockerClient.PrewarmImages(context.Background())
 	// Keep nginx pointed at each site's real port (reboots, Docker restarts, crashes).
 	go handlers.RunUpstreamSync(context.Background())
+	go func() {
+		time.Sleep(10 * time.Second) // let Docker finish starting after a boot
+		handlers.MigrateFoldersToGroups(context.Background())
+	}()
 	// Make existing site folders usable by the docklite group, once.
 	go handlers.RunSitePermissionsOnce()
 	// Delete trashed site folders (/var/www/sites/.trash) once they are old enough.

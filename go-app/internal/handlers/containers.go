@@ -224,9 +224,13 @@ func (h *Handlers) ListContainers(w http.ResponseWriter, r *http.Request) {
 
 	folderTree := buildFolderTree(folders, containersByFolderID)
 
+	groups, _ := h.visibleGroups(r) // a missing table (older database) just means no groups
 	writeJSON(w, http.StatusOK, map[string]any{
 		"folders":         folderTree,
 		"totalContainers": len(containersWithOwners),
+		// The newer, flat form: every box this person can see, and the groups holding some of them.
+		"boxes":  containersWithOwners,
+		"groups": h.groupViews(groups),
 	})
 }
 
