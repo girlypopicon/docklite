@@ -43,7 +43,7 @@ function Row({
         borderColor: 'rgba(var(--neon-purple-rgb), 0.3)',
         background: 'var(--surface-muted)',
       }}
-      className="flex items-center gap-3 p-3 rounded-lg border"
+      className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border"
     >
       <button
         type="button"
@@ -58,7 +58,7 @@ function Row({
       <span style={{ color: 'var(--text-cyan)' }}>{TOP_BAR_ICONS[entry.id]?.(20)}</span>
       <span className="flex-1 min-w-0">
         <span className="block font-bold text-sm">{def.label}</span>
-        <span className="block text-xs opacity-70 truncate">{def.description}</span>
+        <span className="hidden sm:block text-xs opacity-70 truncate">{def.description}</span>
       </span>
       <button
         type="button"

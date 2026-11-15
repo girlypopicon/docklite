@@ -1111,6 +1111,25 @@
     animation: docklite-tab-pulse 3.4s ease-in-out infinite;
     transition: width 0.2s ease, color 0.2s ease;
   }
+  /* Phones: the side tabs sit low on the screen edge as small icon-only tabs, so they don't cover the
+     page's buttons and filters (which is where a thumb-height tab in the middle of the screen lands). */
+  @media (max-width: 767px) {
+    .docklite-sidebar-toggle {
+      top: auto !important;
+      bottom: 5rem;
+      transform: none !important;
+      width: 1.75rem;
+      padding: 0.7rem 0;
+      opacity: 0.9;
+    }
+    .docklite-sidebar-toggle .docklite-sidebar-toggle-label {
+      display: none;
+    }
+    .docklite-sidebar-toggle:hover,
+    .docklite-sidebar-toggle:focus-visible {
+      width: 1.75rem;
+    }
+  }
   .docklite-sidebar-toggle[data-side='left'] {
     border-left-width: 0;
     border-radius: 0 0.9rem 0.9rem 0;

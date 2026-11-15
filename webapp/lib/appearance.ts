@@ -3,6 +3,8 @@
 // the app that reacts to them keys off those, so changes show up instantly
 // and survive reloads. The inline script in app/layout.tsx mirrors
 // applyAppearance() so the saved look is in place before first paint.
+// The lasting copy is saved per user by the agent (/api/auth/appearance), so
+// it follows them to other browsers and survives cleared storage and updates.
 
 export type ThemeId = 'cyberpunk' | 'corpo' | 'corpo-blue' | 'unicorn';
 export type FontSizeId = 'small' | 'medium' | 'large' | 'xlarge';
@@ -66,7 +68,26 @@ export function loadAppearance(): Appearance {
   };
 }
 
-export function saveAppearance(appearance: Appearance) {
+/** Fired on window when the saved look arrives from the server, so open settings can show it. */
+export const APPEARANCE_EVENT = 'docklite-appearance';
+
+let pushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function pushAppearance(appearance: Appearance) {
+  // The glow slider fires on every step: send only where it settles.
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    fetch('/api/auth/appearance', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(appearance),
+    }).catch(() => {
+      /* offline or restarting: this browser keeps it, and the next change sends it */
+    });
+  }, 500);
+}
+
+export function saveAppearance(appearance: Appearance, { remote = true } = {}) {
   try {
     localStorage.setItem(KEYS.theme, appearance.theme);
     localStorage.setItem(KEYS.fontSize, appearance.fontSize);
@@ -74,6 +95,36 @@ export function saveAppearance(appearance: Appearance) {
     localStorage.setItem(KEYS.glow, String(appearance.glow));
   } catch {
     /* private mode etc.: the look still applies for this visit */
+  }
+  if (remote) pushAppearance(appearance);
+}
+
+/**
+ * Brings in the signed-in user's saved look and applies it. A user who has
+ * never saved one on the server gets this browser's choice saved for them,
+ * so it lasts from now on.
+ */
+export async function syncAppearance(): Promise<void> {
+  try {
+    const res = await fetch('/api/auth/appearance', { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const saved = data?.appearance;
+    if (!saved) {
+      if (read(KEYS.theme) !== null) pushAppearance(loadAppearance());
+      return;
+    }
+    const next: Appearance = {
+      theme: (THEMES as string[]).includes(saved.theme) ? saved.theme : DEFAULT_APPEARANCE.theme,
+      fontSize: saved.fontSize in FONT_SCALES ? saved.fontSize : DEFAULT_APPEARANCE.fontSize,
+      animations: saved.animations !== false,
+      glow: Number.isFinite(saved.glow) ? Math.min(200, Math.max(0, saved.glow)) : DEFAULT_APPEARANCE.glow,
+    };
+    saveAppearance(next, { remote: false });
+    applyAppearance(next);
+    window.dispatchEvent(new CustomEvent(APPEARANCE_EVENT, { detail: next }));
+  } catch {
+    /* the agent is restarting, or this is the demo: keep this browser's look */
   }
 }
 

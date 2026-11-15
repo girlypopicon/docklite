@@ -23,7 +23,6 @@ import {
   Key,
   WarningCircle,
   ThumbsUp,
-  Info,
   LinkSimple,
   Brain,
   ArrowDown,
@@ -336,18 +335,6 @@ export default function DatabasesPage() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  const getSizeLabel = (category: string) => {
-    const labelMap = {
-      empty: 'Empty',
-      tiny: 'Tiny',
-      small: 'Small',
-      medium: 'Medium',
-      large: 'Large',
-      huge: 'Huge',
-    };
-    return labelMap[category as keyof typeof labelMap] || '';
-  };
-
   if (loading) {
     return <DatabasesPageSkeleton />;
   }
@@ -356,7 +343,7 @@ export default function DatabasesPage() {
     <div className="max-w-[1400px] mx-auto">
       <DbViewer />
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
             <Database size={24} weight="duotone" />
@@ -368,7 +355,7 @@ export default function DatabasesPage() {
         </div>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="btn-neon inline-flex items-center gap-2"
+          className="btn-neon inline-flex items-center gap-2 whitespace-nowrap"
         >
           {showCreateForm ? (
             <span className="inline-flex items-center gap-2">
@@ -647,11 +634,6 @@ export default function DatabasesPage() {
 
       {/* PostgreSQL Databases */}
       <div className="mt-8">
-        <h2 className="text-2xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-          <Database size={20} weight="duotone" />
-          Databases
-        </h2>
-
         {databases.length === 0 ? (
           <div className="text-center py-12 card-vapor">
             <p className="text-lg font-bold mb-2 flex items-center justify-center gap-2" style={{ color: 'var(--text-pink)' }}>
@@ -664,18 +646,18 @@ export default function DatabasesPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,250px),1fr))] gap-3">
             {databases.map((db) => (
               <div
                 key={db.id}
-                className="docklite-neon docklite-neon-green p-6 rounded-xl transition-all hover:scale-[1.02] relative"
+                className="docklite-neon docklite-neon-green p-3 rounded-xl transition-all relative min-w-0"
                 style={{
                   background: 'var(--surface-dim)',
                   backdropFilter: 'blur(12px)',
                 }}
               >
                 {/* 3-dot menu */}
-                <div className="absolute top-4 right-4 z-10" data-db-menu="true">
+                <div className="absolute top-2 right-2 z-10" data-db-menu="true">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -692,10 +674,11 @@ export default function DatabasesPage() {
                       }
                     }}
                     onMouseDown={stopMenu}
-                    className="p-2 rounded-lg text-sm font-bold transition-all hover:scale-105"
+                    className="w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-all"
+                    aria-label="Database options"
                     style={{
                       background: 'transparent',
-                      border: '2px solid var(--neon-purple)',
+                      border: '1px solid var(--neon-purple)',
                       color: 'var(--text-purple)',
                       boxShadow: `
                         0 0 5px rgba(var(--neon-purple-rgb), 0.6),
@@ -807,100 +790,45 @@ export default function DatabasesPage() {
                     )}
                 </div>
 
-                {/* Header with centered database icon */}
-                <div className="mb-4">
-                  <h3 className="docklite-db-title text-xl font-bold neon-text truncate" style={{ color: 'var(--text-cyan)' }}>
+                {/* Name, type and size */}
+                <div className="pr-11 min-w-0">
+                  <h3 className="docklite-db-title text-base font-bold leading-snug truncate" style={{ color: 'var(--text-cyan)' }} title={db.name}>
                     {db.name}
                   </h3>
-                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: 'rgba(var(--neon-purple-rgb), 0.15)', color: 'var(--text-purple)', border: '1px solid var(--neon-purple)' }}>
-                    {dbLabel(db.type)}
-                  </span>
-                  <div className="mt-3 flex justify-center pointer-events-none">
-                    <Database
-                      size={46}
-                      weight="duotone"
-                      className="animate-wobble"
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: 'rgba(var(--neon-purple-rgb), 0.15)', color: 'var(--text-purple)', border: '1px solid var(--neon-purple)' }}>
+                      {dbLabel(db.type)}
+                    </span>
+                    <span
+                      className="px-2 py-0.5 rounded-full text-xs font-bold"
                       style={{
-                        color: 'var(--text-cyan)',
-                        filter: 'drop-shadow(0 0 8px rgba(var(--neon-cyan-rgb), 0.7)) drop-shadow(0 0 14px rgba(var(--neon-cyan-rgb), 0.45))',
+                        background: db.size === 0 ? 'rgba(var(--text-muted-rgb), 0.2)' : 'rgba(var(--status-success-rgb), 0.2)',
+                        color: db.size === 0 ? 'var(--text-muted)' : 'var(--text-green)',
+                        border: `1px solid ${db.size === 0 ? 'var(--text-muted)' : 'var(--neon-green)'}`,
                       }}
-                    />
+                    >
+                      {db.size === 0 ? 'Empty' : formatBytes(db.size)}
+                    </span>
                   </div>
                 </div>
 
-                {/* Size badge */}
-                <div className="mb-4">
-                  <span
-                    className="inline-block px-3 py-1 rounded-full text-xs font-bold"
-                    style={{
-                      background: db.size === 0
-                        ? 'rgba(var(--text-muted-rgb), 0.2)'
-                        : 'rgba(var(--status-success-rgb), 0.2)',
-                      color: db.size === 0 ? 'var(--text-muted)' : 'var(--text-green)',
-                      border: `1px solid ${db.size === 0 ? 'var(--text-muted)' : 'var(--neon-green)'}`,
-                    }}
-                  >
-                            {db.size === 0 ? '○ EMPTY' : `● ${formatBytes(db.size)}`} {getSizeLabel(db.sizeCategory)}
+                {/* Where to reach it, and when it was made */}
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono min-w-0">
+                  {db.type === 'sqlite' ? (
+                    <span className="flex items-center gap-1 min-w-0 max-w-full" style={{ color: 'var(--text-yellow)' }} title={db.db_path}>
+                      <LinkSimple size={12} weight="duotone" className="shrink-0" />
+                      <span className="truncate">{db.db_path}</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1" style={{ color: 'var(--text-purple)' }} title="Connect from this server">
+                      <Plug size={12} weight="duotone" className="shrink-0" />
+                      localhost:{db.postgres_port}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1" style={{ color: 'var(--text-secondary)' }} title="Created">
+                    <CalendarBlank size={12} weight="duotone" className="shrink-0" />
+                    {new Date(db.created_at).toLocaleDateString()}
                   </span>
-                </div>
-
-                {/* Info */}
-                <div className="space-y-2 text-sm font-mono">
-                  {db.type === 'sqlite' ? (
-                    <div className="flex items-center gap-2">
-                      <span className="opacity-60 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-                        <LinkSimple size={12} weight="duotone" />
-                        Path:
-                      </span>
-                      <span className="font-bold truncate" title={db.db_path} style={{ color: 'var(--text-yellow)' }}>
-                        {db.db_path}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="opacity-60 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-                        <Plug size={12} weight="duotone" />
-                        Port:
-                      </span>
-                      <span className="font-bold" style={{ color: 'var(--text-purple)' }}>
-                        {db.postgres_port}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <span className="opacity-60 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-                      <Info size={12} weight="duotone" />
-                      ID:
-                    </span>
-                    <span className="opacity-70 text-xs">
-                      {db.container_id ? db.container_id.substring(0, 12) : `sqlite-${db.id}`}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="opacity-60 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-                      <CalendarBlank size={12} weight="duotone" />
-                      Created:
-                    </span>
-                    <span className="opacity-70 text-xs">
-                      {new Date(db.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Connection hint */}
-                <div className="mt-4 pt-4 border-t" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.2)' }}>
-                  {db.type === 'sqlite' ? (
-                    <p className="text-xs font-mono opacity-60 mb-3" style={{ color: 'var(--text-secondary)' }}>
-                      File-based database in container
-                    </p>
-                  ) : (
-                    <p className="text-xs font-mono opacity-60 mb-3" style={{ color: 'var(--text-secondary)' }}>
-                      Connect: localhost:{db.postgres_port}
-                    </p>
-                  )}
-                  <p className="text-xs font-mono opacity-60" style={{ color: 'var(--text-secondary)' }}>
-                    Use the menu for credentials or deletion.
-                  </p>
                 </div>
               </div>
             ))}
@@ -910,7 +838,7 @@ export default function DatabasesPage() {
 
       <div className="mt-8 card-vapor p-6 rounded-xl border-2" style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.3)' }}>
         <div className="flex items-start gap-3">
-          <Lightbulb size={22} weight="duotone" />
+          <Lightbulb size={22} weight="duotone" className="shrink-0" />
           <div>
             <p className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
               <LinkSimple size={14} weight="duotone" />
