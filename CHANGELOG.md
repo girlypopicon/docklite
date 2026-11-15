@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+This release is **1.5.0**: two-factor login, a page for stopped boxes, and the box cards redone as playing cards.
+
 ### Added
 - **A DockLite page for stopped boxes.** When a site's box is stopped, visitors used to get nginx's plain "502 Bad Gateway". They
   now see a page in DockLite's colours: "This website's box isn't running right now", with a line saying who to contact. It is sent
@@ -16,6 +18,17 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
   site (HTTPS ones as well), when it starts and once a minute after that. Each file is backed up first, nginx's config is tested,
   and the file is put back if nginx refuses it. New sites are created with the line already in place. Anything that isn't one of
   your sites (the DockLite dashboard itself, hand-written proxies, a block that already has its own 502 page) is left alone.
+- **Pick a colour and an icon for any box** from its `⋯` menu: 12 colours (or Auto, which colours by type as before) and 15
+  icons (the box is the default). The colour is the card's glow and the icon is drawn huge behind it. It shows at once and is kept
+  on the server, so everyone who can see the box sees the same card.
+- **Two-factor login.** In Settings → Security you can turn on a six-digit code from an authenticator app (Google Authenticator,
+  1Password, Aegis, Authy…): scan the QR code, type one code to confirm, and from then on signing in asks for the code after the
+  password. Nothing is sent to any outside service; your phone and the server work the codes out separately. Each code works
+  once. Ten one-time **recovery codes** are shown when you turn it on (for a lost phone, saved or copied from the same screen);
+  you can make new ones, or turn two-factor off, with your password and a code.
+- **Lost phone and no recovery codes?** An admin can use **Reset two-factor login** in Settings → Users (or
+  `docklite users 2fa-reset <name> --yes` on the server) and the person signs in with their password and sets it up again.
+  `docklite login` asks for the code too (`--code` to give it up front).
 
 ### Changed
 - **Box cards are now playing cards.** Portrait (5 by 7), with a big muted icon behind them, one line for the name and a status dot
@@ -25,10 +38,9 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 - **Click a box to open its details.** The buttons on the card are gone; one `⋯` menu holds everything: Start / Restart / Stop,
   View details, Open in terminal, Colour, Icon, Copy name, Assign, Move to folder, Track and Delete.
 
-### Added
-- **Pick a colour and an icon for any box** from its `⋯` menu: 12 colours (or Auto, which colours by type as before) and 15
-  icons (the box is the default). The colour is the card's glow and the icon is drawn huge behind it. It shows at once and is kept
-  on the server, so everyone who can see the box sees the same card.
+### Fixed
+- The Security page said a new password needs 6 characters; it needs 10, and now says so.
+- `docklite sites folders adopt` printed the wrong names in its confirmation message.
 
 ## 1.4.3 (2026-11-15)
 

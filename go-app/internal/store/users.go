@@ -134,6 +134,8 @@ func (s *SQLiteStore) DeleteUserWithTransfer(fromUserID int64, toUserID int64) e
 	if _, err = tx.Exec(`DELETE FROM users WHERE id = ?`, fromUserID); err != nil {
 		return err
 	}
+	// Best effort: the table is missing on a database the agent hasn't set up yet, and a stale row is harmless anyway.
+	_, _ = tx.Exec(`DELETE FROM user_two_factor WHERE user_id = ?`, fromUserID)
 
 	return tx.Commit()
 }

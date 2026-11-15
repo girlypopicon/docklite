@@ -99,6 +99,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/ssl/v2/check-renewal", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLCheckRenewal)))
 	mux.HandleFunc("/api/users", handlers.Auth(hnd.CSRFMiddleware(handlers.Users)))
 	mux.HandleFunc("/api/users/password", handlers.Auth(hnd.CSRFMiddleware(handlers.UserPassword)))
+	mux.HandleFunc("/api/users/2fa-reset", handlers.Auth(hnd.CSRFMiddleware(handlers.TwoFactorReset)))
 	mux.HandleFunc("/api/system/check-folders", handlers.Auth(handlers.SystemCheckFolders))
 	mux.HandleFunc("/api/system/shell-access", handlers.Auth(hnd.CSRFMiddleware(handlers.ShellAccess)))
 	mux.HandleFunc("/api/system/update/status", handlers.Auth(handlers.SystemUpdateStatus))
@@ -112,6 +113,8 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/auth/me", handlers.Auth(handlers.AuthMe))
 	mux.HandleFunc("/api/auth/appearance", handlers.Auth(hnd.CSRFMiddleware(handlers.AuthAppearance)))
 	mux.HandleFunc("/api/auth/logout", handlers.Auth(hnd.CSRFMiddleware(handlers.AuthLogout)))
+	mux.HandleFunc("/api/auth/2fa", handlers.Auth(hnd.CSRFMiddleware(handlers.TwoFactor)))
+	mux.HandleFunc("/api/auth/2fa/", handlers.Auth(hnd.CSRFMiddleware(handlers.TwoFactor)))
 	mux.HandleFunc("/api/csrf-token", handlers.Auth(handlers.CSRFToken))
 
 	// Proxy for Next.js (optional)
