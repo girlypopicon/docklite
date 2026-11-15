@@ -30,6 +30,8 @@ The CLI uses the first of these that applies:
 2. **A saved login:** `docklite login` asks for your DockLite username and password and saves a personal token in
    `~/.config/docklite/config.json`. You can then do whatever *your DockLite account* may do (user, admin or
    super admin). To log in to a remote server: `docklite --host https://panel.example.com login`.
+   If the account has two-factor login on, it then asks for the code from the authenticator app (or a recovery code);
+   give it up front with `--code 123456`.
 3. **Admin shell access:** if you are on the server and your server user was added with
    `docklite access grant <your-user>` (it joins the `docklite` group), the CLI reads the server's own config and
    acts as a full DockLite admin with no login. Treat this like root for DockLite.
@@ -82,6 +84,7 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Check/reload nginx | `docklite nginx test` then `docklite nginx reload` |
 | Why is the server slow? | `docklite server overview`, `docklite server services`, `docklite server logs system` |
 | Add a DockLite account | `docklite users create alice` (add `--admin`; use `--password-stdin` in scripts) |
+| Turn off someone's two-factor login (lost phone and recovery codes) | `docklite users 2fa-reset alice --yes` (they can turn it on again in Settings → Security) |
 | Let a server user run docklite | `docklite access grant alice --yes` (they must log out and in once) |
 | Remove that access | `docklite access revoke alice --yes` |
 | See the databases and their types | `docklite databases list` |

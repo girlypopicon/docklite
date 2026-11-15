@@ -5,6 +5,20 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **Two-factor login.** In Settings → Security you can turn on a six-digit code from an authenticator app (Google Authenticator,
+  1Password, Aegis, Authy…): scan the QR code, type one code to confirm, and from then on signing in asks for the code after the
+  password. Nothing is sent to any outside service; your phone and the server work the codes out separately. Each code works
+  once. Ten one-time **recovery codes** are shown when you turn it on (for a lost phone, saved or copied from the same screen);
+  you can make new ones, or turn two-factor off, with your password and a code.
+- **Lost phone and no recovery codes?** An admin can use **Reset two-factor login** in Settings → Users (or
+  `docklite users 2fa-reset <name> --yes` on the server) and the person signs in with their password and sets it up again.
+  `docklite login` asks for the code too (`--code` to give it up front).
+
+### Fixed
+- The Security page said a new password needs 6 characters; it needs 10, and now says so.
+- `docklite sites folders adopt` printed the wrong names in its confirmation message.
+
 ## 1.4.3 (2026-11-15)
 
 ### Added
