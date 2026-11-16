@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.6.0 (2026-11-16)
+
 This release is **1.6.0**: groups, and one page for every kind of box.
 
 ### Added
