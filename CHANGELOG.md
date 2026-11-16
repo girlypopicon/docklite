@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.6.1 (2026-11-16)
+
 ### Changed
 - **Group cards look like a little deck**: two more cards fan out behind the group, and the boxes inside show as rounded squares in
   their own colour and icon (green dot running, red stopped) instead of a text list.
