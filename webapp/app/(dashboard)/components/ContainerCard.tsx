@@ -340,7 +340,7 @@ export default function ContainerCard({
         </h3>
         <p className="text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>
           {container.image.split(':')[0]}
-          {container.owner_username ? ` · ${container.owner_username}` : ''}
+          {container.unmanaged ? ' · not made by DockLite' : container.owner_username ? ` · ${container.owner_username}` : ''}
         </p>
 
         <div className="mt-auto space-y-1 text-xs font-mono min-w-0">

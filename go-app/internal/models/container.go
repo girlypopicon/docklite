@@ -11,7 +11,10 @@ type ContainerInfo struct {
 	Ports         string            `json:"ports,omitempty"`
 	Labels        map[string]string `json:"labels"`
 	OwnerUsername string            `json:"owner_username,omitempty"`
-	Style         *BoxStyle         `json:"style,omitempty"` // card colour and icon the owner picked
+	// Unmanaged is set on a container DockLite did not create (no docklite.managed label). Admins see these so they can be
+	// grouped, started and stopped like any box.
+	Unmanaged bool      `json:"unmanaged,omitempty"`
+	Style     *BoxStyle `json:"style,omitempty"` // card colour and icon the owner picked
 }
 
 // BoxStyle is how a box's card looks. Empty means the default (a colour by type, the box icon).

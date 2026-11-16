@@ -117,6 +117,7 @@ export interface ContainerInfo {
   ports: string;
   labels?: { [key: string]: string };
   owner_username?: string;
+  unmanaged?: boolean; // a container DockLite did not create (admins only)
   style?: { color?: string; icon?: string }; // card colour and icon the owner picked (lib/box-styles.ts)
 }
 
