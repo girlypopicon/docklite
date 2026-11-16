@@ -33,6 +33,7 @@ type Engine struct {
 var engines = map[string]Engine{
 	"postgres": {Type: "postgres", Label: "PostgreSQL", Image: databaseImageName, Port: 5432},
 	"mariadb":  {Type: "mariadb", Label: "MariaDB", Image: "mariadb:11", Port: 3306, DataDir: "/var/lib/mysql", Loopback: true},
+	"mysql":    {Type: "mysql", Label: "MySQL", Image: "mysql:8.4", Port: 3306, DataDir: "/var/lib/mysql", Loopback: true},
 	"mongodb":  {Type: "mongodb", Label: "MongoDB", Image: "mongo:7", Port: 27017, DataDir: "/data/db", Loopback: true},
 	"redis":    {Type: "redis", Label: "Redis", Image: "redis:7-alpine", Port: 6379, DataDir: "/data", Loopback: true},
 }
@@ -48,7 +49,7 @@ func EngineFor(dbType string) (Engine, bool) {
 
 // EngineTypes lists the types a person can create, in the order the dashboard shows them.
 func EngineTypes() []Engine {
-	return []Engine{engines["postgres"], engines["mariadb"], engines["mongodb"], engines["redis"]}
+	return []Engine{engines["postgres"], engines["mysql"], engines["mariadb"], engines["mongodb"], engines["redis"]}
 }
 
 // ContainerEnv is the environment that makes the image create the database, user and password on first start.
@@ -67,6 +68,13 @@ func (e Engine) ContainerEnv(name, user, pass, rootPass string) []string {
 			fmt.Sprintf("MARIADB_USER=%s", user),
 			fmt.Sprintf("MARIADB_PASSWORD=%s", pass),
 			fmt.Sprintf("MARIADB_ROOT_PASSWORD=%s", rootPass),
+		}
+	case "mysql":
+		return []string{
+			fmt.Sprintf("MYSQL_DATABASE=%s", name),
+			fmt.Sprintf("MYSQL_USER=%s", user),
+			fmt.Sprintf("MYSQL_PASSWORD=%s", pass),
+			fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", rootPass),
 		}
 	case "mongodb":
 		return []string{
@@ -92,7 +100,7 @@ func (e Engine) ConnectionURL(host string, port int, name, user, pass string) st
 	switch e.Type {
 	case "postgres":
 		return fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", user, pass, host, port, name)
-	case "mariadb":
+	case "mariadb", "mysql":
 		return fmt.Sprintf("mysql://%s:%s@%s:%d/%s", user, pass, host, port, name)
 	case "mongodb":
 		return fmt.Sprintf("mongodb://%s:%s@%s:%d/%s?authSource=admin", user, pass, host, port, name)
@@ -126,7 +134,7 @@ func (c *Client) CreateDatabaseOfType(ctx context.Context, dbType, name, usernam
 		password = generatePassword(24)
 	}
 	rootPass := ""
-	if e.Type == "mariadb" {
+	if e.Type == "mariadb" || e.Type == "mysql" {
 		rootPass = generatePassword(24)
 	}
 
@@ -256,6 +264,10 @@ func isNoSuchContainer(err error) bool {
 func (c *Client) EngineSize(ctx context.Context, containerID, dbType, name, user, pass string) (int64, error) {
 	var cmd, env []string
 	switch dbType {
+	case "mysql":
+		cmd = []string{"mysql", "-N", "-u", user, "-e",
+			fmt.Sprintf("SELECT COALESCE(SUM(data_length+index_length),0) FROM information_schema.tables WHERE table_schema='%s'", strings.ReplaceAll(name, "'", ""))}
+		env = []string{"MYSQL_PWD=" + pass}
 	case "mariadb":
 		cmd = []string{"mariadb", "-N", "-u", user, "-e",
 			fmt.Sprintf("SELECT COALESCE(SUM(data_length+index_length),0) FROM information_schema.tables WHERE table_schema='%s'", strings.ReplaceAll(name, "'", ""))}

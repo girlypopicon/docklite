@@ -17,7 +17,7 @@ export function containerKind(container: ContainerInfo): ContainerKind {
   const labels = container.labels || {};
   const type = labels['docklite.type'];
   if (type === 'static' || type === 'php' || type === 'node') return 'site';
-  if (type === 'postgres' || labels['docklite.database']) return 'database';
+  if (labels['docklite.database'] || ['postgres', 'mysql', 'mariadb', 'mongodb', 'redis', 'sqlite'].includes(type)) return 'database';
   return 'other';
 }
 

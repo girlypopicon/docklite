@@ -35,7 +35,7 @@ type ManifestSource struct {
 	DatabaseID  *int64 `json:"database_id,omitempty"`
 	Name        string `json:"name,omitempty"`
 	ContainerID string `json:"container_id,omitempty"`
-	Engine      string `json:"engine,omitempty"` // postgres (the default), mariadb, mongodb, redis
+	Engine      string `json:"engine,omitempty"` // postgres (the default), mysql, mariadb, mongodb, redis
 }
 
 type Manifest struct {

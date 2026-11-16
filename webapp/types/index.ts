@@ -81,6 +81,18 @@ export interface Folder {
   created_at: string;
 }
 
+// A group: a card that holds boxes (see go-app/internal/store/groups.go).
+export interface BoxGroup {
+  id: number;
+  name: string;
+  owner_id: number;
+  owner_username?: string;
+  linked: boolean;
+  color?: string;
+  icon?: string;
+  members: string[]; // container names
+}
+
 export interface FolderNode extends Folder {
   children: FolderNode[];
   containers: any[]; // Will be ContainerInfo[] but defined later

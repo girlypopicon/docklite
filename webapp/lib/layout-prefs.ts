@@ -27,8 +27,7 @@ export interface TopBarItemDef {
 }
 
 export const TOP_BAR_ITEMS: TopBarItemDef[] = [
-  { id: 'containers', label: 'Containers', description: 'Your sites and containers' },
-  { id: 'databases', label: 'Databases', description: 'Database containers and the system database' },
+  { id: 'containers', label: 'Boxes', description: 'Your websites and databases, and the groups they are in' },
   { id: 'backups', label: 'Backups', description: 'Back up and restore sites and databases' },
   { id: 'network', label: 'Network', description: 'Ports, nginx, DNS and SSL' },
   { id: 'server', label: 'Server', description: 'Host health, services, logs and updates' },
@@ -42,7 +41,7 @@ export const TOP_BAR_ITEMS: TopBarItemDef[] = [
 export const DEFAULT_LAYOUT: LayoutPrefs = {
   leftSidebar: { enabled: true },
   rightSidebar: { enabled: true, content: 'none' },
-  topBar: ['containers', 'databases', 'backups', 'network', 'server', 'spacer', 'terminal', 'settings', 'account', 'logout'],
+  topBar: ['containers', 'backups', 'network', 'server', 'spacer', 'terminal', 'settings', 'account', 'logout'],
 };
 
 const STORAGE_KEY = 'docklite-layout';

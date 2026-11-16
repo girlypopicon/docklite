@@ -1,6 +1,6 @@
 import type { Icon } from '@phosphor-icons/react';
 import {
-  Package, Globe, Heart, Sparkle, RocketLaunch, Lightning, Planet, Cloud, Flower, Moon, Star, GameController, Cat, Camera,
+  Package, FolderSimple, Globe, Heart, Sparkle, RocketLaunch, Lightning, Planet, Cloud, Flower, Moon, Star, GameController, Cat, Camera,
   Storefront, MusicNotes,
 } from '@phosphor-icons/react';
 
@@ -63,4 +63,9 @@ export function boxIconFor(id: string | undefined): Icon {
 export function boxNameFontSize(name: string): string {
   const n = Math.max(name.length, 1);
   return `clamp(10px, calc(122cqw / ${n}), 19px)`;
+}
+
+/** A group's big icon: the folder unless one was picked. */
+export function groupIconFor(id: string | undefined): Icon {
+  return id ? boxIconFor(id) : FolderSimple;
 }

@@ -5,6 +5,7 @@ import ShellAccessCard from '../../components/ShellAccessCard';
 import UpdateCard from '../../components/UpdateCard';
 import SiteFoldersPanel from '../../components/SiteFoldersPanel';
 import DownPageCard from '../../components/DownPageCard';
+import DbViewer from '../../components/DbViewer';
 
 export default function SystemSettingsPage() {
   return (
@@ -72,6 +73,9 @@ export default function SystemSettingsPage() {
 
       {/* DockLite Updates */}
       <UpdateCard />
+
+      {/* DockLite's own database: look inside it, or clean it up */}
+      <DbViewer />
 
       {/* What visitors see when a site's box is stopped */}
       <DownPageCard />

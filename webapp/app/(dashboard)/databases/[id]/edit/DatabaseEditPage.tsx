@@ -92,7 +92,7 @@ export default function DatabaseEditPage() {
     if (dbId) {
       sessionStorage.removeItem(`${STORAGE_PREFIX}${dbId}`);
     }
-    router.push('/databases');
+    router.push('/');
   }, [dbId, router]);
 
   useEffect(() => {

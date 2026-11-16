@@ -1,6 +1,6 @@
 // The fake DockLite API. Every /api request the dashboard makes in demo mode lands here and is
 // answered from lib/demo/state.ts. Nothing leaves the browser; nothing is real.
-import { fakeHex, getState, save, T, type DemoDb, type DemoSite, type DemoState } from './state';
+import { fakeHex, getState, save, T, type DemoDb, type DemoGroup, type DemoSite, type DemoState } from './state';
 import { hostApi } from './host';
 import { filesApi } from './files';
 
@@ -149,7 +149,76 @@ on('POST', /^\/api\/auth\/(login|logout)$/, () => ok());
 const folderOf = (s: DemoState, containers: any[]) => ({
   id: 1, user_id: 1, name: 'Default', parent_folder_id: null, depth: 0, position: 0, created_at: iso(Date.now() - 60 * T.DAY), children: [], containers,
 });
-on('GET', /^\/api\/containers$/, (_r, _m, s) => { const list = allContainers(s); return ok({ folders: [folderOf(s, list)], totalContainers: list.length }); });
+const groupView = (g: DemoGroup) => ({ ...g, owner_id: 1, owner_username: 'demo' });
+on('GET', /^\/api\/containers$/, (_r, _m, s) => {
+  const list = allContainers(s);
+  return ok({ folders: [folderOf(s, list)], totalContainers: list.length, boxes: list, groups: (s.groups ?? []).map(groupView) });
+});
+
+// groups: cards that hold boxes
+const boxNameOf = (s: DemoState, id: string) => {
+  const f = findContainer(s, id);
+  return f?.site ? siteName(f.site.domain) : f?.db ? dbName(f.db.name) : null;
+};
+const groupsOf = (s: DemoState) => (s.groups ??= []);
+const findGroup = (s: DemoState, id: string) => groupsOf(s).find((g) => g.id === Number(id));
+const GROUP_COLORS = ['pink', 'coral', 'orange', 'gold', 'lime', 'mint', 'teal', 'sky', 'blue', 'lilac', 'rose', 'slate'];
+on('GET', /^\/api\/groups$/, (_r, _m, s) => ok({ groups: groupsOf(s).map(groupView) }));
+on('POST', /^\/api\/groups$/, (r, _m, s) => {
+  const name = String(r.body?.name ?? '').trim();
+  if (!name || name.length > 50 || /[\\/]/.test(name)) return err(400, 'give the group a name (up to 50 characters, no slashes)');
+  if (groupsOf(s).some((g) => g.name.toLowerCase() === name.toLowerCase())) return err(409, 'you already have a group with that name');
+  const members: string[] = [];
+  for (const id of (r.body?.container_ids ?? []) as string[]) {
+    const n = boxNameOf(s, id);
+    if (!n) return err(404, 'box not found');
+    members.push(n);
+  }
+  for (const g of groupsOf(s)) g.members = g.members.filter((m) => !members.includes(m));
+  s.nextGroupId = (s.nextGroupId ?? 1);
+  const g: DemoGroup = { id: s.nextGroupId++, name, linked: Boolean(r.body?.linked), color: '', icon: '', members };
+  groupsOf(s).push(g);
+  save();
+  return ok({ group: groupView(g) });
+});
+on('PUT', new RegExp(`^/api/groups/${ID}$`), (r, m, s) => {
+  const g = findGroup(s, m[1]);
+  if (!g) return err(404, 'group not found');
+  const b = r.body ?? {};
+  if (typeof b.name === 'string') {
+    const n = b.name.trim();
+    if (!n || n.length > 50 || /[\\/]/.test(n)) return err(400, 'give the group a name (up to 50 characters, no slashes)');
+    if (groupsOf(s).some((x) => x.id !== g.id && x.name.toLowerCase() === n.toLowerCase())) return err(409, 'you already have a group with that name');
+    g.name = n;
+  }
+  if (typeof b.linked === 'boolean') g.linked = b.linked;
+  if (typeof b.color === 'string') { if (b.color && !GROUP_COLORS.includes(b.color)) return err(400, 'unknown colour'); g.color = b.color; }
+  if (typeof b.icon === 'string') g.icon = b.icon;
+  save();
+  return ok({ group: groupView(g) });
+});
+on('DELETE', new RegExp(`^/api/groups/${ID}$`), (_r, m, s) => {
+  s.groups = groupsOf(s).filter((g) => g.id !== Number(m[1]));
+  save();
+  return ok();
+});
+on('POST', new RegExp(`^/api/groups/${ID}/members$`), (r, m, s) => {
+  const g = findGroup(s, m[1]);
+  const n = boxNameOf(s, String(r.body?.container_id ?? ''));
+  if (!g || !n) return err(404, 'not found');
+  for (const x of groupsOf(s)) x.members = x.members.filter((y) => y !== n);
+  g.members.push(n);
+  save();
+  return ok({ group: groupView(g) });
+});
+on('DELETE', new RegExp(`^/api/groups/${ID}/members$`), (r, m, s) => {
+  const g = findGroup(s, m[1]);
+  const n = boxNameOf(s, r.query.get('container_id') ?? '');
+  if (!g || !n) return err(404, 'not found');
+  g.members = g.members.filter((y) => y !== n);
+  save();
+  return ok({ group: groupView(g) });
+});
 on('GET', /^\/api\/containers\/all$/, (_r, _m, s) => ok({ containers: allContainers(s).map((c) => ({ ...c, tracked: true, hasManifest: true })) }));
 on('POST', /^\/api\/containers$/, (r, _m, s) => {
   const { domain, template_type, include_www, port, user_id } = r.body ?? {};
@@ -225,21 +294,21 @@ on('POST', /^\/api\/databases$/, (r, _m, s) => {
   if (s.dbs.length >= 12) return err(400, 'The demo is limited to a few databases. Delete one first.');
   if ((s.nextDbId ?? 4) > 60) return err(400, 'The demo has made enough databases. Press Reset to start fresh.');
   const id = (s.nextDbId = (s.nextDbId ?? 4) + 1) - 1;
-  const type = (['postgres', 'mariadb', 'mongodb', 'redis'].includes(String(r.body?.type)) ? r.body.type : 'postgres') as NonNullable<DemoDb['type']>;
+  const type = (['postgres', 'mysql', 'mariadb', 'mongodb', 'redis'].includes(String(r.body?.type)) ? r.body.type : 'postgres') as NonNullable<DemoDb['type']>;
   const db: DemoDb = { id, containerId: fakeHex(100 + id), name, username: type === 'redis' ? 'default' : r.body?.username || `${name}_user`, password: r.body?.password || fakeHex(id, 20), port: 32780 + id, running: true, startedAt: Date.now(), createdAt: Date.now(), tables: [], type };
   s.dbs.push(db); save();
-  const inner = { postgres: 5432, mariadb: 3306, mongodb: 27017, redis: 6379 }[type];
+  const inner = { postgres: 5432, mysql: 3306, mariadb: 3306, mongodb: 27017, redis: 6379 }[type];
   const host = `docklite-db-${name.replace(/_/g, '-')}`;
   const url = (h: string, port: number) =>
     type === 'redis' ? `redis://:${db.password}@${h}:${port}`
     : type === 'mongodb' ? `mongodb://${db.username}:${db.password}@${h}:${port}/${name}?authSource=admin`
-    : `${type === 'mariadb' ? 'mysql' : 'postgresql'}://${db.username}:${db.password}@${h}:${port}/${name}`;
+    : `${type === 'mariadb' || type === 'mysql' ? 'mysql' : 'postgresql'}://${db.username}:${db.password}@${h}:${port}/${name}`;
   return { status: 201, body: {
     database: { id, name, type, port: db.port, username: db.username, password: db.password },
     connection: { type, host: 'localhost', port: db.port, database: name, username: db.username, password: db.password, url: url('localhost', db.port), container_host: host, container_port: inner, container_url: url(host, inner) },
   } };
 });
-const LABELS = { postgres: 'PostgreSQL', mariadb: 'MariaDB', mongodb: 'MongoDB', redis: 'Redis' } as const;
+const LABELS = { postgres: 'PostgreSQL', mysql: 'MySQL', mariadb: 'MariaDB', mongodb: 'MongoDB', redis: 'Redis' } as const;
 const notBrowsable = (d: DemoDb) => err(400, `browsing and editing data isn't available for ${LABELS[d.type ?? 'postgres']} yet: connect with your own client using the connection details`);
 const dbById = (s: DemoState, id: string) => s.dbs.find((d) => String(d.id) === id);
 on('GET', new RegExp(`^/api/databases/${ID}$`), (_r, m, s) => { const d = dbById(s, m[1]); return d ? ok({ database: { id: d.id, name: d.name, type: d.type ?? 'postgres', container_id: d.containerId, postgres_port: d.port, created_at: iso(d.createdAt) } }) : err(400, 'invalid database id'); });

@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { Database, Eye, X, SpinnerGap, XCircle, ChartBar, Key } from '@phosphor-icons/react';
-import ConfirmModal from '../components/ConfirmModal';
+import ConfirmModal from './ConfirmModal';
 import { useToast } from '@/lib/hooks/useToast';
 
 interface TableInfo {
