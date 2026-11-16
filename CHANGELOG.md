@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.7.0 (2026-11-16)
+
 ### Added
 - **Admins now see containers DockLite didn't create as boxes** (a database started by hand, a helper service...), marked "not made
   by DockLite". They can go in groups and be started, stopped and restarted like any box; database images (MariaDB, Postgres,
