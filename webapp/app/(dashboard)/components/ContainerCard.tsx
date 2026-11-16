@@ -12,6 +12,7 @@ import { containerDisplayName } from '@/lib/container-names';
 import { DB_CONTAINER_TYPES } from '@/lib/database-engines';
 import { BOX_COLOR_RGB, boxIconFor, boxNameFontSize } from '@/lib/box-styles';
 import { ColourGrid, IconGrid } from './BoxStylePickers';
+import { placeMenu, type MenuPlacement } from '@/lib/menu-position';
 
 interface ContainerCardProps {
   container: ContainerInfo;
@@ -55,7 +56,7 @@ export default function ContainerCard({
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuPopupRef = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<MenuPlacement | null>(null);
   const downAt = useRef<{ x: number; y: number } | null>(null);
   const stopDnd = (event: React.SyntheticEvent) => event.stopPropagation();
   const toast = useToast();
@@ -102,13 +103,7 @@ export default function ContainerCard({
 
   useEffect(() => {
     if (!menuOpen || !menuButtonRef.current) return;
-    const rect = menuButtonRef.current.getBoundingClientRect();
-    const width = 232;
-    const margin = 12;
-    const left = Math.min(Math.max(margin, rect.right - width), window.innerWidth - width - margin);
-    // Open downwards, or upwards from the button when the card is in the lower half of the screen.
-    if (rect.bottom > window.innerHeight * 0.55) setMenuPos({ left, bottom: window.innerHeight - rect.top + 6 });
-    else setMenuPos({ left, top: rect.bottom + 6 });
+    setMenuPos(placeMenu(menuButtonRef.current.getBoundingClientRect()));
   }, [menuOpen]);
 
   const pick = (next: { color?: string; icon?: string }) => {
@@ -185,12 +180,13 @@ export default function ContainerCard({
     >
       <div
         ref={menuPopupRef}
-        className="absolute rounded-lg overflow-hidden overflow-y-auto animate-slide-down"
+        className="absolute rounded-lg overflow-hidden overflow-y-auto"
         style={{
           ...menuPos,
+          // Not the global .animate-slide-down class: it forces position: relative, which breaks top/bottom placement.
+          animation: 'slideDown 0.2s ease-out',
           width: 232,
           maxWidth: 'calc(100vw - 24px)',
-          maxHeight: 'calc(100vh - 24px)',
           background: 'var(--bg-darker)',
           border: '1px solid rgba(var(--neon-purple-rgb), 0.9)',
           boxShadow: '0 0 28px rgba(var(--neon-purple-rgb), 0.65)',
@@ -201,14 +197,6 @@ export default function ContainerCard({
       >
         {view === 'main' && (
           <>
-            {!isVirtual && (!isRunning
-              ? item('Start', <Play size={16} weight="duotone" />, () => onAction(container.id, 'start'))
-              : (
-                <>
-                  {item('Restart', <ArrowsClockwise size={16} weight="duotone" />, () => onAction(container.id, 'restart'))}
-                  {item('Stop', <Stop size={16} weight="duotone" />, () => onAction(container.id, 'stop'))}
-                </>
-              ))}
             {onViewDetails && item('View details', <Eye size={16} weight="duotone" />, () => onViewDetails(container.id, container.name))}
             {!isVirtual && item('Open in terminal', <TerminalWindow size={16} weight="duotone" />, () =>
               window.dispatchEvent(new CustomEvent('docklite-open-terminal', { detail: { containerId: container.id, containerName: container.name } })),
@@ -275,17 +263,50 @@ export default function ContainerCard({
       <div className="relative z-10 flex flex-col h-full p-3 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span
-            className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-wider"
-            style={{ color: isRunning ? 'var(--text-green)' : 'var(--status-error)' }}
+            className="flex items-center gap-1.5 min-w-0 font-mono font-bold uppercase tracking-wider"
+            style={{ color: isRunning ? 'var(--text-green)' : 'var(--status-error)', fontSize: 'clamp(9px, 5.6cqw, 11px)' }}
           >
             <span
-              className="w-2 h-2 rounded-full"
+              className="w-2 h-2 rounded-full shrink-0"
               style={{ background: isRunning ? 'var(--neon-green)' : 'var(--status-error)', boxShadow: isRunning ? '0 0 8px var(--neon-green)' : 'none' }}
             />
-            {isVirtual ? 'File' : isRunning ? 'Running' : 'Stopped'}
+            <span className="truncate">{isVirtual ? 'File' : isRunning ? 'Running' : 'Stopped'}</span>
           </span>
 
-          <div ref={menuRef} onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd} onPointerDownCapture={stopDnd} onMouseDownCapture={stopDnd} onTouchStartCapture={stopDnd} onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={menuRef}
+            className="flex items-center gap-1 shrink-0"
+            onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd} onPointerDownCapture={stopDnd} onMouseDownCapture={stopDnd} onTouchStartCapture={stopDnd}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {!isVirtual && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onAction(container.id, isRunning ? 'stop' : 'start'); }}
+                  onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd}
+                  className="docklite-square-btn"
+                  style={{ color: isRunning ? 'var(--status-error)' : 'var(--text-green)' }}
+                  title={isRunning ? 'Stop' : 'Start'}
+                  aria-label={`${isRunning ? 'Stop' : 'Start'} ${displayName}`}
+                >
+                  {isRunning ? <Stop size={13} weight="fill" /> : <Play size={13} weight="fill" />}
+                </button>
+                {isRunning && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onAction(container.id, 'restart'); }}
+                    onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd}
+                    className="docklite-square-btn"
+                    style={{ color: 'var(--text-yellow)' }}
+                    title="Restart"
+                    aria-label={`Restart ${displayName}`}
+                  >
+                    <ArrowsClockwise size={13} weight="bold" />
+                  </button>
+                )}
+              </>
+            )}
             <button
               ref={menuButtonRef}
               type="button"
@@ -297,14 +318,14 @@ export default function ContainerCard({
                 onMenuOpenChange?.(next);
               }}
               onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd}
-              className="w-7 h-7 rounded-full grid place-items-center transition-colors hover:bg-white/10"
-              style={{ border: '1px solid rgba(var(--c), 0.6)', color: 'var(--text-primary)', background: 'transparent' }}
+              className="docklite-square-btn"
+              style={{ color: 'var(--text-primary)' }}
               title="More options"
               aria-label={`Options for ${displayName}`}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
             >
-              <DotsThree size={18} weight="bold" />
+              <DotsThree size={16} weight="bold" />
             </button>
             {menuOpen && menuPos && typeof document !== 'undefined' && createPortal(menu, document.body)}
           </div>

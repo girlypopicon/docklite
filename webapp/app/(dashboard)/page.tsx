@@ -33,14 +33,11 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 
-// How long a box has to be held over another box before they become a group.
-const HOLD_MS = 900;
-
 const boxKey = (id: string) => `box:${id}`;
 const groupKey = (id: number) => `group:${id}`;
 
 /**
- * One card on the desktop. A box can be picked up and dropped on another box (hold it there to make a group) or on a group
+ * One card on the desktop. A box can be picked up and dropped on another box (they become a group) or on a group
  * (it goes in). Groups are only drop targets. A SQLite file card is neither: it lives inside a site.
  */
 function Tile({
@@ -109,9 +106,6 @@ export default function DashboardPage() {
   // dragging
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-  const [armed, setArmed] = useState(false);
-  const armedRef = useRef(false);
-  armedRef.current = armed;
 
   const toast = useToast();
 
@@ -431,23 +425,13 @@ export default function DashboardPage() {
     useSensor(TouchSensor, { activationConstraint: { delay: 300, tolerance: 6 } }),
   );
 
-  // A box held over another box for a moment arms "make a group"; moving away disarms it.
-  useEffect(() => {
-    setArmed(false);
-    if (!activeId || !overId || !overId.startsWith('box:') || overId === activeId) return;
-    const t = setTimeout(() => setArmed(true), HOLD_MS);
-    return () => clearTimeout(t);
-  }, [activeId, overId]);
-
   const handleDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
   const handleDragOver = (e: DragOverEvent) => setOverId(e.over ? String(e.over.id) : null);
   const handleDragEnd = (e: DragEndEvent) => {
-    const wasArmed = armedRef.current;
     const from = String(e.active.id);
     const to = e.over ? String(e.over.id) : null;
     setActiveId(null);
     setOverId(null);
-    setArmed(false);
     if (!to || to === from || !from.startsWith('box:')) return;
     const fromBox = allBoxes.find((b) => boxKey(b.id) === from);
     if (!fromBox) return;
@@ -456,7 +440,7 @@ export default function DashboardPage() {
       if (g) addToGroup(g, fromBox);
       return;
     }
-    if (to.startsWith('box:') && wasArmed) {
+    if (to.startsWith('box:')) {
       const other = allBoxes.find((b) => boxKey(b.id) === to);
       if (other) setNameDialog({ kind: 'make', ids: [fromBox.id, other.id], names: [fromBox.labels?.['docklite.domain'] || fromBox.name, other.labels?.['docklite.domain'] || other.name] });
     }
@@ -579,7 +563,7 @@ export default function DashboardPage() {
           </button>
         </div>
       ) : (
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={() => { setActiveId(null); setOverId(null); setArmed(false); }}>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={() => { setActiveId(null); setOverId(null); }}>
           <div className={gridClass}>
             {visibleGroups.map((g) => (
               <Tile key={groupKey(g.id)} id={groupKey(g.id)} draggable={false} droppable>
@@ -610,10 +594,10 @@ export default function DashboardPage() {
                     return (
                       <div
                         className="relative rounded-xl"
-                        style={hovering ? { outline: `3px ${armed ? 'solid' : 'dashed'} rgba(255,255,255,${armed ? 0.95 : 0.5})`, outlineOffset: 4, transform: 'scale(1.03)', transition: 'transform .15s' } : undefined}
+                        style={hovering ? { outline: '3px solid rgba(255,255,255,0.9)', outlineOffset: 4, transform: 'scale(1.03)', transition: 'transform .15s' } : undefined}
                       >
                         {card(b)}
-                        {hovering && armed && (
+                        {hovering && (
                           <div className="absolute inset-0 rounded-xl grid place-items-center pointer-events-none text-center px-3 font-bold text-sm" style={{ background: 'rgba(11,11,22,0.78)', color: 'var(--text-primary)' }}>
                             Let go to make a group
                           </div>
