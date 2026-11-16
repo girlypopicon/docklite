@@ -161,10 +161,29 @@ func (h *Handlers) ListContainers(w http.ResponseWriter, r *http.Request) {
 	boxStyles, _ := h.store.ListBoxStyles() // a missing table (older database) just means default cards
 
 	for _, container := range containers {
-		if container.Labels == nil || container.Labels["docklite.managed"] != "true" {
+		managed := container.Labels != nil && container.Labels["docklite.managed"] == "true"
+		if !managed && !isAdmin {
 			continue
 		}
 		if _, ok := untrackedSet[container.ID]; ok {
+			continue
+		}
+		if !managed {
+			// Not created by DockLite (a database started by hand, a helper service...). Admins get it as a box so it can
+			// sit in a group; "Untrack" hides one they don't want.
+			container.Unmanaged = true
+			if t := guessBoxType(container.Image); t != "" {
+				labels := make(map[string]string, len(container.Labels)+1)
+				for k, v := range container.Labels {
+					labels[k] = v
+				}
+				labels["docklite.type"] = t
+				container.Labels = labels
+			}
+			if st, ok := boxStyles[container.Name]; ok {
+				container.Style = &models.BoxStyle{Color: st.Color, Icon: st.Icon}
+			}
+			containersWithOwners = append(containersWithOwners, container)
 			continue
 		}
 		ownerID, ownerName, err := h.resolveContainerOwner(container, userCache)
@@ -1258,6 +1277,28 @@ func actorName(h *Handlers, r *http.Request) string {
 		if u, _ := h.store.GetUserByIDFull(id); u != nil {
 			return u.Username
 		}
+	}
+	return ""
+}
+
+// guessBoxType names the kind of database an unmanaged container is from its image, so its card can look like one.
+func guessBoxType(image string) string {
+	name := strings.ToLower(image)
+	if i := strings.LastIndex(name, "/"); i >= 0 {
+		name = name[i+1:]
+	}
+	name = strings.SplitN(name, ":", 2)[0]
+	switch name {
+	case "postgres", "postgresql":
+		return "postgres"
+	case "mariadb":
+		return "mariadb"
+	case "mysql":
+		return "mysql"
+	case "mongo", "mongodb":
+		return "mongodb"
+	case "redis", "valkey":
+		return "redis"
 	}
 	return ""
 }

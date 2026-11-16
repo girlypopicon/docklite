@@ -5,6 +5,11 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **Admins now see containers DockLite didn't create as boxes** (a database started by hand, a helper service...), marked "not made
+  by DockLite". They can go in groups and be started, stopped and restarted like any box; database images (MariaDB, Postgres,
+  MySQL, MongoDB, Redis) get the database look. "Untrack" in a box's menu hides one you don't want on the desktop.
+
 ## 1.6.1 (2026-11-16)
 
 ### Changed
