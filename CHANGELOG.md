@@ -5,6 +5,19 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.6.1 (2026-11-16)
+
+### Changed
+- **Group cards look like a little deck**: two more cards fan out behind the group, and the boxes inside show as rounded squares in
+  their own colour and icon (green dot running, red stopped) instead of a text list.
+- **Start/stop and restart are back on box cards**, in a row at the top right next to the status: one button that switches between
+  Start and Stop, a Restart button while the box is running, and the `⋯` menu. All three are rounded squares now, not circles.
+- **Drag a box onto another box and let go to make a group**: no more holding it there first.
+
+### Fixed
+- The `⋯` menu on a card could run off the bottom of the screen. It now opens on the side with more room and scrolls inside it
+  when the window is short.
+
 ## 1.6.0 (2026-11-16)
 
 This release is **1.6.0**: groups, and one page for every kind of box.

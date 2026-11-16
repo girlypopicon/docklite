@@ -1277,6 +1277,26 @@
   .docklite-neon-green { --c: var(--neon-green-rgb); }
   .docklite-neon-cyan { --c: var(--neon-cyan-rgb); }
 
+  /* The small rounded-square buttons in a card's top row (start/stop, restart, menu). */
+  .docklite-square-btn {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--c), 0.55);
+    background: rgba(var(--c), 0.08);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+  .docklite-square-btn:hover {
+    background: rgba(var(--c), 0.22);
+    box-shadow: 0 0 8px rgba(var(--c), 0.5);
+  }
+  .docklite-square-btn:active { transform: scale(0.92); }
+  .docklite-square-btn:focus-visible { outline: 2px solid rgb(var(--c)); outline-offset: 2px; }
+
   /* The small round menu button on each card. */
   .docklite-neon-btn {
     border: 2px solid rgb(var(--c));
