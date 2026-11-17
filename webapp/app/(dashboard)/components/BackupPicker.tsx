@@ -207,7 +207,7 @@ export default function BackupPicker({ value, onChange, disabled, forSchedule }:
             <div key={site.id} className={`${row} border-b border-neon-purple/10`}>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-gray-100 truncate">
-                  <Globe size={14} weight="duotone" className="shrink-0" />
+                  <Globe size={14} weight="regular" className="shrink-0" />
                   <span className="truncate">{site.domain}</span>
                 </div>
                 <div className="text-xs text-ink-muted truncate pl-6">
@@ -247,7 +247,7 @@ export default function BackupPicker({ value, onChange, disabled, forSchedule }:
                 <div key={db.id} className={`${row} border-b border-neon-purple/10`}>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 text-gray-100 truncate">
-                      <Database size={14} weight="duotone" className="shrink-0" />
+                      <Database size={14} weight="regular" className="shrink-0" />
                       <span className="truncate">{db.name}</span>
                       <span className="text-xs text-ink-muted">{db.type}</span>
                     </div>

@@ -70,7 +70,7 @@ export default function AddBackupDestinationModal({ onClose, onSuccess }: AddBac
 
         <div className="mb-6">
           <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
-            <HardDrives size={32} weight="duotone" color="var(--status-success)" />
+            <HardDrives size={32} weight="regular" color="var(--status-success)" />
             Add Backup Destination
           </h2>
           <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>

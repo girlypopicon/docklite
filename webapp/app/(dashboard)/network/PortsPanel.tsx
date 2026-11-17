@@ -52,20 +52,20 @@ function addrLabel(address: string): { label: string; icon: JSX.Element; color: 
   if (address === '0.0.0.0' || address === '*' || address === '::') {
     return {
       label: 'All interfaces — internet-facing',
-      icon: <Globe size={12} weight="duotone" />,
+      icon: <Globe size={12} weight="regular" />,
       color: 'var(--status-warning)',
     };
   }
   if (address === '127.0.0.1' || address === '::1') {
     return {
       label: 'Localhost only — not reachable from outside',
-      icon: <HouseLine size={12} weight="duotone" />,
+      icon: <HouseLine size={12} weight="regular" />,
       color: 'var(--text-cyan)',
     };
   }
   return {
     label: address,
-    icon: <LockSimple size={12} weight="duotone" />,
+    icon: <LockSimple size={12} weight="regular" />,
     color: 'var(--text-secondary)',
   };
 }

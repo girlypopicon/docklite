@@ -12,7 +12,7 @@ export default function SystemSettingsPage() {
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-          <DesktopTower size={20} weight="duotone" />
+          <DesktopTower size={20} weight="regular" />
           System Settings
         </h2>
         <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -23,7 +23,7 @@ export default function SystemSettingsPage() {
       {/* Docker Status */}
       <div className="card-vapor p-6 rounded-xl">
         <h2 className="text-2xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-          <Cube size={20} weight="duotone" />
+          <Cube size={20} weight="regular" />
           Docker Connection
         </h2>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -46,7 +46,7 @@ export default function SystemSettingsPage() {
       {/* Configuration Options */}
       <div className="card-vapor p-6 rounded-xl">
         <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
-          <Gear size={20} weight="duotone" />
+          <Gear size={20} weight="regular" />
           Configuration
         </h2>
         <div className="space-y-4">

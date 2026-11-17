@@ -141,7 +141,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
       <>
         <div className="mb-6">
           <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
-            <ClockCounterClockwise size={32} weight="duotone" color="var(--status-success)" />
+            <ClockCounterClockwise size={32} weight="regular" color="var(--status-success)" />
             {title}
           </h2>
           <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
@@ -184,7 +184,7 @@ export default function AddBackupJobModal({ destinations, onClose, onSuccess, in
             </select>
             {destinations.length === 0 && (
               <p className="text-xs mt-1 flex items-center gap-2" style={{ color: 'var(--status-warning)' }}>
-                <WarningCircle size={14} weight="duotone" />
+                <WarningCircle size={14} weight="regular" />
                 No destinations configured. A local destination will be used automatically.
               </p>
             )}

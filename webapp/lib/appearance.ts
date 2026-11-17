@@ -6,7 +6,7 @@
 // The lasting copy is saved per user by the agent (/api/auth/appearance), so
 // it follows them to other browsers and survives cleared storage and updates.
 
-export type ThemeId = 'cyberpunk' | 'corpo' | 'corpo-blue' | 'unicorn';
+export type ThemeId = 'cyberpunk' | 'corpo' | 'corpo-blue' | 'unicorn' | 'basic';
 export type FontSizeId = 'small' | 'medium' | 'large' | 'xlarge';
 
 export interface Appearance {
@@ -39,7 +39,7 @@ const KEYS = {
   glow: 'docklite-neon-intensity',
 } as const;
 
-const THEMES: ThemeId[] = ['cyberpunk', 'corpo', 'corpo-blue', 'unicorn'];
+const THEMES: ThemeId[] = ['cyberpunk', 'corpo', 'corpo-blue', 'unicorn', 'basic'];
 
 function read(key: string): string | null {
   try {
@@ -145,7 +145,7 @@ export const APPEARANCE_BOOT_SCRIPT = `(function(){try{
 var g=function(k){try{return localStorage.getItem(k)}catch(e){return null}};
 var r=document.documentElement,t=g('docklite-theme')||'cyberpunk';
 if(t==='new')t='unicorn';
-var T=['cyberpunk','corpo','corpo-blue','unicorn'];if(T.indexOf(t)<0)t='cyberpunk';
+var T=['cyberpunk','corpo','corpo-blue','unicorn','basic'];if(T.indexOf(t)<0)t='cyberpunk';
 r.setAttribute('data-theme',t);
 var S={small:87.5,medium:100,large:112.5,xlarge:125},f=g('docklite-font-size');
 r.style.fontSize=(S[f]||100)+'%';

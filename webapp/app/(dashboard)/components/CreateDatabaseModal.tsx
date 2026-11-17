@@ -120,7 +120,7 @@ export default function CreateDatabaseModal({ type, sites, onBack, onClose, onCr
         )}
         {type !== 'sqlite' && (
           <p className="mt-4 text-xs flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
-            <WarningCircle size={14} weight="duotone" /> Save the password now. It will not be shown again.
+            <WarningCircle size={14} weight="regular" /> Save the password now. It will not be shown again.
           </p>
         )}
         <button type="button" onClick={onClose} className="mt-5 cyber-button">Got it</button>
@@ -157,7 +157,7 @@ export default function CreateDatabaseModal({ type, sites, onBack, onClose, onCr
             <input value={path} onChange={(e) => setPath(e.target.value)} required className="input-vapor w-full font-mono" />
           </label>
           <p className="text-xs flex gap-2 p-3 rounded-lg" style={{ background: 'rgba(var(--neon-cyan-rgb), 0.08)', color: 'var(--text-secondary)' }}>
-            <Info size={16} weight="duotone" className="shrink-0 mt-0.5" style={{ color: 'var(--text-cyan)' }} />
+            <Info size={16} weight="regular" className="shrink-0 mt-0.5" style={{ color: 'var(--text-cyan)' }} />
             <span>
               SQLite is a single file, so it has no username or password of its own: whoever can read the file can open the database.
               Access is controlled by who can reach the website&apos;s files. Pick Postgres, MariaDB, MySQL or MongoDB when you need accounts.

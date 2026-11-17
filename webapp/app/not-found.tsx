@@ -31,14 +31,14 @@ export default function NotFound() {
             404
           </h1>
           <div className="flex justify-center mb-6">
-            <SmileyXEyes size={56} weight="duotone" color="var(--neon-pink)" />
+            <SmileyXEyes size={56} weight="regular" color="var(--neon-pink)" />
           </div>
         </div>
 
         {/* Error Message */}
         <div className="card-vapor p-8 rounded-xl border-2 border-pink-500/30 mb-6">
           <h2 className="text-3xl font-bold neon-text mb-4 flex items-center justify-center gap-3" style={{ color: 'var(--text-cyan)' }}>
-            <WarningCircle size={28} weight="duotone" />
+            <WarningCircle size={28} weight="regular" />
             Page Not Found
           </h2>
           <p className="text-lg font-mono mb-6" style={{ color: 'var(--text-secondary)' }}>
@@ -46,7 +46,7 @@ export default function NotFound() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/" className="btn-neon inline-flex items-center gap-2 justify-center">
-              <House size={18} weight="duotone" />
+              <House size={18} weight="regular" />
               <span>Go Home</span>
             </Link>
             <button
@@ -73,7 +73,7 @@ export default function NotFound() {
             className="card-vapor p-4 rounded-lg border border-purple-500/20 hover:border-cyan-500/60 transition-all hover:scale-105"
           >
             <div className="flex justify-center mb-2">
-              <Package size={28} weight="duotone" color="var(--neon-cyan)" />
+              <Package size={28} weight="regular" color="var(--neon-cyan)" />
             </div>
             <div className="text-xs font-bold" style={{ color: 'var(--text-cyan)' }}>
               Containers
@@ -84,7 +84,7 @@ export default function NotFound() {
             className="card-vapor p-4 rounded-lg border border-purple-500/20 hover:border-pink-500/60 transition-all hover:scale-105"
           >
             <div className="flex justify-center mb-2">
-              <Archive size={28} weight="duotone" color="var(--neon-pink)" />
+              <Archive size={28} weight="regular" color="var(--neon-pink)" />
             </div>
             <div className="text-xs font-bold" style={{ color: 'var(--text-pink)' }}>
               Backups
@@ -95,7 +95,7 @@ export default function NotFound() {
             className="card-vapor p-4 rounded-lg border border-purple-500/20 hover:border-green-500/60 transition-all hover:scale-105"
           >
             <div className="flex justify-center mb-2">
-              <DesktopTower size={28} weight="duotone" color="var(--neon-green)" />
+              <DesktopTower size={28} weight="regular" color="var(--neon-green)" />
             </div>
             <div className="text-xs font-bold" style={{ color: 'var(--text-green)' }}>
               Server

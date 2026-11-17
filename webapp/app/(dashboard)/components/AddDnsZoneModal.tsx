@@ -72,7 +72,7 @@ export default function AddDnsZoneModal({ onClose, onSuccess }: AddDnsZoneModalP
         {/* Header */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
-            <Globe size={32} weight="duotone" color="var(--status-success)" />
+            <Globe size={32} weight="regular" color="var(--status-success)" />
             Add DNS Zone
           </h2>
           <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
@@ -176,7 +176,7 @@ export default function AddDnsZoneModal({ onClose, onSuccess }: AddDnsZoneModalP
         {/* Help text */}
         <div className="mt-6 p-4 rounded-lg" style={{ background: 'rgba(var(--status-success-rgb), 0.05)', border: '1px solid rgba(var(--status-success-rgb), 0.2)' }}>
           <p className="text-xs font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-            <Lightbulb size={14} weight="duotone" />
+            <Lightbulb size={14} weight="regular" />
             How to find your Zone ID:
           </p>
           <ol className="text-xs space-y-1" style={{ color: 'var(--text-secondary)' }}>

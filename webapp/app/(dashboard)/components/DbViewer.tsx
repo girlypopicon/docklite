@@ -77,7 +77,7 @@ export default function DbViewer() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-              <Database size={20} weight="duotone" />
+              <Database size={20} weight="regular" />
               DockLite System Database
             </h2>
             <p className="text-xs font-mono opacity-70" style={{ color: 'var(--text-secondary)' }}>
@@ -85,7 +85,7 @@ export default function DbViewer() {
             </p>
           </div>
           <div className="text-3xl">
-            <Eye size={26} weight="duotone" />
+            <Eye size={26} weight="regular" />
           </div>
         </div>
       </button>
@@ -105,7 +105,7 @@ export default function DbViewer() {
             <div className="p-6 border-b border-purple-500/30 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-                  <Database size={22} weight="duotone" />
+                  <Database size={22} weight="regular" />
                   DockLite Database Inspector
                 </h2>
                 <p className="text-xs font-mono mt-1" style={{ color: 'var(--text-secondary)' }}>
@@ -141,7 +141,7 @@ export default function DbViewer() {
               {loading && (
                 <div className="text-center py-12">
                   <div className="text-2xl font-bold neon-text animate-pulse flex items-center justify-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-                    <SpinnerGap size={20} weight="duotone" className="animate-spin" />
+                    <SpinnerGap size={20} weight="regular" className="animate-spin" />
                     Loading...
                   </div>
                 </div>
@@ -150,7 +150,7 @@ export default function DbViewer() {
               {error && (
                 <div className="card-vapor p-4 rounded-lg border-2" style={{ borderColor: 'rgba(var(--status-error-rgb), 0.5)' }}>
                   <p className="font-bold flex items-center gap-2" style={{ color: 'var(--status-error)' }}>
-                    <XCircle size={16} weight="duotone" />
+                    <XCircle size={16} weight="regular" />
                     Error: {error}
                   </p>
                 </div>
@@ -166,7 +166,7 @@ export default function DbViewer() {
                     return (
                       <div key={table.name} className="card-vapor p-6 rounded-xl border border-purple-500/30">
                         <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-                          <ChartBar size={16} weight="duotone" />
+                          <ChartBar size={16} weight="regular" />
                           <span>{table.name}</span>
                           <span className="text-xs font-mono opacity-70" style={{ color: 'var(--text-secondary)' }}>
                             ({rowCount} rows)
@@ -190,7 +190,7 @@ export default function DbViewer() {
                                     style={{ color: 'var(--text-purple)' }}
                                   >
                                     {col.name}
-                                    {col.pk && <Key size={12} weight="duotone" className="ml-1 inline" />}
+                                    {col.pk && <Key size={12} weight="regular" className="ml-1 inline" />}
                                   </th>
                                 ))}
                               </tr>

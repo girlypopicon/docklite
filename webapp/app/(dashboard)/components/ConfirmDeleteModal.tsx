@@ -43,7 +43,7 @@ export default function ConfirmDeleteModal({
                 border: '1px solid var(--status-error)',
               }}
             >
-              <Warning size={32} color="var(--status-error)" weight="duotone" />
+              <Warning size={32} color="var(--status-error)" weight="regular" />
             </div>
             <h2 className="text-2xl font-bold" style={{ color: 'var(--status-error)' }}>
               {title}
@@ -75,7 +75,7 @@ export default function ConfirmDeleteModal({
             color: 'var(--status-warning)',
           }}
         >
-          <Warning size={16} weight="duotone" />
+          <Warning size={16} weight="regular" />
           This action cannot be undone.
         </div>
 

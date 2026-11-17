@@ -481,7 +481,7 @@ export default function ServerPage() {
       <div className="sm:flex sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-            <DesktopTower size={22} weight="duotone" />
+            <DesktopTower size={22} weight="regular" />
             Server
           </h1>
           <p className="mt-1 text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -492,7 +492,7 @@ export default function ServerPage() {
 
       {accessDenied && (
         <div className="card-vapor p-6 rounded-xl flex items-center gap-3 mb-6" style={{ borderColor: 'rgba(var(--text-muted-rgb), 0.15)' }}>
-          <ShieldCheck size={22} weight="duotone" className="shrink-0" style={{ color: 'var(--text-cyan)' }} />
+          <ShieldCheck size={22} weight="regular" className="shrink-0" style={{ color: 'var(--text-cyan)' }} />
           <div>
             <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Admin access required</div>
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -504,7 +504,7 @@ export default function ServerPage() {
 
       {error && (
         <div className="mb-6 card-vapor p-4 rounded-xl flex items-center gap-3" style={{ borderColor: 'rgba(var(--status-error-rgb), 0.6)' }}>
-          <WarningCircle size={18} weight="duotone" style={{ color: 'var(--status-error)' }} />
+          <WarningCircle size={18} weight="regular" style={{ color: 'var(--status-error)' }} />
           <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{error}</span>
         </div>
       )}
@@ -514,7 +514,7 @@ export default function ServerPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <Info size={18} weight="duotone" />
+            <Info size={18} weight="regular" />
             Overview
           </h2>
           {loadingOverview || !overview ? (
@@ -555,7 +555,7 @@ export default function ServerPage() {
 
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-            <Gauge size={18} weight="duotone" />
+            <Gauge size={18} weight="regular" />
             Performance
           </h2>
           {loadingOverview || !overview ? (
@@ -618,7 +618,7 @@ export default function ServerPage() {
 
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-            <Clock size={18} weight="duotone" />
+            <Clock size={18} weight="regular" />
             Updates
           </h2>
           {loadingUpdates || !updates ? (
@@ -637,9 +637,9 @@ export default function ServerPage() {
               </div>
               <div className="flex items-center gap-2">
                 {updates.rebootRequired ? (
-                  <WarningCircle size={16} weight="duotone" style={{ color: 'var(--status-error)' }} />
+                  <WarningCircle size={16} weight="regular" style={{ color: 'var(--status-error)' }} />
                 ) : (
-                  <CheckCircle size={16} weight="duotone" style={{ color: 'var(--text-green)' }} />
+                  <CheckCircle size={16} weight="regular" style={{ color: 'var(--text-green)' }} />
                 )}
                 <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                   {updates.rebootRequired ? 'Reboot required' : 'No reboot needed'}
@@ -662,7 +662,7 @@ export default function ServerPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <Gear size={18} weight="duotone" />
+            <Gear size={18} weight="regular" />
             Core Services
           </h2>
           {loadingServices || !services ? (
@@ -720,7 +720,7 @@ export default function ServerPage() {
 
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
-            <ShieldCheck size={18} weight="duotone" />
+            <ShieldCheck size={18} weight="regular" />
             Host Security
           </h2>
           {loadingSecurity || !security ? (
@@ -764,7 +764,7 @@ export default function ServerPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <HardDrives size={18} weight="duotone" />
+            <HardDrives size={18} weight="regular" />
             Storage
           </h2>
           {loadingStorage || !storage ? (
@@ -802,7 +802,7 @@ export default function ServerPage() {
 
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-            <Package size={18} weight="duotone" />
+            <Package size={18} weight="regular" />
             Docker Storage
           </h2>
           {loadingStorage || !storage ? (
@@ -864,7 +864,7 @@ export default function ServerPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <TerminalWindow size={18} weight="duotone" />
+            <TerminalWindow size={18} weight="regular" />
             Logs
           </h2>
           <div className="space-y-4">
@@ -893,7 +893,7 @@ export default function ServerPage() {
 
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-xl font-bold mb-4 neon-text flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-            <DownloadSimple size={18} weight="duotone" />
+            <DownloadSimple size={18} weight="regular" />
             Diagnostics
           </h2>
           <div className="space-y-4">
@@ -908,7 +908,7 @@ export default function ServerPage() {
               onClick={downloadDiagnostics}
               disabled={downloadingDiagnostics}
             >
-              <ArrowClockwise size={16} weight="duotone" className={downloadingDiagnostics ? 'animate-spin' : undefined} />
+              <ArrowClockwise size={16} weight="regular" className={downloadingDiagnostics ? 'animate-spin' : undefined} />
               {downloadingDiagnostics ? 'Building bundle...' : 'Download diagnostics bundle'}
             </button>
           </div>

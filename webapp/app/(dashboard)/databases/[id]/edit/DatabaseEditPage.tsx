@@ -379,7 +379,7 @@ export default function DatabaseEditPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-              <Sparkle size={20} weight="duotone" />
+              <Sparkle size={20} weight="regular" />
               Database Edit Mode
             </h1>
             <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -394,7 +394,7 @@ export default function DatabaseEditPage() {
                   color: 'var(--text-cyan)',
                 }}
               >
-                <CheckCircle size={14} weight="duotone" />
+                <CheckCircle size={14} weight="regular" />
                 Connected as <span className="font-bold">{auth.username}</span>
               </div>
             )}
@@ -540,7 +540,7 @@ export default function DatabaseEditPage() {
 
           {loadingTable && (
             <div className="text-sm font-mono flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-              <SpinnerGap size={14} weight="duotone" className="animate-spin" />
+              <SpinnerGap size={14} weight="regular" className="animate-spin" />
               Loading table...
             </div>
           )}
@@ -684,12 +684,12 @@ export default function DatabaseEditPage() {
           >
             {runningQuery ? (
               <span className="inline-flex items-center gap-2">
-                <SpinnerGap size={14} weight="duotone" className="animate-spin" />
+                <SpinnerGap size={14} weight="regular" className="animate-spin" />
                 Running...
               </span>
             ) : (
               <span className="inline-flex items-center gap-2">
-                <Play size={14} weight="duotone" />
+                <Play size={14} weight="regular" />
                 Execute SQL
               </span>
             )}

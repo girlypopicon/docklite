@@ -4,11 +4,11 @@ import { ChartLine, Cube, Database, FolderOpen, MagnifyingGlass, ProhibitInset, 
 import { useLayoutPrefs, type SidebarContent } from '@/lib/layout-prefs';
 
 const CONTENT_CHOICES: { value: SidebarContent; label: string; description: string; icon: React.ReactNode }[] = [
-  { value: 'none', label: 'Empty', description: 'Keep the sidebar closed until you pick something.', icon: <ProhibitInset size={22} weight="duotone" /> },
-  { value: 'stats', label: 'Live stats', description: 'CPU and memory for your running containers, updating as you work.', icon: <ChartLine size={22} weight="duotone" /> },
-  { value: 'logs', label: 'Container logs', description: 'Follow a container’s log output while you browse other pages.', icon: <Terminal size={22} weight="duotone" /> },
-  { value: 'database', label: 'Database query', description: 'Run quick queries against a database from anywhere.', icon: <Database size={22} weight="duotone" /> },
-  { value: 'search', label: 'Search', description: 'Find containers, sites and databases by name.', icon: <MagnifyingGlass size={22} weight="duotone" /> },
+  { value: 'none', label: 'Empty', description: 'Keep the sidebar closed until you pick something.', icon: <ProhibitInset size={22} weight="regular" /> },
+  { value: 'stats', label: 'Live stats', description: 'CPU and memory for your running containers, updating as you work.', icon: <ChartLine size={22} weight="regular" /> },
+  { value: 'logs', label: 'Container logs', description: 'Follow a container’s log output while you browse other pages.', icon: <Terminal size={22} weight="regular" /> },
+  { value: 'database', label: 'Database query', description: 'Run quick queries against a database from anywhere.', icon: <Database size={22} weight="regular" /> },
+  { value: 'search', label: 'Search', description: 'Find containers, sites and databases by name.', icon: <MagnifyingGlass size={22} weight="regular" /> },
 ];
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
@@ -50,7 +50,7 @@ export default function SidebarSettings() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="font-bold flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-              <FolderOpen size={20} weight="duotone" /> Left sidebar — file browser
+              <FolderOpen size={20} weight="regular" /> Left sidebar — file browser
             </div>
             <div className="text-sm opacity-70">Browse and edit your sites’ files without leaving the page you’re on.</div>
           </div>
@@ -66,7 +66,7 @@ export default function SidebarSettings() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="font-bold flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-              <Cube size={20} weight="duotone" /> Right sidebar
+              <Cube size={20} weight="regular" /> Right sidebar
             </div>
             <div className="text-sm opacity-70">A flexible panel — you choose what lives in it.</div>
           </div>

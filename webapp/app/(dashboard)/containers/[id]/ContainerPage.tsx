@@ -153,7 +153,7 @@ export default function ContainerDetailPage() {
     return (
       <div className="text-center py-16">
         <div className="flex justify-center mb-4 animate-float">
-          <Lightning size={48} weight="duotone" color="var(--neon-cyan)" />
+          <Lightning size={48} weight="regular" color="var(--neon-cyan)" />
         </div>
         <div className="text-2xl font-bold neon-text animate-pulse" style={{ color: 'var(--text-cyan)' }}>
           Loading container details...
@@ -166,7 +166,7 @@ export default function ContainerDetailPage() {
     return (
       <div className="text-center py-16">
         <div className="flex justify-center mb-4">
-          <WarningCircle size={48} weight="duotone" color="var(--status-error)" />
+          <WarningCircle size={48} weight="regular" color="var(--status-error)" />
         </div>
         <div className="text-xl font-bold mb-4" style={{ color: 'var(--status-error)' }}>
           {error || 'Container not found'}
@@ -191,7 +191,7 @@ export default function ContainerDetailPage() {
           </Link>
           <div>
             <h1 className="text-4xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-              <Package size={24} weight="duotone" />
+              <Package size={24} weight="regular" />
               {details.name}
             </h1>
             <p className="text-sm font-mono mt-1" style={{ color: 'var(--text-secondary)' }}>
@@ -214,10 +214,10 @@ export default function ContainerDetailPage() {
       {/* Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto">
         {[
-          { id: 'overview', label: 'Overview', icon: <ChartBar size={16} weight="duotone" /> },
-          { id: 'logs', label: 'Logs', icon: <NotePencil size={16} weight="duotone" /> },
-          { id: 'env', label: 'Environment', icon: <Wrench size={16} weight="duotone" /> },
-          { id: 'network', label: 'Network', icon: <Globe size={16} weight="duotone" /> },
+          { id: 'overview', label: 'Overview', icon: <ChartBar size={16} weight="regular" /> },
+          { id: 'logs', label: 'Logs', icon: <NotePencil size={16} weight="regular" /> },
+          { id: 'env', label: 'Environment', icon: <Wrench size={16} weight="regular" /> },
+          { id: 'network', label: 'Network', icon: <Globe size={16} weight="regular" /> },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -241,7 +241,7 @@ export default function ContainerDetailPage() {
           {isRunning && stats && (
             <div className="card-vapor p-6 rounded-xl">
               <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-                <ChartBar size={20} weight="duotone" />
+                <ChartBar size={20} weight="regular" />
                 Real-time Resources
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -290,7 +290,7 @@ export default function ContainerDetailPage() {
           {/* Container Info */}
           <div className="card-vapor p-6 rounded-xl">
             <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-              <Info size={20} weight="duotone" />
+              <Info size={20} weight="regular" />
               Container Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm">
@@ -323,7 +323,7 @@ export default function ContainerDetailPage() {
           {details.mounts.length > 0 && (
             <div className="card-vapor p-6 rounded-xl">
             <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-              <Database size={20} weight="duotone" />
+              <Database size={20} weight="regular" />
               Volumes & Mounts
             </h2>
               <div className="space-y-3">
@@ -342,12 +342,12 @@ export default function ContainerDetailPage() {
                         <span className={mount.RW ? 'text-status-success' : 'text-status-error'}>
                           {mount.RW ? (
                             <span className="inline-flex items-center gap-2">
-                              <LockOpen size={12} weight="duotone" />
+                              <LockOpen size={12} weight="regular" />
                               Read/Write
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-2">
-                              <Lock size={12} weight="duotone" />
+                              <Lock size={12} weight="regular" />
                               Read-Only
                             </span>
                           )}
@@ -368,7 +368,7 @@ export default function ContainerDetailPage() {
         <div className="card-vapor p-6 rounded-xl">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-              <NotePencil size={20} weight="duotone" />
+              <NotePencil size={20} weight="regular" />
               Container Logs
             </h2>
             <div className="flex items-center gap-4">
@@ -396,7 +396,7 @@ export default function ContainerDetailPage() {
                 <option value="1000">1000 lines</option>
               </select>
               <button onClick={fetchLogs} className="btn-neon px-4 py-2 text-sm inline-flex items-center gap-2">
-                <ArrowClockwise size={14} weight="duotone" />
+                <ArrowClockwise size={14} weight="regular" />
                 Refresh
               </button>
             </div>
@@ -416,7 +416,7 @@ export default function ContainerDetailPage() {
       {activeTab === 'env' && (
         <div className="card-vapor p-6 rounded-xl">
           <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-            <Wrench size={20} weight="duotone" />
+            <Wrench size={20} weight="regular" />
             Environment Variables
           </h2>
           {details.env.length === 0 ? (
@@ -450,7 +450,7 @@ export default function ContainerDetailPage() {
           {/* Network Info */}
           <div className="card-vapor p-6 rounded-xl">
             <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-              <Globe size={20} weight="duotone" />
+              <Globe size={20} weight="regular" />
               Network Configuration
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm mb-6">
@@ -500,7 +500,7 @@ export default function ContainerDetailPage() {
           {/* Port Mappings */}
           <div className="card-vapor p-6 rounded-xl">
             <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-              <Plug size={20} weight="duotone" />
+              <Plug size={20} weight="regular" />
               Port Mappings
             </h2>
             {Object.keys(details.networkSettings.ports).length === 0 ? (

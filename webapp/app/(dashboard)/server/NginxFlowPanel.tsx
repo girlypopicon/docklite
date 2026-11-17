@@ -117,11 +117,11 @@ export default function NginxFlowPanel() {
     icon: 'globe' | 'nginx' | 'agent' | 'gui' | 'container'; small?: boolean;
   }) => {
     const icons = {
-      globe: <Globe size={small ? 20 : 24} weight="duotone" style={{ color }} />,
-      nginx: <ShieldCheck size={small ? 20 : 24} weight="duotone" style={{ color }} />,
-      agent: <HardDrive size={small ? 20 : 24} weight="duotone" style={{ color }} />,
-      gui: <CloudArrowUp size={small ? 20 : 24} weight="duotone" style={{ color }} />,
-      container: <Cube size={small ? 20 : 24} weight="duotone" style={{ color }} />,
+      globe: <Globe size={small ? 20 : 24} weight="regular" style={{ color }} />,
+      nginx: <ShieldCheck size={small ? 20 : 24} weight="regular" style={{ color }} />,
+      agent: <HardDrive size={small ? 20 : 24} weight="regular" style={{ color }} />,
+      gui: <CloudArrowUp size={small ? 20 : 24} weight="regular" style={{ color }} />,
+      container: <Cube size={small ? 20 : 24} weight="regular" style={{ color }} />,
     };
 
     return (
@@ -174,7 +174,7 @@ export default function NginxFlowPanel() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <ArrowsClockwise size={18} weight="duotone" />
+            <ArrowsClockwise size={18} weight="regular" />
             Traffic Flow
           </h2>
           <p className="text-xs font-mono mt-1" style={{ color: 'var(--text-secondary)' }}>

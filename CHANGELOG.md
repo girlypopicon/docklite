@@ -5,6 +5,22 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.10.0 (2026-11-17)
+
+### Added
+- **A fifth theme, "Very basic".** Plain white and grey with a single blue, small corners, no glow, no gradients: the quiet,
+  familiar look of a classic hosting panel, for anyone who wants DockLite to look like the boring competition. Pick it in
+  Settings, Appearance.
+
+## 1.9.0 (2026-11-17)
+
+### Changed
+- **New typography, one per theme.** Cyberpunk uses Chakra Petch (squared, techno), Corpo and Corpo Blue use Inter (clean business
+  sans), Unicorn uses Nunito (soft and round), and ports, paths and code use JetBrains Mono in every theme. Before, everything was
+  one monospace font fetched from Google; the fonts are now bundled with DockLite (open-licence files in `webapp/app/fonts`), so
+  nothing is loaded from the internet and every machine shows the same thing.
+- **Icons are crisp single-line (regular weight) instead of the two-tone fill**, everywhere.
+
 ## 1.8.0 (2026-11-17)
 
 ### Added

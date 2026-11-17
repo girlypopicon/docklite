@@ -30,25 +30,25 @@ export default function Toast({ message, type, onClose, duration = 5000 }: Toast
       bg: 'rgba(var(--status-success-rgb), 0.15)',
       border: 'var(--neon-green)',
       color: 'var(--text-green)',
-      icon: <CheckCircle size={22} weight="duotone" />,
+      icon: <CheckCircle size={22} weight="regular" />,
     },
     error: {
       bg: 'rgba(var(--status-error-rgb), 0.15)',
       border: 'var(--status-error)',
       color: 'var(--status-error)',
-      icon: <XCircle size={22} weight="duotone" />,
+      icon: <XCircle size={22} weight="regular" />,
     },
     warning: {
       bg: 'rgba(var(--status-warning-rgb), 0.15)',
       border: 'var(--neon-yellow)',
       color: 'var(--text-yellow)',
-      icon: <WarningCircle size={22} weight="duotone" />,
+      icon: <WarningCircle size={22} weight="regular" />,
     },
     info: {
       bg: 'rgba(var(--neon-cyan-rgb), 0.15)',
       border: 'var(--neon-cyan)',
       color: 'var(--text-cyan)',
-      icon: <Info size={22} weight="duotone" />,
+      icon: <Info size={22} weight="regular" />,
     },
   };
 

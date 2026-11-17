@@ -206,7 +206,7 @@ export default function SiteFoldersPanel() {
       <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
         <div>
           <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-            <FolderOpen size={20} weight="duotone" />
+            <FolderOpen size={20} weight="regular" />
             Site folders
           </h2>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
@@ -224,7 +224,7 @@ export default function SiteFoldersPanel() {
           style={{ background: 'rgba(var(--text-muted-rgb), 0.15)', color: 'var(--text-primary)' }}
           title="Scan again"
         >
-          <ArrowClockwise size={16} weight="duotone" className={loading ? 'animate-spin' : ''} />
+          <ArrowClockwise size={16} weight="regular" className={loading ? 'animate-spin' : ''} />
           Rescan
         </button>
       </div>
@@ -236,7 +236,7 @@ export default function SiteFoldersPanel() {
           {/* Folders DockLite doesn't know about */}
           <section>
             <h3 className="font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
-              <WarningCircle size={18} weight="duotone" />
+              <WarningCircle size={18} weight="regular" />
               Needs a decision ({attention.length})
             </h3>
             {attention.length === 0 ? (
@@ -301,7 +301,7 @@ export default function SiteFoldersPanel() {
           <section>
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-                <Trash size={18} weight="duotone" />
+                <Trash size={18} weight="regular" />
                 Trash ({trash.length})
               </h3>
               {trash.length > 0 && (
@@ -351,7 +351,7 @@ export default function SiteFoldersPanel() {
               className="px-3 py-1.5 rounded-lg text-sm font-bold inline-flex items-center gap-2 transition-all hover:scale-105 disabled:opacity-50"
               style={{ background: 'rgba(var(--text-muted-rgb), 0.15)', color: 'var(--text-primary)' }}
             >
-              <ArrowClockwise size={14} weight="duotone" className={busy === 'check' ? 'animate-spin' : ''} />
+              <ArrowClockwise size={14} weight="regular" className={busy === 'check' ? 'animate-spin' : ''} />
               Create missing user folders
             </button>
             <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
