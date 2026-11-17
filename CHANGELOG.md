@@ -8,6 +8,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## 1.12.1 (2026-11-17)
 
 ### Fixed
+- Switching to the Unicorn theme could leave pale, unreadable text on the theme cards (and elsewhere) in some browsers, because the text
+  colour was still sliding from the old theme. Theme changes now take effect instantly and any slide still running is finished.
 - The popup that asks "Update to X?" was drawn inside the Updates card, so it was cut off at the top and only dimmed that card. It now
   opens in the middle of the page with the whole page dimmed. Every other confirmation popup (stopping a box and so on) had the same
   problem and is fixed too.

@@ -135,7 +135,23 @@ export function applyAppearance(appearance: Appearance) {
   // is busy) pale text sits on the new theme's light cards. Switch with transitions off, then turn them back on.
   if (root.getAttribute('data-theme') && root.getAttribute('data-theme') !== appearance.theme) {
     root.setAttribute('data-theme-switching', '');
-    window.setTimeout(() => root.removeAttribute('data-theme-switching'), 120);
+    window.setTimeout(() => root.removeAttribute('data-theme-switching'), 400);
+    root.setAttribute('data-theme', appearance.theme);
+    // Apply the new look right now, while transitions are off. Without this a busy browser can wait past the timer before
+    // it works out the new styles, sees transitions back on, and slides the text from the old theme's pale colour.
+    void root.offsetHeight;
+    // Belt and braces: any slide that did start (an old browser, a throttled tab) is finished on the spot, now and a moment later.
+    const finishSlides = () => {
+      try {
+        document.getAnimations().forEach((a) => {
+          if (typeof CSSTransition !== 'undefined' && a instanceof CSSTransition) a.finish();
+        });
+      } catch {
+        /* older browsers: the guard above is enough */
+      }
+    };
+    finishSlides();
+    window.requestAnimationFrame(() => window.requestAnimationFrame(finishSlides));
   }
   root.setAttribute('data-theme', appearance.theme);
   root.setAttribute('data-animations', appearance.animations ? 'on' : 'off');
