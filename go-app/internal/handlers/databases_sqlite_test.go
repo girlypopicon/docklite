@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"database/sql"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -87,5 +89,20 @@ func TestSQLiteEditor(t *testing.T) {
 	}
 	if err := sqliteUpdateRows(db, "users", []map[string]any{{"id": 1, `b"io`: "x"}}); err == nil {
 		t.Error("a bad column name should be refused")
+	}
+}
+
+func TestPrepareSQLiteFileCreatesInsideMountAndRefusesOutside(t *testing.T) {
+	dir := t.TempDir()
+	mounts := []mountPair{{Source: dir, Dest: "/usr/share/nginx/html"}}
+	if err := prepareSQLiteFile(mounts, "/usr/share/nginx/html/data/db.sqlite"); err != nil {
+		t.Fatalf("inside the mount: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "data", "db.sqlite")); err != nil {
+		t.Fatalf("file should have been created: %v", err)
+	}
+	err := prepareSQLiteFile(mounts, "/app/data/db.sqlite")
+	if err == nil || !strings.Contains(err.Error(), "Start the path with /usr/share/nginx/html") {
+		t.Fatalf("outside the mount should say where to put it, got: %v", err)
 	}
 }

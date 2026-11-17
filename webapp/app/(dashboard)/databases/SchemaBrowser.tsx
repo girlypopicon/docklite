@@ -39,6 +39,12 @@ export default function SchemaBrowser() {
 
   const pathname = usePathname();
   const dbId = useMemo(() => getDbId(pathname), [pathname]);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => {
+    const again = () => setRefresh((n) => n + 1);
+    window.addEventListener('docklite-db-changed', again);
+    return () => window.removeEventListener('docklite-db-changed', again);
+  }, []);
 
   useEffect(() => {
     if (!dbId) return;
@@ -110,7 +116,7 @@ export default function SchemaBrowser() {
     };
 
     fetchSchema();
-  }, [dbId]);
+  }, [dbId, refresh]);
 
   if (loading) {
     return (

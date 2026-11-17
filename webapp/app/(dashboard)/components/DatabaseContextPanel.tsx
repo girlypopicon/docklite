@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Copy, Key, Table } from '@phosphor-icons/react';
 import { useToast } from '@/lib/hooks/useToast';
+import DatabaseQuickActions from './DatabaseQuickActions';
 
 interface ColumnInfo {
   name: string;
@@ -50,6 +51,8 @@ export default function DatabaseContextPanel() {
   const [dbName, setDbName] = useState<string | null>(null);
   const [port, setPort] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [engine, setEngine] = useState('postgres');
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     if (!dbId) return;
@@ -62,6 +65,7 @@ export default function DatabaseContextPanel() {
           if (!cancelled) {
             setDbName(data?.database?.name ?? null);
             setPort(data?.database?.postgres_port ?? null);
+            setEngine(data?.database?.type || 'postgres');
           }
         }
         const raw = sessionStorage.getItem(`${STORAGE_PREFIX}${dbId}`);
@@ -71,7 +75,7 @@ export default function DatabaseContextPanel() {
           headers: { 'Content-Type': 'application/json' },
           body: raw,
         });
-        if (!res.ok) throw new Error('Could not load the table details');
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not load the table details');
         const data = await res.json();
         if (!cancelled) setTables(data.tables || []);
       } catch (err: any) {
@@ -81,7 +85,14 @@ export default function DatabaseContextPanel() {
     return () => {
       cancelled = true;
     };
-  }, [dbId]);
+  }, [dbId, refresh]);
+
+  // Something changed the database (a quick action): load the tables again.
+  useEffect(() => {
+    const again = () => setRefresh((n) => n + 1);
+    window.addEventListener('docklite-db-changed', again);
+    return () => window.removeEventListener('docklite-db-changed', again);
+  }, []);
 
   // The page and the left schema browser announce the table being viewed.
   useEffect(() => {
@@ -124,6 +135,9 @@ export default function DatabaseContextPanel() {
           <Table size={16} weight="regular" /> Table details
         </div>
         Pick a table in the schema on the left to see its columns and copy ready-made SQL.
+        <div className="mt-4">
+          {dbId && <DatabaseQuickActions dbId={dbId} engine={engine} table={null} onDone={() => window.dispatchEvent(new CustomEvent('docklite-db-changed'))} />}
+        </div>
       </div>
     );
   }
@@ -170,6 +184,15 @@ export default function DatabaseContextPanel() {
           CREATE TABLE is rebuilt from the column list, so indexes and foreign keys aren&apos;t included.
         </p>
       </div>
+
+      {dbId && (
+        <DatabaseQuickActions
+          dbId={dbId}
+          engine={engine}
+          table={table}
+          onDone={() => window.dispatchEvent(new CustomEvent('docklite-db-changed'))}
+        />
+      )}
 
       {dbName && port && (
         <div className="pt-3 border-t" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.3)' }}>

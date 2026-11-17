@@ -77,9 +77,15 @@ func (h *Handlers) createDatabase(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Verify container exists
-		_, err := h.docker.InspectContainer(ctx, req.ContainerID)
+		info, err := h.docker.InspectContainer(ctx, req.ContainerID)
 		if err != nil {
 			writeError(w, http.StatusNotFound, "container not found")
+			return
+		}
+		// The file has to live in a folder the site shares with DockLite, or it can never be opened; say so now
+		// instead of at the first click. A missing file is created empty so it opens straight away.
+		if err := prepareSQLiteFile(mountPairs(info.Mounts), req.DBPath); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 

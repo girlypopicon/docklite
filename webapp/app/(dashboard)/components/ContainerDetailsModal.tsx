@@ -259,7 +259,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto p-5 -m-5 mb-1 docklite-tabs-scroll">
           {[
             { id: 'overview', label: 'Overview', icon: <ChartBar size={16} weight="regular" /> },
             { id: 'logs', label: 'Logs', icon: <NotePencil size={16} weight="regular" /> },
