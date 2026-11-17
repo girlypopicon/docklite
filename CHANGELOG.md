@@ -5,6 +5,13 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.11.1 (2026-11-17)
+
+### Changed
+- **The Update button's confirmation now matches your theme.** It was the browser's plain grey popup; it is now a themed dialog that shows
+  the from → to versions and what will happen.
+- **The close (X) button on dialogs is bigger**, so it is easier to see and tap.
+
 ## 1.11.0 (2026-11-17)
 
 ### Fixed
