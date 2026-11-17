@@ -34,15 +34,6 @@ w('vapor-scene.svg', f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16
  <path d="M6 61l11-14 11 14-11 14zM30 61l11-14 11 14-11 14z" fill="#ff4fd8"/><path d="M0 100h58" stroke="#ffe66d" stroke-width="4"/><ellipse cx="29" cy="6" rx="22" ry="5" fill="#9ef6ff"/></g>
 </svg>''')
 
-# Southwestern iced tea can pattern: black strip with turquoise and pink diamonds and zigzags, tiles sideways.
-w('vapor-tea.svg', '''<svg xmlns="http://www.w3.org/2000/svg" width="96" height="24" viewBox="0 0 96 24">
-<rect width="96" height="24" fill="#07101c"/>
-<path d="M0 3h96M0 21h96" stroke="#ffe66d" stroke-width="2"/>
-<path d="M0 12l8-6 8 6-8 6zM32 12l8-6 8 6-8 6zM64 12l8-6 8 6-8 6z" fill="#18c9c0"/>
-<path d="M16 12l8-6 8 6-8 6zM48 12l8-6 8 6-8 6zM80 12l8-6 8 6-8 6z" fill="#ff4fb0"/>
-<path d="M8 12l4-3 4 3-4 3zM24 12l4-3 4 3-4 3zM40 12l4-3 4 3-4 3zM56 12l4-3 4 3-4 3zM72 12l4-3 4 3-4 3zM88 12l4-3 4 3-4 3z" fill="#07101c"/>
-</svg>''')
-
 # ── Matrices: two tiles of faint falling code, scrolled at different speeds ───────────────────────────────────────────
 def rain(name, cols, rows, colw, step, seed):
     random.seed(seed)

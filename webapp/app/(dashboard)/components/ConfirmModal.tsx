@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { WarningCircle, Lightning, Info } from '@phosphor-icons/react';
 
 interface ConfirmModalProps {
@@ -41,7 +43,12 @@ export default function ConfirmModal({
 
   const style = typeStyles[type];
 
-  return (
+  // Drawn on the page itself, not inside the card that asked: a card's blur makes a fixed popup sit (and dim) only inside that card.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 flex items-center justify-center z-[100000]"
       onClick={onCancel}
@@ -100,6 +107,7 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

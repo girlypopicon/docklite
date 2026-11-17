@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128"><rect width="128" height="128" rx="26" fill="#0d0426"/><g fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="4">
+<path d="M22 66 L8 78 L11 100 L22 94 M106 66 L120 78 L117 100 L106 94" stroke="#3df2ff"/>
+<rect x="22" y="66" width="84" height="52" rx="4" stroke="#3df2ff"/><path d="M56 66v52M72 66v52" stroke="#7ff3ff" stroke-width="3"/>
+<path d="M28 66 L34 36 M100 66 L94 36" stroke="#3df2ff"/>
+<g stroke="#ff4fd8" filter="url(#g)"><path transform="translate(46 56) rotate(-8) scale(2.6)" d="M0 9 C-14 -1 -9 -13 -3 -13 C-1 -13 0 -11 0 -9 C0 -11 1 -13 3 -13 C9 -13 14 -1 0 9Z" fill="none" stroke="#ff4fd8" stroke-width="1.54" stroke-linejoin="round" /></g>
+<polygon points="91.3,27.3 93.8,40.4 106.8,43.4 95.1,49.8 96.3,63.1 86.6,53.9 74.3,59.2 80.1,47.1 71.2,37.1 84.5,38.8" stroke="#ffe66d"/></g>
+<defs><filter id="g"><feGaussianBlur stdDeviation="2"/></filter></defs></svg>
