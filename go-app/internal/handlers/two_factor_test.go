@@ -209,3 +209,17 @@ func TestAdminResetTurnsItOff(t *testing.T) {
 		t.Fatal("reset left it on")
 	}
 }
+
+func TestTwoFactorLogoURL(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/2fa/setup", nil)
+	req.Host = "127.0.0.1:3100"
+	if got := twoFactorLogoURL(req); got != "" {
+		t.Fatalf("local address should have no logo link, got %q", got)
+	}
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/2fa/setup", nil)
+	req.Host = "panel.example.com"
+	req.Header.Set("X-Forwarded-Proto", "https")
+	if got := twoFactorLogoURL(req); got != "https://panel.example.com/docklite-logo.png" {
+		t.Fatalf("unexpected logo link %q", got)
+	}
+}

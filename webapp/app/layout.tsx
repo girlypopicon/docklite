@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
+import './themes-extra.css'
 import ThemeInit from './theme-init'
 import { APPEARANCE_BOOT_SCRIPT } from '@/lib/appearance'
 import { DEMO } from '@/lib/demo/flag'
@@ -32,8 +33,8 @@ export const metadata: Metadata = {
   title: DEMO ? 'DockLite demo' : 'DockLite - Docker Control Panel',
   description: 'Simple Docker-based web hosting control panel',
   icons: {
-    icon: '/dockliteiconL.png',
-    apple: '/dockliteiconL.png',
+    icon: '/docklite-logo.svg',
+    apple: '/docklite-logo.png',
   },
 }
 

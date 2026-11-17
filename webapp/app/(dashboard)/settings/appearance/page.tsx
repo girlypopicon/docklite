@@ -87,6 +87,24 @@ export default function AppearanceSettingsPage() {
       description: 'Plain white and grey with one blue. Familiar and quiet, like a classic hosting panel',
       preview: 'theme-preview-basic',
     },
+    {
+      id: 'vapor',
+      name: 'Vapor',
+      description: 'Vaporwave: a sunset, palm trees and iced tea cans',
+      preview: 'theme-preview-vapor',
+    },
+    {
+      id: 'matrices',
+      name: 'Matrices',
+      description: 'Dark green terminal with slow falling code',
+      preview: 'theme-preview-matrices',
+    },
+    {
+      id: 'girlypop',
+      name: 'Girlypop',
+      description: 'Bright pinks, hearts everywhere and extra neon',
+      preview: 'theme-preview-girlypop',
+    },
   ];
 
   const fontSizes = [

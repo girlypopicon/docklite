@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -68,6 +69,27 @@ func twoFactorIssuer(r *http.Request) string {
 		return "DockLite"
 	}
 	return "DockLite (" + host + ")"
+}
+
+// twoFactorLogoURL is where an authenticator app can fetch the DockLite logo (apps such as Aegis, 2FAS and Ente Auth show
+// it beside the code; Google Authenticator ignores it). Empty when the server has no real address to point at.
+func twoFactorLogoURL(r *http.Request) string {
+	host := r.Header.Get("X-Forwarded-Host")
+	if host == "" {
+		host = r.Host
+	}
+	h := host
+	if i := strings.IndexByte(h, ':'); i > 0 {
+		h = h[:i]
+	}
+	if h == "" || h == "127.0.0.1" || h == "localhost" {
+		return ""
+	}
+	scheme := "http"
+	if r.Header.Get("X-Forwarded-Proto") == "https" || r.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + host + "/docklite-logo.png"
 }
 
 // verifySecondFactor checks a six-digit code or a recovery code for a user who has two-factor login on. A good code is
@@ -167,7 +189,10 @@ func (h *Handlers) twoFactorSetup(w http.ResponseWriter, r *http.Request, userID
 		return
 	}
 	link := totp.URL(secret, twoFactorIssuer(r), user.Username)
-	png, err := qrcode.Encode(link, qrcode.Medium, 256)
+	if img := twoFactorLogoURL(r); img != "" {
+		link += "&image=" + url.QueryEscape(img)
+	}
+	png, err := qrcode.Encode(link, qrcode.Medium, 320)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not draw the QR code")
 		return
