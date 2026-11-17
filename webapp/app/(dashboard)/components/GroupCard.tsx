@@ -147,13 +147,13 @@ export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLink
       >
         {view === 'main' && (
           <>
-            {row('Open', <FolderOpen size={16} weight="duotone" />, () => onOpen(group))}
-            {row('Rename', <PencilSimple size={16} weight="duotone" />, () => onRename(group))}
-            {row('Linked', <LinkSimple size={16} weight="duotone" />, () => onToggleLinked(group, !group.linked), { keepOpen: true, checked: group.linked })}
+            {row('Open', <FolderOpen size={16} weight="regular" />, () => onOpen(group))}
+            {row('Rename', <PencilSimple size={16} weight="regular" />, () => onRename(group))}
+            {row('Linked', <LinkSimple size={16} weight="regular" />, () => onToggleLinked(group, !group.linked), { keepOpen: true, checked: group.linked })}
             <div className="my-1 border-t" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.25)' }} />
-            {row('Colour', <PaintBrush size={16} weight="duotone" />, () => setView('colour'), { arrow: true, keepOpen: true })}
-            {row('Icon', <Shapes size={16} weight="duotone" />, () => setView('icon'), { arrow: true, keepOpen: true })}
-            {row('Delete group', <Trash size={16} weight="duotone" />, () => onDelete(group), { danger: true })}
+            {row('Colour', <PaintBrush size={16} weight="regular" />, () => setView('colour'), { arrow: true, keepOpen: true })}
+            {row('Icon', <Shapes size={16} weight="regular" />, () => setView('icon'), { arrow: true, keepOpen: true })}
+            {row('Delete group', <Trash size={16} weight="regular" />, () => onDelete(group), { danger: true })}
           </>
         )}
         {view === 'colour' && (

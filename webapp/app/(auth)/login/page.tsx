@@ -72,15 +72,15 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8 p-10 card-vapor neon-border login-card">
         <div className="text-center">
           <h2 className="text-5xl font-bold neon-text mb-2 flex items-center justify-center gap-3">
-            <Lightning size={32} weight="duotone" />
+            <Lightning size={32} weight="regular" />
             <span className="docklite-logo-dock">Dock</span>
             <span className="docklite-logo-lite">Lite</span>
-            <Sparkle size={26} weight="duotone" />
+            <Sparkle size={26} weight="regular" />
           </h2>
           <p className="text-lg font-bold flex items-center justify-center gap-2" style={{ color: 'var(--text-primary)' }}>
-            <Sparkle size={18} weight="duotone" />
+            <Sparkle size={18} weight="regular" />
             Docker Control Panel
-            <Database size={18} weight="duotone" />
+            <Database size={18} weight="regular" />
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export default function LoginPage() {
               color: 'var(--status-error)'
             }}>
               <span className="inline-flex items-center gap-2">
-                <XCircle size={18} weight="duotone" />
+                <XCircle size={18} weight="regular" />
                 {error}
               </span>
             </div>
@@ -106,7 +106,7 @@ export default function LoginPage() {
           <div className="space-y-5">
             <div>
               <label htmlFor="username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <UserCircle size={18} weight="duotone" />
+                <UserCircle size={18} weight="regular" />
                 USERNAME
               </label>
               <input
@@ -124,7 +124,7 @@ export default function LoginPage() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <Lock size={18} weight="duotone" />
+                <Lock size={18} weight="regular" />
                 PASSWORD
               </label>
               <input
@@ -143,7 +143,7 @@ export default function LoginPage() {
             {needsCode && (
               <div>
                 <label htmlFor="code" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <ShieldCheck size={18} weight="duotone" />
+                  <ShieldCheck size={18} weight="regular" />
                   CODE FROM YOUR AUTHENTICATOR APP
                 </label>
                 <input
@@ -174,7 +174,7 @@ export default function LoginPage() {
           >
             {loading ? 'Signing in...' : (
               <span className="inline-flex items-center gap-2">
-                <SignIn size={18} weight="duotone" />
+                <SignIn size={18} weight="regular" />
                 {needsCode ? 'Verify' : 'Sign In'}
               </span>
             )}
@@ -184,7 +184,7 @@ export default function LoginPage() {
             ━━━━━━━━━━━━━━━━━━━━━━━
             <br />
             <span className="inline-flex items-center gap-2">
-              <CheckCircle size={14} weight="duotone" />
+              <CheckCircle size={14} weight="regular" />
               SYSTEM ONLINE
             </span>
             <br />

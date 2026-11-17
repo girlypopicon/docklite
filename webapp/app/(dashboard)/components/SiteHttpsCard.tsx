@@ -164,22 +164,22 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
     };
   }, [domain]);
 
-  let icon = <LockOpen size={18} weight="duotone" style={{ color: 'var(--status-warning)' }} />;
+  let icon = <LockOpen size={18} weight="regular" style={{ color: 'var(--status-warning)' }} />;
   let headline = 'No certificate on this server';
   let detail = 'Visitors can only reach this site over plain http:// unless Cloudflare provides HTTPS in front of it.';
   if (cert) {
     const days = cert.daysUntilExpiry ?? null;
     const date = cert.expiryDate ? new Date(cert.expiryDate).toLocaleDateString() : null;
     if (days !== null && days < 0) {
-      icon = <WarningCircle size={18} weight="duotone" style={{ color: 'var(--status-error)' }} />;
+      icon = <WarningCircle size={18} weight="regular" style={{ color: 'var(--status-error)' }} />;
       headline = 'Certificate expired';
       detail = `It expired on ${date}. Browsers will show a security warning until it’s renewed.`;
     } else if (days !== null && days < 30) {
-      icon = <WarningCircle size={18} weight="duotone" style={{ color: 'var(--status-warning)' }} />;
+      icon = <WarningCircle size={18} weight="regular" style={{ color: 'var(--status-warning)' }} />;
       headline = `Certificate expires in ${days} day${days === 1 ? '' : 's'}`;
       detail = `Valid until ${date}. Let’s Encrypt certificates normally renew themselves about 30 days before this.`;
     } else {
-      icon = <Lock size={18} weight="duotone" style={{ color: 'var(--text-green)' }} />;
+      icon = <Lock size={18} weight="regular" style={{ color: 'var(--text-green)' }} />;
       headline = 'HTTPS certificate is valid';
       detail = date ? `Valid until ${date}${days !== null ? ` (${days} days)` : ''}; it renews automatically.` : 'Certificate installed.';
     }

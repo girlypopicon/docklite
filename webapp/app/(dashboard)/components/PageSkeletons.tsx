@@ -37,7 +37,7 @@ export function ContainersPageSkeleton() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <Package size={26} weight="duotone" />
+            <Package size={26} weight="regular" />
             Containers
           </h1>
           <div className="flex items-center gap-3">
@@ -114,7 +114,7 @@ export function DatabasesPageSkeleton() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
-            <Database size={24} weight="duotone" />
+            <Database size={24} weight="regular" />
             Databases
           </h1>
           <Bone className="h-4 w-48" />

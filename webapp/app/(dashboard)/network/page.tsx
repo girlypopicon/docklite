@@ -141,14 +141,14 @@ interface DiagnosticsResponse {
 type NetworkTab = 'identity' | 'dns' | 'ports' | 'firewall' | 'ingress' | 'certs' | 'nginx' | 'diagnostics';
 
 const tabs: Array<{ key: NetworkTab; label: string; icon: JSX.Element }> = [
-  { key: 'identity', label: 'Identity', icon: <WifiHigh size={18} weight="duotone" /> },
-  { key: 'dns', label: 'DNS', icon: <Globe size={18} weight="duotone" /> },
-  { key: 'ports', label: 'Ports', icon: <Plugs size={18} weight="duotone" /> },
-  { key: 'firewall', label: 'Firewall', icon: <ShieldCheck size={18} weight="duotone" /> },
-  { key: 'ingress', label: 'Ingress', icon: <Plug size={18} weight="duotone" /> },
-  { key: 'certs', label: 'Certificates', icon: <Lock size={18} weight="duotone" /> },
-  { key: 'nginx', label: 'Nginx', icon: <Stack size={18} weight="duotone" /> },
-  { key: 'diagnostics', label: 'Diagnostics', icon: <Pulse size={18} weight="duotone" /> },
+  { key: 'identity', label: 'Identity', icon: <WifiHigh size={18} weight="regular" /> },
+  { key: 'dns', label: 'DNS', icon: <Globe size={18} weight="regular" /> },
+  { key: 'ports', label: 'Ports', icon: <Plugs size={18} weight="regular" /> },
+  { key: 'firewall', label: 'Firewall', icon: <ShieldCheck size={18} weight="regular" /> },
+  { key: 'ingress', label: 'Ingress', icon: <Plug size={18} weight="regular" /> },
+  { key: 'certs', label: 'Certificates', icon: <Lock size={18} weight="regular" /> },
+  { key: 'nginx', label: 'Nginx', icon: <Stack size={18} weight="regular" /> },
+  { key: 'diagnostics', label: 'Diagnostics', icon: <Pulse size={18} weight="regular" /> },
 ];
 
 function NetworkPageInner() {
@@ -263,7 +263,7 @@ function NetworkPageInner() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <Globe size={26} weight="duotone" />
+            <Globe size={26} weight="regular" />
             Network
           </h1>
           <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -300,7 +300,7 @@ function NetworkPageInner() {
         <div className="space-y-6">
           {loadingOverview ? (
             <div className="text-sm font-mono flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-              <SpinnerGap size={14} weight="duotone" className="animate-spin" />
+              <SpinnerGap size={14} weight="regular" className="animate-spin" />
               Loading network identity...
             </div>
           ) : overview ? (
@@ -496,7 +496,7 @@ function NetworkPageInner() {
         <div className="space-y-6">
           {loadingFirewall ? (
             <div className="text-sm font-mono flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-              <SpinnerGap size={14} weight="duotone" className="animate-spin" />
+              <SpinnerGap size={14} weight="regular" className="animate-spin" />
               Loading firewall status...
             </div>
           ) : firewall ? (
@@ -560,12 +560,12 @@ function NetworkPageInner() {
                   <div className="mt-3 text-sm">
                     {firewall.otherPorts.length > 0 ? (
                       <span className="inline-flex items-center gap-2" style={{ color: 'var(--status-warning)' }}>
-                        <WarningCircle size={14} weight="duotone" />
+                        <WarningCircle size={14} weight="regular" />
                         Review non-standard open ports.
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-                        <CheckCircle size={14} weight="duotone" />
+                        <CheckCircle size={14} weight="regular" />
                         No unexpected open ports detected.
                       </span>
                     )}
@@ -670,7 +670,7 @@ function NetworkPageInner() {
         <div className="space-y-6">
           {loadingIngress ? (
             <div className="text-sm font-mono flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-              <SpinnerGap size={14} weight="duotone" className="animate-spin" />
+              <SpinnerGap size={14} weight="regular" className="animate-spin" />
               Loading ingress details...
             </div>
           ) : ingress ? (
@@ -793,12 +793,12 @@ function NetworkPageInner() {
               >
                 {runningDiagnostics ? (
                   <span className="inline-flex items-center gap-2">
-                    <SpinnerGap size={14} weight="duotone" className="animate-spin" />
+                    <SpinnerGap size={14} weight="regular" className="animate-spin" />
                     Running…
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-2">
-                    <Pulse size={14} weight="duotone" />
+                    <Pulse size={14} weight="regular" />
                     Run Diagnostics
                   </span>
                 )}
@@ -837,12 +837,12 @@ function NetworkPageInner() {
                         <td className="py-2 pr-2">
                           {result.status === 'ok' ? (
                             <span className="inline-flex items-center gap-1" style={{ color: 'var(--text-green)' }}>
-                              <CheckCircle size={12} weight="duotone" />
+                              <CheckCircle size={12} weight="regular" />
                               OK
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1" style={{ color: 'var(--status-error)' }}>
-                              <XCircle size={12} weight="duotone" />
+                              <XCircle size={12} weight="regular" />
                               FAIL
                             </span>
                           )}

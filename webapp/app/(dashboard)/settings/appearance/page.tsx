@@ -104,7 +104,7 @@ export default function AppearanceSettingsPage() {
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-          <Palette size={20} weight="duotone" />
+          <Palette size={20} weight="regular" />
           Appearance Settings
         </h2>
         <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -115,7 +115,7 @@ export default function AppearanceSettingsPage() {
       {/* Theme Selection */}
       <div className="card-vapor p-6 rounded-xl">
         <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-          <Palette size={20} weight="duotone" />
+          <Palette size={20} weight="regular" />
           Theme Selection
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -142,7 +142,7 @@ export default function AppearanceSettingsPage() {
       {/* Font Settings */}
       <div className="card-vapor p-6 rounded-xl">
         <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-          <TextT size={20} weight="duotone" />
+          <TextT size={20} weight="regular" />
           Font Settings
         </h2>
         <div className="space-y-4">
@@ -174,7 +174,7 @@ export default function AppearanceSettingsPage() {
       {/* Visual Effects */}
       <div className="card-vapor p-6 rounded-xl">
         <h2 className="text-2xl font-bold neon-text mb-6 flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
-          <Sparkle size={20} weight="duotone" />
+          <Sparkle size={20} weight="regular" />
           Visual Effects
         </h2>
         <div className="space-y-6">
@@ -222,7 +222,7 @@ export default function AppearanceSettingsPage() {
       {/* Preview: the real container card with made-up data */}
       <div className="card-vapor p-6 rounded-xl">
         <h2 className="text-2xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
-          <Eye size={20} weight="duotone" />
+          <Eye size={20} weight="regular" />
           Preview
         </h2>
         <p className="text-sm opacity-70 mb-6" style={{ color: 'var(--text-secondary)' }}>

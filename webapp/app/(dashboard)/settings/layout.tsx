@@ -22,7 +22,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     <div className="max-w-[1400px] mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold neon-text mb-2 flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
-          <Gear size={24} weight="duotone" />
+          <Gear size={24} weight="regular" />
           Settings
         </h1>
         <p className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>

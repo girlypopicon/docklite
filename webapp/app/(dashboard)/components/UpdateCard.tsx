@@ -139,7 +139,7 @@ export default function UpdateCard() {
     <div className="card-vapor p-6 rounded-xl">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-          <ArrowFatUp size={20} weight="duotone" />
+          <ArrowFatUp size={20} weight="regular" />
           DockLite Updates
         </h2>
         <button
@@ -149,7 +149,7 @@ export default function UpdateCard() {
           style={{ color: 'var(--text-secondary)' }}
           title="Check for updates"
         >
-          <ArrowClockwise size={16} weight="duotone" className={loading ? 'animate-spin' : ''} />
+          <ArrowClockwise size={16} weight="regular" className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
@@ -188,31 +188,31 @@ export default function UpdateCard() {
             </div>
           ) : finishedOk ? (
             <div className="mb-4 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--text-green)' }}>
-              <CheckCircle size={18} weight="duotone" /> Updated to {status.version}. Reloading…
+              <CheckCircle size={18} weight="regular" /> Updated to {status.version}. Reloading…
             </div>
           ) : failed ? (
             <div className="mb-4 p-3 rounded-lg text-sm" style={{ border: '1px solid var(--status-warning)' }}>
               <div className="font-bold flex items-center gap-2" style={{ color: 'var(--status-warning)' }}>
-                <WarningCircle size={18} weight="duotone" />
+                <WarningCircle size={18} weight="regular" />
                 {status.state === 'rolled-back' ? 'The update did not work, so DockLite went back to the version that did.' : 'The update did not finish.'}
               </div>
               <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{status.stateMessage}</div>
             </div>
           ) : status.checkError ? (
             <div className="mb-4 flex items-center gap-2 text-sm" style={{ color: 'var(--status-warning)' }}>
-              <WarningCircle size={18} weight="duotone" /> Couldn’t check for updates: {status.checkError}
+              <WarningCircle size={18} weight="regular" /> Couldn’t check for updates: {status.checkError}
             </div>
           ) : status.version === 'unknown' ? (
             <div className="mb-4 flex items-center gap-2 text-sm" style={{ color: 'var(--status-warning)' }}>
-              <WarningCircle size={18} weight="duotone" /> Couldn’t read the installed version, so I can’t tell whether you’re up to date.
+              <WarningCircle size={18} weight="regular" /> Couldn’t read the installed version, so I can’t tell whether you’re up to date.
             </div>
           ) : status.updateAvailable ? (
             <div className="mb-4 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--text-yellow)' }}>
-              <WarningCircle size={18} weight="duotone" /> Version {status.latestVersion} is available
+              <WarningCircle size={18} weight="regular" /> Version {status.latestVersion} is available
             </div>
           ) : (
             <div className="mb-4 flex items-center gap-2 text-sm font-bold" style={{ color: 'var(--text-green)' }}>
-              <CheckCircle size={18} weight="duotone" /> You have the newest version
+              <CheckCircle size={18} weight="regular" /> You have the newest version
             </div>
           )}
 
@@ -236,7 +236,7 @@ export default function UpdateCard() {
                   color: 'var(--button-text)',
                 }}
               >
-                <ArrowFatUp size={16} weight="duotone" className={waiting ? 'animate-bounce' : ''} />
+                <ArrowFatUp size={16} weight="regular" className={waiting ? 'animate-bounce' : ''} />
                 {waiting ? 'Updating…' : `Update to ${status.latestVersion}`}
               </button>
             )}

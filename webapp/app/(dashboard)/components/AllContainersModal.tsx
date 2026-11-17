@@ -235,7 +235,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-              <Cube size={20} weight="duotone" /> All Containers
+              <Cube size={20} weight="regular" /> All Containers
             </h2>
             <p className="text-xs font-mono mt-0.5" style={{ color: 'var(--text-secondary)' }}>
               Track, untrack, and manage .dkl manifests for all Docker containers.
@@ -322,19 +322,19 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                               <button onClick={() => handleAction(c.id, 'restart')} title="Restart"
                                 className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
                                 style={{ color: 'var(--text-cyan)' }}>
-                                <ArrowClockwise size={15} weight="duotone" />
+                                <ArrowClockwise size={15} weight="regular" />
                               </button>
                               <button onClick={() => handleAction(c.id, 'stop')} title="Stop"
                                 className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
                                 style={{ color: 'var(--status-warning)' }}>
-                                <Stop size={15} weight="duotone" />
+                                <Stop size={15} weight="regular" />
                               </button>
                             </>
                           ) : (
                             <button onClick={() => handleAction(c.id, 'start')} title="Start"
                               className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
                               style={{ color: 'var(--text-green)' }}>
-                              <Play size={15} weight="duotone" />
+                              <Play size={15} weight="regular" />
                             </button>
                           )}
 
@@ -344,7 +344,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                               title="Write .dkl manifest"
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-colors hover:bg-white/10"
                               style={{ color: 'var(--status-warning)', border: '1px solid rgba(var(--status-warning-rgb),0.3)' }}>
-                              <FilePlus size={12} weight="duotone" /> Write .dkl
+                              <FilePlus size={12} weight="regular" /> Write .dkl
                             </button>
                           )}
 
@@ -354,7 +354,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                               title="Claim as DockLite site"
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-colors hover:bg-white/10"
                               style={{ color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb),0.3)' }}>
-                              <CheckCircle size={12} weight="duotone" /> Claim
+                              <CheckCircle size={12} weight="regular" /> Claim
                             </button>
                           )}
 
@@ -364,7 +364,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                               title="Track container"
                               className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
                               style={{ color: 'var(--text-purple)' }}>
-                              <Eye size={15} weight="duotone" />
+                              <Eye size={15} weight="regular" />
                             </button>
                           )}
                           {(key === 'tracked') && (
@@ -372,7 +372,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                               title="Untrack container"
                               className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
                               style={{ color: 'var(--text-muted)' }}>
-                              <EyeSlash size={15} weight="duotone" />
+                              <EyeSlash size={15} weight="regular" />
                             </button>
                           )}
 
@@ -380,7 +380,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
                           <button onClick={() => handleAction(c.id, 'delete', c.name)} title="Delete"
                             className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
                             style={{ color: 'var(--status-error)' }}>
-                            <Trash size={15} weight="duotone" />
+                            <Trash size={15} weight="regular" />
                           </button>
                         </div>
                       </div>
@@ -443,7 +443,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
               <button onClick={submitClaim} disabled={claimSaving || !claimForm.domain.trim()}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
                 style={{ background: 'rgba(var(--neon-cyan-rgb),0.15)', color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb),0.3)' }}>
-                {claimSaving ? <SpinnerGap size={12} className="animate-spin" /> : <CheckCircle size={12} weight="duotone" />}
+                {claimSaving ? <SpinnerGap size={12} className="animate-spin" /> : <CheckCircle size={12} weight="regular" />}
                 Claim + Write .dkl
               </button>
               <button onClick={() => setClaimTarget(null)} className="px-3 py-1.5 rounded-lg text-xs font-bold"
@@ -458,7 +458,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
           <div className="flex items-center justify-between">
             <div>
               <div className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
-                <MagnifyingGlass size={15} weight="duotone" /> Scan Disk for .dkl Files
+                <MagnifyingGlass size={15} weight="regular" /> Scan Disk for .dkl Files
               </div>
               <p className="text-[11px] font-mono mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                 Finds .dkl manifests under /var/www/sites that aren&apos;t registered in DockLite.
@@ -467,7 +467,7 @@ export default function AllContainersModal({ onClose }: AllContainersModalProps)
             <button onClick={scanDisk} disabled={scanning}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50"
               style={{ background: 'rgba(var(--neon-purple-rgb),0.15)', color: 'var(--text-purple)', border: '1px solid rgba(var(--neon-purple-rgb),0.3)' }}>
-              {scanning ? <SpinnerGap size={12} className="animate-spin" /> : <MagnifyingGlass size={12} weight="duotone" />}
+              {scanning ? <SpinnerGap size={12} className="animate-spin" /> : <MagnifyingGlass size={12} weight="regular" />}
               Scan
             </button>
           </div>

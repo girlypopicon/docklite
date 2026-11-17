@@ -27,14 +27,14 @@ interface TabDef {
 }
 
 const TABS: TabDef[] = [
-  { id: 'general', label: 'General', icon: <Gear size={18} weight="duotone" />, render: () => <GeneralSettings /> },
-  { id: 'appearance', label: 'Appearance', icon: <Palette size={18} weight="duotone" />, render: () => <AppearanceSettings /> },
-  { id: 'sidebars', label: 'Sidebars', icon: <SidebarSimple size={18} weight="duotone" />, render: () => <SidebarSettings /> },
-  { id: 'topbar', label: 'Top bar', icon: <Rows size={18} weight="duotone" />, render: () => <TopBarSettings /> },
-  { id: 'security', label: 'Security', icon: <Lock size={18} weight="duotone" />, render: () => <PasswordSettings /> },
-  { id: 'users', label: 'Users', icon: <UsersThree size={18} weight="duotone" />, adminOnly: true, render: () => <UsersSettings /> },
-  { id: 'cloudflare', label: 'Cloudflare', icon: <Cloud size={18} weight="duotone" />, adminOnly: true, render: () => <CloudflareSettings /> },
-  { id: 'system', label: 'System', icon: <Wrench size={18} weight="duotone" />, adminOnly: true, render: () => <SystemSettings /> },
+  { id: 'general', label: 'General', icon: <Gear size={18} weight="regular" />, render: () => <GeneralSettings /> },
+  { id: 'appearance', label: 'Appearance', icon: <Palette size={18} weight="regular" />, render: () => <AppearanceSettings /> },
+  { id: 'sidebars', label: 'Sidebars', icon: <SidebarSimple size={18} weight="regular" />, render: () => <SidebarSettings /> },
+  { id: 'topbar', label: 'Top bar', icon: <Rows size={18} weight="regular" />, render: () => <TopBarSettings /> },
+  { id: 'security', label: 'Security', icon: <Lock size={18} weight="regular" />, render: () => <PasswordSettings /> },
+  { id: 'users', label: 'Users', icon: <UsersThree size={18} weight="regular" />, adminOnly: true, render: () => <UsersSettings /> },
+  { id: 'cloudflare', label: 'Cloudflare', icon: <Cloud size={18} weight="regular" />, adminOnly: true, render: () => <CloudflareSettings /> },
+  { id: 'system', label: 'System', icon: <Wrench size={18} weight="regular" />, adminOnly: true, render: () => <SystemSettings /> },
 ];
 
 /**
@@ -132,7 +132,7 @@ function SettingsModal({
       >
         <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.3)' }}>
           <h1 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <Gear size={22} weight="duotone" />
+            <Gear size={22} weight="regular" />
             Settings
           </h1>
           <CloseButton onClick={onClose} label="Close settings" />

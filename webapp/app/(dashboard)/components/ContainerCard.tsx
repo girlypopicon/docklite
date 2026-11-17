@@ -197,19 +197,19 @@ export default function ContainerCard({
       >
         {view === 'main' && (
           <>
-            {onViewDetails && item('View details', <Eye size={16} weight="duotone" />, () => onViewDetails(container.id, container.name))}
-            {!isVirtual && item('Open in terminal', <TerminalWindow size={16} weight="duotone" />, () =>
+            {onViewDetails && item('View details', <Eye size={16} weight="regular" />, () => onViewDetails(container.id, container.name))}
+            {!isVirtual && item('Open in terminal', <TerminalWindow size={16} weight="regular" />, () =>
               window.dispatchEvent(new CustomEvent('docklite-open-terminal', { detail: { containerId: container.id, containerName: container.name } })),
             )}
             <div className="my-1 border-t" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.25)' }} />
-            {onStyle && !isVirtual && item('Colour', <PaintBrush size={16} weight="duotone" />, () => setView('colour'), { arrow: true, keepOpen: true })}
-            {onStyle && !isVirtual && item('Icon', <Shapes size={16} weight="duotone" />, () => setView('icon'), { arrow: true, keepOpen: true })}
-            {item('Copy name', <Copy size={16} weight="duotone" />, copyName)}
-            {canAssign && onAssign && isSite && item('Assign to user', <UserCircle size={16} weight="duotone" />, () => onAssign(container.id, container.name))}
-            {onRemoveFromGroup && item('Take out of group', <FolderMinus size={16} weight="duotone" />, () => onRemoveFromGroup(container.id, container.name))}
-            {onMoveGroup && !isVirtual && item('Move to group', <FolderSimple size={16} weight="duotone" />, () => onMoveGroup(container.id, container.name))}
-            {onToggleTracking && !isVirtual && item(isTracked ? 'Untrack' : 'Track', <Eye size={16} weight="duotone" />, () => onToggleTracking(container.id, isTracked), { danger: isTracked })}
-            {onDelete && isSite && item('Delete', <Trash size={16} weight="duotone" />, () => onDelete(container.id, container.labels?.['docklite.domain'] || container.name), { danger: true })}
+            {onStyle && !isVirtual && item('Colour', <PaintBrush size={16} weight="regular" />, () => setView('colour'), { arrow: true, keepOpen: true })}
+            {onStyle && !isVirtual && item('Icon', <Shapes size={16} weight="regular" />, () => setView('icon'), { arrow: true, keepOpen: true })}
+            {item('Copy name', <Copy size={16} weight="regular" />, copyName)}
+            {canAssign && onAssign && isSite && item('Assign to user', <UserCircle size={16} weight="regular" />, () => onAssign(container.id, container.name))}
+            {onRemoveFromGroup && item('Take out of group', <FolderMinus size={16} weight="regular" />, () => onRemoveFromGroup(container.id, container.name))}
+            {onMoveGroup && !isVirtual && item('Move to group', <FolderSimple size={16} weight="regular" />, () => onMoveGroup(container.id, container.name))}
+            {onToggleTracking && !isVirtual && item(isTracked ? 'Untrack' : 'Track', <Eye size={16} weight="regular" />, () => onToggleTracking(container.id, isTracked), { danger: isTracked })}
+            {onDelete && isSite && item('Delete', <Trash size={16} weight="regular" />, () => onDelete(container.id, container.labels?.['docklite.domain'] || container.name), { danger: true })}
           </>
         )}
 
@@ -345,12 +345,12 @@ export default function ContainerCard({
 
         <div className="mt-auto space-y-1 text-xs font-mono min-w-0">
           <div className="flex items-center gap-1.5 min-w-0" style={{ color: 'var(--text-secondary)' }}>
-            <Clock size={14} weight="duotone" className="shrink-0" />
+            <Clock size={14} weight="regular" className="shrink-0" />
             <span className="truncate">{isRunning ? container.uptime || 'Running' : 'Not running'}</span>
           </div>
           {ports && (
             <div className="flex items-center gap-1.5 min-w-0" style={{ color: 'var(--text-purple)' }}>
-              <Plug size={14} weight="duotone" className="shrink-0" />
+              <Plug size={14} weight="regular" className="shrink-0" />
               <span className="truncate">{ports}</span>
             </div>
           )}

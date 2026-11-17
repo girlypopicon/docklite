@@ -170,7 +170,7 @@ export default function DnsPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <Globe size={22} weight="duotone" />
+            <Globe size={22} weight="regular" />
             DNS Management
           </h2>
           <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
@@ -183,7 +183,7 @@ export default function DnsPanel() {
             disabled={loading}
             className="cyber-button flex items-center gap-2"
           >
-            <ArrowsClockwise size={20} weight="duotone" />
+            <ArrowsClockwise size={20} weight="regular" />
             Sync from Cloudflare
           </button>
         )}
@@ -198,7 +198,7 @@ export default function DnsPanel() {
               : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
-          <Gear size={18} weight="duotone" className="inline mr-2" />
+          <Gear size={18} weight="regular" className="inline mr-2" />
           Configuration
         </button>
         <button
@@ -209,7 +209,7 @@ export default function DnsPanel() {
               : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
-          <Globe size={18} weight="duotone" className="inline mr-2" />
+          <Globe size={18} weight="regular" className="inline mr-2" />
           Zones
         </button>
         <button
@@ -306,12 +306,12 @@ function ZonesTab({ zones, canImport, importing, onImport, onAddZone, onDeleteZo
         <div className="flex gap-2">
           {canImport && (
             <button onClick={onImport} disabled={importing} className="cyber-button-sm flex items-center gap-2">
-              <ArrowsClockwise size={16} weight="duotone" />
+              <ArrowsClockwise size={16} weight="regular" />
               {importing ? 'Importing…' : 'Import from Cloudflare'}
             </button>
           )}
           <button onClick={onAddZone} className="cyber-button-sm flex items-center gap-2">
-            <Plus size={16} weight="duotone" />
+            <Plus size={16} weight="regular" />
             Add manually
           </button>
         </div>
@@ -392,7 +392,7 @@ function RecordsTab({ records, zones, selectedZone, onZoneChange, onAddRecord, o
             }}
           >
             <span className="inline-flex items-center gap-2">
-              <WarningCircle size={14} weight="duotone" />
+              <WarningCircle size={14} weight="regular" />
               Add a zone first to create records
             </span>
           </div>
@@ -401,7 +401,7 @@ function RecordsTab({ records, zones, selectedZone, onZoneChange, onAddRecord, o
             onClick={onAddRecord}
             className="cyber-button-sm flex items-center gap-2"
           >
-            <Plus size={16} weight="duotone" />
+            <Plus size={16} weight="regular" />
             Add Record
           </button>
         )}

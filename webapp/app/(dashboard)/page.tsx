@@ -473,11 +473,11 @@ export default function DashboardPage() {
     return (
       <div className="text-center py-16">
         <div className="flex justify-center mb-4 animate-pulse">
-          <WarningCircle size={48} weight="duotone" color="var(--status-error)" />
+          <WarningCircle size={48} weight="regular" color="var(--status-error)" />
         </div>
         <div className="text-xl font-bold mb-4" style={{ color: 'var(--status-error)' }}>{error}</div>
         <button onClick={refresh} className="btn-neon px-6 py-3 font-bold inline-flex items-center gap-2">
-          <ArrowsClockwise size={20} weight="duotone" />
+          <ArrowsClockwise size={20} weight="regular" />
           Try again
         </button>
       </div>
@@ -491,7 +491,7 @@ export default function DashboardPage() {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
         <div>
           <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <Package size={26} weight="duotone" />
+            <Package size={26} weight="regular" />
             Boxes
           </h1>
           <div className="flex items-center gap-3">
@@ -504,7 +504,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex flex-wrap gap-2 sm:gap-3">
           <button onClick={() => setShowNewBox(true)} className="btn-neon inline-flex items-center gap-2 whitespace-nowrap">
-            <PlusCircle size={20} weight="duotone" />
+            <PlusCircle size={20} weight="regular" />
             New box
           </button>
           <button
@@ -515,11 +515,11 @@ export default function DashboardPage() {
             className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 text-sm font-bold rounded-lg transition-all hover:scale-105"
             style={{ background: 'linear-gradient(135deg, var(--neon-pink) 0%, var(--neon-purple) 100%)', color: 'var(--button-text)', boxShadow: '0 0 12px rgba(var(--neon-pink-rgb), 0.4)' }}
           >
-            <FolderPlus size={20} weight="duotone" />
+            <FolderPlus size={20} weight="regular" />
             New group
           </button>
           <button onClick={() => setShowAll(true)} className="btn-neon inline-flex items-center gap-2 whitespace-nowrap">
-            <Package size={20} weight="duotone" />
+            <Package size={20} weight="regular" />
             All containers
           </button>
         </div>
@@ -530,17 +530,17 @@ export default function DashboardPage() {
       {nothingAtAll ? (
         <div className="mt-12 text-center py-20 card-vapor max-w-3xl mx-auto animate-fade-in">
           <div className="flex justify-center mb-6 animate-float">
-            <Package size={80} weight="duotone" style={{ color: 'var(--text-cyan)', filter: 'drop-shadow(0 0 20px var(--neon-cyan))' }} />
+            <Package size={80} weight="regular" style={{ color: 'var(--text-cyan)', filter: 'drop-shadow(0 0 20px var(--neon-cyan))' }} />
           </div>
           <h2 className="text-3xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>Welcome to DockLite!</h2>
           <p className="text-lg mb-8" style={{ color: 'var(--text-secondary)' }}>No boxes yet. Make a website or a database to get started.</p>
           <div className="flex gap-4 justify-center flex-wrap">
             <button onClick={() => setShowNewBox(true)} className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3">
-              <PlusCircle size={22} weight="duotone" />
+              <PlusCircle size={22} weight="regular" />
               New box
             </button>
             <button onClick={() => setShowAll(true)} className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3">
-              <Package size={22} weight="duotone" />
+              <Package size={22} weight="regular" />
               See all containers
             </button>
           </div>
@@ -548,7 +548,7 @@ export default function DashboardPage() {
       ) : nothingMatches ? (
         <div className="mt-12 text-center py-16 card-vapor max-w-2xl mx-auto animate-fade-in">
           <div className="flex justify-center mb-4 opacity-50">
-            <WarningCircle size={64} weight="duotone" style={{ color: 'var(--text-yellow)' }} />
+            <WarningCircle size={64} weight="regular" style={{ color: 'var(--text-yellow)' }} />
           </div>
           <p className="text-xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>No boxes match this filter</p>
           <button
@@ -558,7 +558,7 @@ export default function DashboardPage() {
             }}
             className="btn-neon inline-flex items-center gap-2"
           >
-            <ArrowsClockwise size={20} weight="duotone" />
+            <ArrowsClockwise size={20} weight="regular" />
             Show everything
           </button>
         </div>

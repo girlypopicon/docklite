@@ -64,7 +64,7 @@ export default function DownPageCard() {
     <div className="card-vapor p-4 sm:p-6 rounded-xl space-y-4">
       <div>
         <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-          <Warning size={22} weight="duotone" />
+          <Warning size={22} weight="regular" />
           Page for stopped boxes
         </h2>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>

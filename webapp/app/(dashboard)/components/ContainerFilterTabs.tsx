@@ -15,10 +15,10 @@ interface Props {
 }
 
 const TABS: { id: TypeFilter; label: string; icon: React.ReactNode }[] = [
-  { id: 'all', label: 'All', icon: <Package size={18} weight="duotone" /> },
-  { id: 'sites', label: 'Sites', icon: <Globe size={18} weight="duotone" /> },
-  { id: 'databases', label: 'Databases', icon: <Database size={18} weight="duotone" /> },
-  { id: 'other', label: 'Other', icon: <Cube size={18} weight="duotone" /> },
+  { id: 'all', label: 'All', icon: <Package size={18} weight="regular" /> },
+  { id: 'sites', label: 'Sites', icon: <Globe size={18} weight="regular" /> },
+  { id: 'databases', label: 'Databases', icon: <Database size={18} weight="regular" /> },
+  { id: 'other', label: 'Other', icon: <Cube size={18} weight="regular" /> },
 ];
 
 const STATUSES: { id: StatusFilter; label: string; dot?: string }[] = [

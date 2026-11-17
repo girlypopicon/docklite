@@ -2,10 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Space+Mono:wght@400;700&family=Press+Start+2P&display=swap');
 
 @layer base {
   :root {
+    /* Text fonts (loaded in layout.tsx). --font-ui is the theme's own; --font-data is for ports, paths and code. */
+    --font-ui: var(--font-display), 'Segoe UI', system-ui, sans-serif;
+    --font-data: var(--font-code), ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
     /* Native controls (select menus, date pickers, scrollbars, checkboxes)
        follow the theme instead of showing up bright white on dark pages. */
     color-scheme: dark;
@@ -70,11 +72,13 @@
 
   [data-theme='corpo'],
   [data-theme='corpo-blue'] {
+    --font-ui: var(--font-sans), 'Segoe UI', system-ui, sans-serif;
     color-scheme: light;
   }
 
   /* Unicorn is left exactly as it was: no forced color scheme. */
   [data-theme='unicorn'] {
+    --font-ui: var(--font-round), ui-rounded, 'Segoe UI', system-ui, sans-serif;
     color-scheme: normal;
   }
 
@@ -729,7 +733,6 @@
 
   [data-theme='unicorn'] .docklite-container-name,
   [data-theme='unicorn'] .docklite-db-title {
-    font-family: 'Space Grotesk', 'Noto Sans', 'Avenir Next', sans-serif;
     letter-spacing: 0.01em;
   }
 
@@ -968,10 +971,10 @@
     background: linear-gradient(135deg, var(--bg-gradient-1) 0%, var(--bg-gradient-2) 50%, var(--bg-gradient-3) 100%);
     background-attachment: fixed;
     color: var(--text-primary);
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-ui);
     font-size: 14px;
     line-height: 1.6;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.01em;
     animation: pageLoad 0.4s ease-out;
   }
 
@@ -1007,7 +1010,7 @@
 
   /* Better typography hierarchy */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-ui);
     font-weight: 700;
     letter-spacing: 0.5px;
   }
@@ -1318,7 +1321,7 @@
     text-shadow: none;
     box-shadow: 0 2px 10px rgba(var(--neon-purple-rgb), 0.25);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-ui);
     font-size: 0.875rem;
     letter-spacing: 0.3px;
     border: none;
@@ -1396,7 +1399,7 @@
     padding: 0.5rem 1rem;
     box-shadow: 0 2px 12px rgba(var(--neon-purple-rgb), 0.3);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-ui);
     font-size: 0.875rem;
     border: none;
     cursor: pointer;
@@ -1432,7 +1435,7 @@
     border-radius: 12px;
     padding: 0.875rem 1rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-family: 'Space Mono', monospace;
+    font-family: var(--font-ui);
     font-size: 0.9rem;
     letter-spacing: 0.3px;
     position: relative;

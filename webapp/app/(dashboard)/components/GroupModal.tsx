@@ -40,7 +40,7 @@ export default function GroupModal({ group, boxes, addable, renderBox, onAdd, on
 
         <div className="pr-12 mb-5">
           <h2 className="text-2xl font-bold flex items-center gap-3 min-w-0" style={{ color: 'var(--text-primary)' }}>
-            <Icon size={28} weight="duotone" className="shrink-0" style={{ color: 'var(--text-cyan)' }} />
+            <Icon size={28} weight="regular" className="shrink-0" style={{ color: 'var(--text-cyan)' }} />
             <span className="truncate">{group.name}</span>
             {group.linked && (
               <span className="inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded-full shrink-0" style={{ color: 'var(--text-cyan)', border: '1px solid var(--text-cyan)' }}>

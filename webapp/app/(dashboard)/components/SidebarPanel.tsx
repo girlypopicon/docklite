@@ -202,7 +202,7 @@ export default function SidebarPanel({
         title={nothingChosen ? 'Choose what this sidebar shows' : `Open ${side} sidebar`}
         aria-label={nothingChosen ? 'Choose what this sidebar shows' : `Open ${side} sidebar`}
       >
-        {isDbEditMode ? <Database size={16} weight="duotone" /> : isFileBrowser ? <FolderOpen size={16} weight="duotone" /> : <SidebarSimple size={16} weight="duotone" />}
+        {isDbEditMode ? <Database size={16} weight="regular" /> : isFileBrowser ? <FolderOpen size={16} weight="regular" /> : <SidebarSimple size={16} weight="regular" />}
         <span className="docklite-sidebar-toggle-label">{isDbEditMode ? (side === 'left' ? 'Schema' : 'Details') : isFileBrowser ? 'Files' : 'Panel'}</span>
       </button>
     );
@@ -237,7 +237,7 @@ export default function SidebarPanel({
               style={{ borderColor: 'rgba(var(--neon-cyan-rgb), 0.4)', color: 'var(--text-cyan)' }}
               title="Change what this sidebar shows"
             >
-              <Gear size={14} weight="duotone" />
+              <Gear size={14} weight="regular" />
               Change
             </button>}
           </div>
@@ -295,7 +295,7 @@ export default function SidebarPanel({
 function StatsContent() {
   return (
     <div className="text-sm font-mono">
-                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <ChartLine size={16} weight="duotone" />
+                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <ChartLine size={16} weight="regular" />
         Live Stats
       </div>
       <p className="text-xs opacity-70 mb-4">System metrics</p>
@@ -320,7 +320,7 @@ function StatsContent() {
 function LogsContent() {
   return (
     <div className="text-sm font-mono">
-                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <Scroll size={16} weight="duotone" />
+                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <Scroll size={16} weight="regular" />
         Container Logs
       </div>
       <div className="bg-black/50 p-3 rounded-lg text-xs space-y-1 font-mono" style={{ color: 'var(--text-green)' }}>
@@ -336,7 +336,7 @@ function LogsContent() {
 function DatabaseContent() {
   return (
     <div className="text-sm font-mono">
-                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <Database size={16} weight="duotone" />
+                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <Database size={16} weight="regular" />
         Database Query
       </div>
       <textarea
@@ -352,7 +352,7 @@ function DatabaseContent() {
         className="btn-neon w-full py-2 text-sm font-bold"
       >
         <span className="inline-flex items-center gap-2">
-          <Play size={14} weight="duotone" />
+          <Play size={14} weight="regular" />
           Execute Query
         </span>
       </button>
@@ -363,7 +363,7 @@ function DatabaseContent() {
 function SearchContent() {
   return (
     <div className="text-sm font-mono">
-                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <MagnifyingGlass size={16} weight="duotone" />
+                  <div className="mb-4 text-accent-cyan font-bold flex items-center gap-2">        <MagnifyingGlass size={16} weight="regular" />
         Search
       </div>
       <input

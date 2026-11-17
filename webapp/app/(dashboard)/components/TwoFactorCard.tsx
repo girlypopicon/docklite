@@ -89,7 +89,7 @@ export default function TwoFactorCard() {
     <div className="cyber-card p-4 sm:p-6 space-y-4">
       <div>
         <h3 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-          <ShieldCheck size={22} weight="duotone" />
+          <ShieldCheck size={22} weight="regular" />
           Two-factor login
           {status?.enabled && (
             <span className="ml-1 px-2 py-0.5 rounded-full text-xs" style={{ color: 'var(--text-green)', border: '1px solid var(--neon-green)' }}>
@@ -108,7 +108,7 @@ export default function TwoFactorCard() {
       {codes && (
         <div className="space-y-3 p-4 rounded-lg" style={{ border: '1px solid var(--neon-yellow)', background: 'rgba(var(--status-warning-rgb), 0.08)' }}>
           <p className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-yellow)' }}>
-            <WarningCircle size={18} weight="duotone" />
+            <WarningCircle size={18} weight="regular" />
             Save these recovery codes now. They are shown only once.
           </p>
           <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>

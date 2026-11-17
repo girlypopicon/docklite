@@ -69,14 +69,14 @@ export default function DebugPage() {
       case 'connected':
       case 'authenticated':
       case 'healthy':
-        return <CheckCircle size={20} weight="duotone" />;
+        return <CheckCircle size={20} weight="regular" />;
       case 'error':
       case 'unhealthy':
-        return <XCircle size={20} weight="duotone" />;
+        return <XCircle size={20} weight="regular" />;
       case 'not_authenticated':
-        return <WarningCircle size={20} weight="duotone" />;
+        return <WarningCircle size={20} weight="regular" />;
       default:
-        return <Question size={20} weight="duotone" />;
+        return <Question size={20} weight="regular" />;
     }
   };
 
@@ -101,12 +101,12 @@ export default function DebugPage() {
       <div className="min-h-screen bg-gray-900 text-white p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold mb-8 text-center flex items-center justify-center gap-3">
-            <MagnifyingGlass size={28} weight="duotone" />
+            <MagnifyingGlass size={28} weight="regular" />
             DockLite Debug Dashboard
           </h1>
           <div className="text-center">
             <div className="text-2xl mb-4 flex items-center justify-center gap-2">
-              <SpinnerGap size={22} weight="duotone" className="animate-spin" />
+              <SpinnerGap size={22} weight="regular" className="animate-spin" />
               Loading debug information...
             </div>
             <div className="text-ink-muted">This may take a few seconds</div>
@@ -121,12 +121,12 @@ export default function DebugPage() {
       <div className="min-h-screen bg-gray-900 text-white p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold mb-8 text-center flex items-center justify-center gap-3">
-            <MagnifyingGlass size={28} weight="duotone" />
+            <MagnifyingGlass size={28} weight="regular" />
             DockLite Debug Dashboard
           </h1>
           <div className="bg-status-error/20 border border-status-error/40 rounded-lg p-6">
             <h2 className="text-2xl font-bold mb-4 text-status-error flex items-center gap-2">
-              <XCircle size={22} weight="duotone" />
+              <XCircle size={22} weight="regular" />
               Error
             </h2>
             <p className="text-status-error mb-4">{error}</p>
@@ -147,7 +147,7 @@ export default function DebugPage() {
       <div className="min-h-screen bg-gray-900 text-white p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl font-bold mb-8 text-center flex items-center justify-center gap-3">
-            <MagnifyingGlass size={28} weight="duotone" />
+            <MagnifyingGlass size={28} weight="regular" />
             DockLite Debug Dashboard
           </h1>
           <div className="text-center text-ink-muted">
@@ -162,7 +162,7 @@ export default function DebugPage() {
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center flex items-center justify-center gap-3">
-          <MagnifyingGlass size={28} weight="duotone" />
+          <MagnifyingGlass size={28} weight="regular" />
           DockLite Debug Dashboard
         </h1>
 
@@ -186,7 +186,7 @@ export default function DebugPage() {
               onClick={fetchDebugData}
               className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded inline-flex items-center gap-2"
             >
-              <ArrowClockwise size={16} weight="duotone" />
+              <ArrowClockwise size={16} weight="regular" />
               Refresh
             </button>
           </div>
@@ -300,7 +300,7 @@ export default function DebugPage() {
         {/* Troubleshooting Tips */}
         <div className="bg-status-warning/20 border border-status-warning/40 rounded-lg p-6">
           <h3 className="text-xl font-bold mb-4 text-status-warning flex items-center gap-2">
-            <Lightbulb size={20} weight="duotone" />
+            <Lightbulb size={20} weight="regular" />
             Troubleshooting Tips
           </h3>
           <div className="space-y-2 text-status-warning/80">

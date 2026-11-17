@@ -121,7 +121,7 @@ export default function DatabaseContextPanel() {
     return (
       <div className="text-sm opacity-80" style={{ color: 'var(--text-secondary)' }}>
         <div className="font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-          <Table size={16} weight="duotone" /> Table details
+          <Table size={16} weight="regular" /> Table details
         </div>
         Pick a table in the schema on the left to see its columns and copy ready-made SQL.
       </div>
@@ -132,7 +132,7 @@ export default function DatabaseContextPanel() {
     <div className="space-y-4 text-sm">
       <div>
         <div className="font-bold flex items-center gap-2 break-all" style={{ color: 'var(--text-cyan)' }}>
-          <Table size={16} weight="duotone" /> {table.name}
+          <Table size={16} weight="regular" /> {table.name}
         </div>
         <div className="text-xs opacity-70 mt-1">
           {table.columns.length} column{table.columns.length === 1 ? '' : 's'}
@@ -161,10 +161,10 @@ export default function DatabaseContextPanel() {
 
       <div className="space-y-2">
         <button type="button" className="btn-neon w-full px-3 py-2 text-xs font-bold inline-flex items-center justify-center gap-2" onClick={() => copy(`SELECT * FROM ${quote(table.name)} LIMIT 100;`, 'the SELECT query')}>
-          <Copy size={14} weight="duotone" /> Copy SELECT query
+          <Copy size={14} weight="regular" /> Copy SELECT query
         </button>
         <button type="button" className="btn-neon w-full px-3 py-2 text-xs font-bold inline-flex items-center justify-center gap-2" onClick={() => copy(buildCreateTable(table), 'CREATE TABLE')}>
-          <Copy size={14} weight="duotone" /> Copy CREATE TABLE
+          <Copy size={14} weight="regular" /> Copy CREATE TABLE
         </button>
         <p className="text-[11px] opacity-60">
           CREATE TABLE is rebuilt from the column list, so indexes and foreign keys aren&apos;t included.
@@ -175,7 +175,7 @@ export default function DatabaseContextPanel() {
         <div className="pt-3 border-t" style={{ borderColor: 'rgba(var(--neon-purple-rgb), 0.3)' }}>
           <div className="text-xs font-bold mb-2" style={{ color: 'var(--text-purple)' }}>Connect from a terminal</div>
           <button type="button" className="btn-neon w-full px-3 py-2 text-xs font-bold inline-flex items-center justify-center gap-2" onClick={() => copy(`psql -h ${window.location.hostname} -p ${port} -U <user> ${dbName}`, 'the psql command')}>
-            <Copy size={14} weight="duotone" /> Copy psql command
+            <Copy size={14} weight="regular" /> Copy psql command
           </button>
           <p className="text-[11px] opacity-60 mt-1">Fill in your database user; the password isn&apos;t included.</p>
         </div>

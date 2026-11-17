@@ -163,7 +163,7 @@ export default function NginxPanel() {
       {/* Top actions bar */}
       <div className="card-vapor p-4 rounded-xl flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-          <Stack size={18} weight="duotone" />
+          <Stack size={18} weight="regular" />
           <span className="font-bold text-sm">Nginx Config Manager</span>
         </div>
 
@@ -174,7 +174,7 @@ export default function NginxPanel() {
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
             style={{ background: 'rgba(var(--neon-cyan-rgb), 0.12)', color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb), 0.3)' }}
           >
-            {testing ? <SpinnerGap size={13} className="animate-spin" /> : <CheckCircle size={13} weight="duotone" />}
+            {testing ? <SpinnerGap size={13} className="animate-spin" /> : <CheckCircle size={13} weight="regular" />}
             Test Config
           </button>
           <button
@@ -183,7 +183,7 @@ export default function NginxPanel() {
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
             style={{ background: 'rgba(var(--neon-purple-rgb), 0.12)', color: 'var(--text-purple)', border: '1px solid rgba(var(--neon-purple-rgb), 0.3)' }}
           >
-            {reloading ? <SpinnerGap size={13} className="animate-spin" /> : <ArrowClockwise size={13} weight="duotone" />}
+            {reloading ? <SpinnerGap size={13} className="animate-spin" /> : <ArrowClockwise size={13} weight="regular" />}
             Reload Nginx
           </button>
         </div>
@@ -243,15 +243,15 @@ export default function NginxPanel() {
                   <div className="flex items-center gap-2 shrink-0">
                     {site.enabled ? (
                       <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: 'var(--text-green)' }}>
-                        <CheckCircle size={12} weight="duotone" /> enabled
+                        <CheckCircle size={12} weight="regular" /> enabled
                       </span>
                     ) : site.hasConfig ? (
                       <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: 'var(--status-warning)' }}>
-                        <Warning size={12} weight="duotone" /> disabled
+                        <Warning size={12} weight="regular" /> disabled
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                        <XCircle size={12} weight="duotone" /> no config
+                        <XCircle size={12} weight="regular" /> no config
                       </span>
                     )}
                     {isDirty(site.domain) && (
@@ -309,7 +309,7 @@ export default function NginxPanel() {
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40"
                             style={{ background: 'rgba(var(--neon-cyan-rgb), 0.15)', color: 'var(--text-cyan)', border: '1px solid rgba(var(--neon-cyan-rgb), 0.3)' }}
                           >
-                            {editor?.saving ? <SpinnerGap size={12} className="animate-spin" /> : <FloppyDisk size={12} weight="duotone" />}
+                            {editor?.saving ? <SpinnerGap size={12} className="animate-spin" /> : <FloppyDisk size={12} weight="regular" />}
                             Save & Reload
                           </button>
                           <button
@@ -318,7 +318,7 @@ export default function NginxPanel() {
                             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40"
                             style={{ background: 'rgba(var(--neon-purple-rgb), 0.1)', color: 'var(--text-purple)', border: '1px solid rgba(var(--neon-purple-rgb), 0.2)' }}
                           >
-                            <ArrowCounterClockwise size={12} weight="duotone" />
+                            <ArrowCounterClockwise size={12} weight="regular" />
                             Revert
                           </button>
                         </div>

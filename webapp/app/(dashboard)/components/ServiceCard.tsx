@@ -76,7 +76,7 @@ export default function ServiceCard({ serviceKey, service, badge, startedLabel, 
               onClick={() => onLogs(serviceKey)}
               disabled={logsLoading && logsOpen}
             >
-              <Scroll size={12} weight="duotone" />
+              <Scroll size={12} weight="regular" />
               Logs
             </button>
           )}
@@ -90,7 +90,7 @@ export default function ServiceCard({ serviceKey, service, badge, startedLabel, 
           className="text-xs flex items-start gap-2 p-2 rounded-lg"
           style={{ background: 'rgba(var(--status-warning-rgb), 0.12)', border: '1px solid rgba(var(--status-warning-rgb), 0.4)', color: 'var(--text-primary)' }}
         >
-          <WarningCircle size={14} weight="duotone" style={{ color: 'var(--status-warning)', flexShrink: 0, marginTop: 1 }} />
+          <WarningCircle size={14} weight="regular" style={{ color: 'var(--status-warning)', flexShrink: 0, marginTop: 1 }} />
           <span>{service.warning}</span>
         </div>
       )}

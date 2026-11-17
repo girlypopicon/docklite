@@ -415,9 +415,9 @@ export default function FileManager({ userSession, embedded = false }: FileManag
                 >
                   <span>
                     {file.isDirectory ? (
-                      <Folder size={16} weight="duotone" />
+                      <Folder size={16} weight="regular" />
                     ) : (
-                      <FileIcon size={16} weight="duotone" />
+                      <FileIcon size={16} weight="regular" />
                     )}
                   </span>
                   <span className="docklite-file-name text-sm truncate">{file.name}</span>
@@ -581,7 +581,7 @@ export default function FileManager({ userSession, embedded = false }: FileManag
                           onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
                           <span className="inline-flex items-center gap-2">
-                            <Folder size={16} weight="duotone" />
+                            <Folder size={16} weight="regular" />
                             {entry.name}
                           </span>
                         </button>

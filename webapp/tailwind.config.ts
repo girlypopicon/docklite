@@ -8,6 +8,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // the theme's own text font, and the monospace used for ports, paths and code (see globals.css)
+        sans: ['var(--font-ui)'],
+        mono: ['var(--font-data)'],
+      },
       screens: {
         '3xl': '2560px',
       },
