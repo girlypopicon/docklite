@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowClockwise, ArrowFatUp, CheckCircle, WarningCircle, ArrowSquareOut } from '@phosphor-icons/react';
+import ConfirmModal from './ConfirmModal';
 
 interface UpdateStatus {
   version: string;
@@ -61,6 +62,7 @@ export default function UpdateCard() {
   const [reconnecting, setReconnecting] = useState(false);
   const [target, setTarget] = useState<string | null>(null); // the version we asked for, e.g. "1.2.0"
   const [showLog, setShowLog] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const waiting = starting || status?.updateRunning || reconnecting;
 
@@ -109,12 +111,7 @@ export default function UpdateCard() {
 
   const startUpdate = async () => {
     if (!status) return;
-    const ok = window.confirm(
-      `Update DockLite from ${status.version} to ${status.latestVersion}?\n\n` +
-        'Your sites keep running. The dashboard restarts for about a minute and this page updates by itself.\n' +
-        'A safety backup of your DockLite data is made first, and if the new version does not start properly it goes back automatically.'
-    );
-    if (!ok) return;
+    setConfirming(false);
     setError(null);
     setStarting(true);
     setTarget(status.latestVersion);
@@ -228,7 +225,7 @@ export default function UpdateCard() {
           <div className="flex items-center gap-3 flex-wrap">
             {status.updateAvailable && !finishedOk && (
               <button
-                onClick={startUpdate}
+                onClick={() => setConfirming(true)}
                 disabled={!!waiting}
                 className="px-6 py-2 rounded-lg font-bold transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 style={{
@@ -269,6 +266,22 @@ export default function UpdateCard() {
             </div>
           )}
         </>
+      )}
+
+      {confirming && status && (
+        <ConfirmModal
+          type="info"
+          title={`Update to ${status.latestVersion}?`}
+          message={
+            `DockLite ${status.version} → ${status.latestVersion}\n\n` +
+            'Your sites keep running. The dashboard restarts for about a minute and this page updates by itself.\n\n' +
+            'A safety backup of your DockLite data is made first, and if the new version does not start properly it goes back automatically.'
+          }
+          confirmText="Update now"
+          cancelText="Not yet"
+          onConfirm={startUpdate}
+          onCancel={() => setConfirming(false)}
+        />
       )}
 
       {!status && error && (

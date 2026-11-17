@@ -67,7 +67,7 @@ export default function ConfirmModal({
             {title}
           </h2>
           <p
-            className="text-sm font-mono leading-relaxed"
+            className="text-sm font-mono leading-relaxed whitespace-pre-line"
             style={{ color: 'var(--text-secondary)' }}
           >
             {message}
