@@ -106,6 +106,29 @@ export default function DashboardPage() {
   // dragging
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  // Boxes the person has collapsed to a thin bar (kept in this browser, by box name).
+  const [collapsed, setCollapsed] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('docklite-collapsed-boxes') || '[]');
+      if (Array.isArray(saved)) setCollapsed(saved.filter((x) => typeof x === 'string'));
+    } catch {
+      /* no saved list: nothing is collapsed */
+    }
+  }, []);
+  const toggleCollapsed = (id: string) => {
+    const box = boxes.find((b) => b.id === id) || allBoxes.find((b) => b.id === id);
+    if (!box) return;
+    setCollapsed((cur) => {
+      const next = cur.includes(box.name) ? cur.filter((n) => n !== box.name) : [...cur, box.name];
+      try {
+        localStorage.setItem('docklite-collapsed-boxes', JSON.stringify(next));
+      } catch {
+        /* private mode: it stays collapsed until the page is reloaded */
+      }
+      return next;
+    });
+  };
 
   const toast = useToast();
 
@@ -214,6 +237,10 @@ export default function DashboardPage() {
   const visibleGroups = groups.filter((g) => !filtering || membersOf(g).some(matchesFilters));
   const looseBoxes = sortContainers(allBoxes.filter((b) => !groupOfBox.has(b.name) && matchesFilters(b)));
   const nothingAtAll = allBoxes.length === 0 && groups.length === 0;
+  const openBoxes = looseBoxes.filter((b) => !collapsed.includes(b.name));
+  const collapsedBoxes = looseBoxes.filter((b) => collapsed.includes(b.name));
+  const collapsedStacks: ContainerInfo[][] = [];
+  for (let i = 0; i < collapsedBoxes.length; i += 6) collapsedStacks.push(collapsedBoxes.slice(i, i + 6));
   const nothingMatches = !nothingAtAll && visibleGroups.length === 0 && looseBoxes.length === 0;
   const openGroup = groups.find((g) => g.id === openGroupId) || null;
 
@@ -449,7 +476,7 @@ export default function DashboardPage() {
 
   // ---- drawing -----------------------------------------------------------------------------------------------------
 
-  const card = (b: ContainerInfo, opts?: { inGroup?: boolean }) => (
+  const card = (b: ContainerInfo, opts?: { inGroup?: boolean; collapsed?: boolean }) => (
     <ContainerCard
       container={b}
       onAction={handleAction}
@@ -464,6 +491,8 @@ export default function DashboardPage() {
       onRemoveFromGroup={opts?.inGroup ? (id) => removeFromGroup(id) : undefined}
       onToggleTracking={me?.isAdmin ? handleToggleTracking : undefined}
       onStyle={handleBoxStyle}
+      collapsed={Boolean(opts?.collapsed)}
+      onToggleCollapse={opts?.inGroup ? undefined : toggleCollapsed}
     />
   );
 
@@ -585,7 +614,7 @@ export default function DashboardPage() {
                 )}
               </Tile>
             ))}
-            {looseBoxes.map((b) => {
+            {openBoxes.map((b) => {
               const isFile = b.id.startsWith('sqlite-');
               return (
                 <Tile key={boxKey(b.id)} id={boxKey(b.id)} draggable={!isFile} droppable={!isFile}>
@@ -608,6 +637,26 @@ export default function DashboardPage() {
                 </Tile>
               );
             })}
+            {collapsedStacks.map((stack, i) => (
+              // Six collapsed boxes take the space of one open card.
+              <div key={`stack-${i}`} className="grid gap-1" style={{ aspectRatio: '5 / 7', gridTemplateRows: 'repeat(6, minmax(0, 1fr))' }}>
+                {stack.map((b) => {
+                  const isFile = b.id.startsWith('sqlite-');
+                  return (
+                    <Tile key={boxKey(b.id)} id={boxKey(b.id)} draggable={!isFile} droppable={!isFile}>
+                      {({ isOver }) => {
+                        const hovering = isOver && Boolean(activeId) && activeId !== boxKey(b.id);
+                        return (
+                          <div className="relative h-full rounded-lg" style={hovering ? { outline: '3px solid rgba(255,255,255,0.9)', outlineOffset: 2 } : undefined}>
+                            {card(b, { collapsed: true })}
+                          </div>
+                        );
+                      }}
+                    </Tile>
+                  );
+                })}
+              </div>
+            ))}
           </div>
           <DragOverlay dropAnimation={null}>
             {activeBox ? (

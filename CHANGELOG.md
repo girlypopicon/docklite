@@ -5,6 +5,13 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.13.0 (2026-11-17)
+
+### Added
+- **Collapse a box.** In a box's ⋯ menu, **Collapse** shrinks it to a thin bar with just its name (when it fits) and the ⋯ menu. Collapsed boxes
+  stack up, six to the space of one open card; **Expand** in the same menu brings it back. Clicking a bar still opens the box's details, and
+  bars can be dragged into groups like cards. Which boxes are collapsed is remembered in this browser.
+
 ## 1.12.1 (2026-11-17)
 
 ### Changed
