@@ -25,6 +25,21 @@ Fixes found by running DockLite on a live server, plus proving the update path.
 - **1.4.3: take over an existing server.** Adopt existing containers and site folders (no `.dkl` needed) without touching a running
   site, plus a Site folders tab (strays, orphans, move to trash).
 
+## Next up (decided 2026-11-17)
+In this order; each is its own release.
+1. **Security review of the agent**, with the owner's goal that it is as close to perfect as it can be. Start with authentication and tokens,
+   then everything that reaches files, nginx or a shell, then the root helper, then tests that try to break each. A new **Security tab** in a
+   box's details tells a non-expert in plain words whether anyone is attacking it (failed logins, scanners, blocked requests, odd traffic)
+   instead of making them read raw logs.
+2. **Box resource limiter** (CPU, memory, process count), set from the box's details.
+3. **Declutter the dashboard** and put the **Network page in plain language** (visitors, front door, site).
+4. **Branded "back soon" page** (`docklite nginx maintenance on|off`).
+5. **Terminal tabs** with persistent sessions. **Game servers** come next and use the same terminal as their console.
+6. **Move boxes between servers**: install the agent on another server over SSH, then move a box with near-zero downtime. The two servers talk
+   to each other directly (no relay), sync files and data while the old box keeps running, then a short final catch-up, the DNS switch, and the
+   old box stays stopped until the owner confirms. Keys and tokens for the other server are stored encrypted and never shown again. Only after
+   the security review.
+
 ## 1.5.0: production-ready
 - **Stacks: isolated by default, connected on purpose.** Containers (each one a "box") no longer share one network. A
   group of boxes (a "stack") gets its own network, start/stop/restart as one, and connection strings between its
