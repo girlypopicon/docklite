@@ -7,6 +7,10 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## 1.12.1 (2026-11-17)
 
+### Changed
+- **The logo is now a neon gift box** with a big glowing heart and a star above it (replacing the first cardboard-box drawing), in the top bar, the
+  browser tab, the home-screen icon and the two-factor QR code. Other logo ideas are kept in `docs/brand/options/`.
+
 ### Fixed
 - Vapor: the patterned strips under the top bar and along the bottom looked like red and green hearts. They are now plain neon bars.
 - Switching to the Unicorn theme could leave pale, unreadable text on the theme cards (and elsewhere) in some browsers, because the text
