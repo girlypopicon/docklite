@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.14.0 (2026-11-17)
+
 ### Added
 - **A padlock on each website's card** showing its HTTPS state in a few words (valid with days left, expiring soon, expired, or none),
   checked in the background and shared between cards. Hover for the full sentence.
