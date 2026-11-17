@@ -5,6 +5,12 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **A padlock on each website's card** showing its HTTPS state in a few words (valid with days left, expiring soon, expired, or none),
+  checked in the background and shared between cards. Hover for the full sentence.
+- **An SSL tab in a box's details** with the certificate and HTTPS controls (they used to sit at the top of Overview). Closing the tab
+  refreshes the padlocks on the cards.
+
 ## 1.13.0 (2026-11-17)
 
 ### Added
