@@ -193,6 +193,8 @@ export default function DatabaseEditPage() {
     const handleTableSelect = (event: Event) => {
       const detail = (event as CustomEvent<{ table: string }>).detail;
       if (detail?.table) {
+        // The Details panel may open later than this event, so keep the table where it can ask for it.
+        (window as any).__dockliteSelectedTable = detail.table;
         setSelectedTable(detail.table);
         setSelectedColumn(null);
         setSaveError(null);

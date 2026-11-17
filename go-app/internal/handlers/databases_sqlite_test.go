@@ -106,3 +106,41 @@ func TestPrepareSQLiteFileCreatesInsideMountAndRefusesOutside(t *testing.T) {
 		t.Fatalf("outside the mount should say where to put it, got: %v", err)
 	}
 }
+
+func TestParseMySQLXMLKeepsNullApartFromEmpty(t *testing.T) {
+	xmlOut := `<?xml version="1.0"?>
+<resultset statement="SELECT * FROM t" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <row>
+	<field name="id">1</field>
+	<field name="note" xsi:nil="true" />
+	<field name="name"></field>
+  </row>
+  <row>
+	<field name="id">2</field>
+	<field name="note">a &amp; b</field>
+	<field name="name">x</field>
+  </row>
+</resultset>`
+	cols, rows, err := parseMySQLXML(xmlOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(cols, ",") != "id,note,name" || len(rows) != 2 {
+		t.Fatalf("columns %v rows %d", cols, len(rows))
+	}
+	if rows[0]["note"] != nil || rows[0]["name"] != "" || rows[1]["note"] != "a & b" {
+		t.Fatalf("null vs empty vs escaped text wrong: %#v", rows)
+	}
+	if _, rows, _ := parseMySQLXML(""); len(rows) != 0 {
+		t.Fatal("empty output should be no rows")
+	}
+}
+
+func TestMySQLLiteralEscapes(t *testing.T) {
+	cases := map[string]any{"NULL": nil, "'it''s'": "it's", `'a\\b'`: `a\b`, "5": float64(5), "TRUE": true}
+	for want, in := range cases {
+		if got := mysqlLiteral(in); got != want {
+			t.Errorf("mysqlLiteral(%v) = %s, want %s", in, got, want)
+		}
+	}
+}
