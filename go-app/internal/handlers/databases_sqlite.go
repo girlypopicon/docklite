@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types"
+
 	"docklite-agent/internal/store"
 )
 
@@ -40,7 +42,7 @@ func hostPathForContainerFile(mounts []mountPair, containerPath string) (string,
 		}
 	}
 	if best < 0 {
-		return "", fmt.Errorf("%s is not inside a folder the site shares with DockLite, so it can't be opened from here", containerPath)
+		return "", fmt.Errorf("%s is not inside a folder this site shares with DockLite, so DockLite can't open it", containerPath)
 	}
 	rel := strings.TrimPrefix(clean, path.Clean(mounts[best].Dest))
 	host := filepath.Join(mounts[best].Source, filepath.FromSlash(rel))
@@ -48,6 +50,51 @@ func hostPathForContainerFile(mounts []mountPair, containerPath string) (string,
 		return "", fmt.Errorf("that path leaves the site's folder")
 	}
 	return host, nil
+}
+
+// mountPairs turns a container's mounts into source/destination pairs.
+func mountPairs(in []types.MountPoint) []mountPair {
+	out := make([]mountPair, 0, len(in))
+	for _, m := range in {
+		out = append(out, mountPair{Source: m.Source, Dest: m.Destination})
+	}
+	return out
+}
+
+// sqlitePathHelp names the folders of a site that DockLite can reach, for the error a wrong path gets.
+func sqlitePathHelp(mounts []mountPair) string {
+	var dests []string
+	for _, m := range mounts {
+		if m.Source != "" && strings.HasPrefix(m.Dest, "/") && m.Dest != "/" {
+			dests = append(dests, m.Dest)
+		}
+	}
+	if len(dests) == 0 {
+		return ""
+	}
+	return " Start the path with " + strings.Join(dests, " or ") + " (for example " + strings.TrimSuffix(dests[0], "/") + "/data/db.sqlite)."
+}
+
+// prepareSQLiteFile makes sure the database file exists on the host, so a new database can be opened straight
+// away (an empty SQLite file is a valid, empty database). It never touches a file that is already there.
+func prepareSQLiteFile(mounts []mountPair, containerPath string) error {
+	host, err := hostPathForContainerFile(mounts, containerPath)
+	if err != nil {
+		return fmt.Errorf("%v.%s", strings.TrimSuffix(err.Error(), "."), sqlitePathHelp(mounts))
+	}
+	if _, err := os.Stat(host); err == nil {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(host), 0o777); err != nil {
+		return fmt.Errorf("couldn't make the folder for the database: %v", err)
+	}
+	f, err := os.OpenFile(host, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o666)
+	if err != nil {
+		return fmt.Errorf("couldn't make the database file: %v", err)
+	}
+	_ = f.Close()
+	_ = os.Chmod(host, 0o666)
+	return nil
 }
 
 // openSQLiteDatabase opens the file a SQLite database record points at. The caller closes it.
@@ -59,11 +106,7 @@ func (h *Handlers) openSQLiteDatabase(ctx context.Context, rec *store.DatabaseRe
 	if err != nil {
 		return nil, "", fmt.Errorf("couldn't look at the site this database lives in: %v", err)
 	}
-	var mounts []mountPair
-	for _, m := range info.Mounts {
-		mounts = append(mounts, mountPair{Source: m.Source, Dest: m.Destination})
-	}
-	host, err := hostPathForContainerFile(mounts, rec.DBPath)
+	host, err := hostPathForContainerFile(mountPairs(info.Mounts), rec.DBPath)
 	if err != nil {
 		return nil, "", err
 	}

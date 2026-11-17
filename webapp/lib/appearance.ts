@@ -130,6 +130,13 @@ export async function syncAppearance(): Promise<void> {
 
 export function applyAppearance(appearance: Appearance) {
   const root = document.documentElement;
+  // Switching theme on a live page must not animate: cards and buttons have "transition: all", so their text colour
+  // would slide from the old theme's pale text to the new theme's, and for a moment (or longer, if the browser
+  // is busy) pale text sits on the new theme's light cards. Switch with transitions off, then turn them back on.
+  if (root.getAttribute('data-theme') && root.getAttribute('data-theme') !== appearance.theme) {
+    root.setAttribute('data-theme-switching', '');
+    window.setTimeout(() => root.removeAttribute('data-theme-switching'), 120);
+  }
   root.setAttribute('data-theme', appearance.theme);
   root.setAttribute('data-animations', appearance.animations ? 'on' : 'off');
   root.style.fontSize = `${FONT_SCALES[appearance.fontSize]}%`;

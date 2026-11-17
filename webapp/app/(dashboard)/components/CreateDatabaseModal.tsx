@@ -39,6 +39,14 @@ export default function CreateDatabaseModal({ type, sites, onBack, onClose, onCr
   const [error, setError] = useState('');
   const [info, setInfo] = useState<ConnectionInfo | null>(null);
 
+  // Where a site keeps its files inside its container: PHP and Node sites at /app, static sites at the web root.
+  const siteType = (id: string) => sites.find((x) => x.id === id)?.labels?.['docklite.type'] || '';
+  const defaultPathFor = (id: string) => (siteType(id) === 'static' ? '/usr/share/nginx/html/data/db.sqlite' : '/app/data/db.sqlite');
+  const chooseSite = (id: string) => {
+    setSiteId(id);
+    setPath(defaultPathFor(id));
+  };
+
   // A strong random password, made here so the person can see it before saving the database.
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -145,7 +153,7 @@ export default function CreateDatabaseModal({ type, sites, onBack, onClose, onCr
         <>
           <label className="block">
             <span className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Which website does it live in?</span>
-            <select value={siteId} onChange={(e) => setSiteId(e.target.value)} required className="input-vapor w-full">
+            <select value={siteId} onChange={(e) => chooseSite(e.target.value)} required className="input-vapor w-full">
               <option value="">Choose a website…</option>
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>{containerDisplayName(s)}</option>
@@ -156,6 +164,15 @@ export default function CreateDatabaseModal({ type, sites, onBack, onClose, onCr
             <span className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>File path inside the website</span>
             <input value={path} onChange={(e) => setPath(e.target.value)} required className="input-vapor w-full font-mono" />
           </label>
+          {siteId && siteType(siteId) === 'static' && (
+            <p className="text-xs flex gap-2 p-3 rounded-lg" style={{ background: 'rgba(var(--status-warning-rgb), 0.12)', color: 'var(--text-primary)' }}>
+              <WarningCircle size={16} weight="regular" className="shrink-0 mt-0.5" style={{ color: 'var(--status-warning)' }} />
+              <span>
+                This is a static website, so nothing on it can use a database, and every file in its folder can be downloaded by visitors.
+                A PHP or Node website is a better home for a SQLite file.
+              </span>
+            </p>
+          )}
           <p className="text-xs flex gap-2 p-3 rounded-lg" style={{ background: 'rgba(var(--neon-cyan-rgb), 0.08)', color: 'var(--text-secondary)' }}>
             <Info size={16} weight="regular" className="shrink-0 mt-0.5" style={{ color: 'var(--text-cyan)' }} />
             <span>

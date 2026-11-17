@@ -70,6 +70,7 @@ export default function DatabaseEditPage() {
   const [auth, setAuth] = useState<{ username: string; password: string } | null>(null);
   const [dbInfo, setDbInfo] = useState<DatabaseInfo | null>(null);
   const [tables, setTables] = useState<TableInfo[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [loadingSchema, setLoadingSchema] = useState(false);
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -143,7 +144,14 @@ export default function DatabaseEditPage() {
       }
     };
     fetchSchema();
-  }, [dbId, auth]);
+  }, [dbId, auth, refreshKey]);
+
+  // A quick action changed the database: load the table list again, and the open table if it still exists.
+  useEffect(() => {
+    const again = () => setRefreshKey((n) => n + 1);
+    window.addEventListener('docklite-db-changed', again);
+    return () => window.removeEventListener('docklite-db-changed', again);
+  }, []);
 
   const loadTableData = useCallback(
     async (tableName: string) => {
@@ -212,7 +220,7 @@ export default function DatabaseEditPage() {
   useEffect(() => {
     if (!selectedTable) return;
     loadTableData(selectedTable);
-  }, [selectedTable, loadTableData]);
+  }, [selectedTable, loadTableData, refreshKey]);
 
   const handleRunQuery = async () => {
     if (!dbId || !auth || !sql.trim()) return;

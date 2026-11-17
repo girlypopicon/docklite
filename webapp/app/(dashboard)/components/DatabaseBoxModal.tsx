@@ -144,7 +144,7 @@ export default function DatabaseBoxModal({ db, container, onClose, onChanged, on
   const inner = INNER_PORT[type];
 
   return (
-    <div className="fixed inset-0 z-[9000] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[9500] flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm" onClick={onClose}>
       <div
         className="card-vapor w-full max-w-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6 relative"
         style={{ background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)', border: '2px solid var(--modal-border)', boxShadow: '0 0 30px var(--modal-shadow)' }}
