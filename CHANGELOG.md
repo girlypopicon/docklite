@@ -5,6 +5,22 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.12.0 (2026-11-17)
+
+### Added
+- **Three new themes** in Settings → Appearance:
+  - **Vapor**: a striped sunset over a neon grid, palm trees, an iced tea can, and a can-pattern strip under the top bar and along the bottom.
+  - **Matrices**: a dark green terminal with faint code falling very slowly behind it.
+  - **Girlypop**: bright pinks, floating hearts and sparkles, little heart-and-sparkle corners on every card, pill buttons and neon on everything.
+- **New logo**: a heart and a star in a cardboard box, in the top bar, the browser tab and the home-screen icon. The old heart balloon is kept in
+  `docs/brand/logo-heart-balloon-original.png` in case you want it back.
+- **The logo shows up in your authenticator app** when you set up two-factor login (apps such as Aegis, 2FAS and Ente Auth show it beside the
+  code; Google Authenticator ignores it). It needs your panel to be reachable at its own address, not 127.0.0.1.
+
+### Fixed
+- The DockLite database inspector in Settings → System was see-through and unreadable. Dialogs that did not paint their own background now
+  always use the theme's solid dialog colours. Its column headings also no longer show a stray "0".
+
 ## 1.11.3 (2026-11-17)
 
 ### Added

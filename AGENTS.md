@@ -224,7 +224,7 @@ make clean              # Remove binaries and build artifacts
 ## Web GUI Theming Notes
 
 ### Multi-Theme Support
-The Web GUI supports multiple themes (cyberpunk, corpo, corpo-blue, unicorn, basic). When adding new UI components or styling:
+The Web GUI supports multiple themes (cyberpunk, corpo, corpo-blue, unicorn, basic, vapor, matrices, girlypop). When adding new UI components or styling:
 
 **⚠️ IMPORTANT: Avoid Hardcoded Colors**
 - **Never use hardcoded hex colors** like `#000`, `#0a0a1e`, `#1a0a2e`, `#ffffff`

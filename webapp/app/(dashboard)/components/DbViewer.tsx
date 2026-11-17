@@ -94,11 +94,12 @@ export default function DbViewer() {
       {isModalOpen && (
         <div
           className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0, 0, 0, 0.8)' }}
+          style={{ background: 'var(--modal-backdrop)' }}
           onClick={() => setIsModalOpen(false)}
         >
           <div
             className="card-vapor rounded-xl border-2 border-cyan-500 max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            style={{ background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)', borderColor: 'var(--modal-border)', boxShadow: '0 0 30px var(--modal-shadow)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -190,7 +191,7 @@ export default function DbViewer() {
                                     style={{ color: 'var(--text-purple)' }}
                                   >
                                     {col.name}
-                                    {col.pk && <Key size={12} weight="regular" className="ml-1 inline" />}
+                                    {!!col.pk && <Key size={12} weight="regular" className="ml-1 inline" />}
                                   </th>
                                 ))}
                               </tr>

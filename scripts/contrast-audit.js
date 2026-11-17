@@ -2,12 +2,12 @@
 // its real colour, finds the real background from a screenshot, and reports text below WCAG contrast (4.5, or 3 for large text).
 //
 //   node scripts/contrast-audit.js [themes] [pages]
-//   node scripts/contrast-audit.js cyberpunk,corpo,corpo-blue,unicorn,basic "/,/databases,/backups"
+//   node scripts/contrast-audit.js cyberpunk,corpo,corpo-blue,unicorn,basic,vapor,matrices,girlypop "/,/databases,/backups"
 //
 // Needs playwright-core (npm i playwright-core somewhere) and a Chromium: set CHROME_PATH to a chrome-headless-shell binary.
 // The demo login password is read from ~/docklite-demo/.demo-password.
 const { chromium } = require(process.env.PLAYWRIGHT_CORE || 'playwright-core'); const fs = require('fs'); const H = process.env.HOME;
-const THEMES = (process.argv[2] || 'cyberpunk,corpo,corpo-blue,unicorn,basic').split(',');
+const THEMES = (process.argv[2] || 'cyberpunk,corpo,corpo-blue,unicorn,basic,vapor,matrices,girlypop').split(',');
 const PAGES = (process.argv[3] || '/,/databases,/backups,/settings/users,/settings/cloudflare').split(',');
 const OUT = process.argv[4] || null;
 (async () => {

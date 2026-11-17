@@ -334,7 +334,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
         <div className="max-w-[1400px] mx-auto flex items-center gap-2 sm:gap-3 h-16 sm:h-20">
           <div className="flex-shrink-0 flex items-center gap-1.5 sm:gap-2 group">
             <Image
-              src="/dockliteiconL.png"
+              src="/docklite-logo.svg"
               alt="DockLite logo"
               width={30}
               height={30}

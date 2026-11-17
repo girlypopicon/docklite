@@ -1,0 +1,153 @@
+/* Vapor, Matrices and Girlypop. All three are dark themes: they only set the colour variables, then add their own background art
+   (webapp/public/themes, drawn by scripts/make-theme-art.py) on a fixed layer behind the page. Kept apart from globals.css. */
+
+/* ── Vapor: sunset, palm trees, neon grid and iced tea ─────────────────────────────────────────────────────────────── */
+[data-theme='vapor'] {
+  --bg-dark: #12062e; --bg-darker: #0d0426; --bg-card: rgba(29, 10, 58, 0.9);
+  --bg-gradient-1: #0d0426; --bg-gradient-2: #2a0d55; --bg-gradient-3: #5a1a7a;
+  --neon-cyan: #3df2ff; --neon-cyan-rgb: 61, 242, 255;
+  --neon-pink: #ff5fd2; --neon-pink-rgb: 255, 95, 210;
+  --neon-purple: #b388ff; --neon-purple-rgb: 179, 136, 255;
+  --neon-green: #7dffd0; --neon-green-rgb: 125, 255, 208;
+  --neon-yellow: #ffd36a; --neon-yellow-rgb: 255, 211, 106;
+  --text-cyan: #8ff6ff; --text-pink: #ff9fe5; --text-purple: #d2b8ff; --text-green: #9dffe0; --text-yellow: #ffe08a;
+  --text-primary: #f6ecff; --text-secondary: #d6c3f2; --text-muted: #bba6dd; --text-muted-rgb: 187, 166, 221;
+  --card-bg-1: rgba(32, 10, 66, 0.9); --card-bg-2: rgba(18, 6, 46, 0.88);
+  --card-border: rgba(255, 95, 210, 0.4);
+  --card-shadow: 0 8px 32px rgba(10, 2, 30, 0.5), 0 0 22px rgba(255, 95, 210, 0.18);
+  --input-bg: rgba(14, 5, 38, 0.85); --input-border: rgba(61, 242, 255, 0.45);
+  --button-text: #14052e; --focus-outline: #3df2ff;
+  --modal-bg-1: rgba(34, 11, 70, 0.99); --modal-bg-2: rgba(16, 5, 42, 0.99);
+  --modal-border: #ff5fd2; --modal-shadow: rgba(255, 95, 210, 0.45);
+  --surface-dim: rgba(14, 5, 38, 0.5); --surface-muted: rgba(24, 8, 54, 0.75); --surface-strong: rgba(38, 14, 80, 0.85);
+  --status-info: #3df2ff;
+  --font-ui: var(--font-display), 'Segoe UI', system-ui, sans-serif;
+}
+[data-theme='vapor'] body { background: #0d0426; }
+html[data-theme='vapor']::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: url('/themes/vapor-scene.svg') center bottom / cover no-repeat;
+}
+/* the can pattern: a strip under the top bar and one along the bottom edge of the window */
+html[data-theme='vapor']::after {
+  content: ''; position: fixed; left: 0; right: 0; bottom: 0; height: 12px; z-index: 5; pointer-events: none;
+  background: url('/themes/vapor-tea.svg') left center / auto 12px repeat-x; box-shadow: 0 0 14px rgba(24, 201, 192, 0.6);
+}
+[data-theme='vapor'] nav.card-vapor { position: relative; }
+[data-theme='vapor'] nav.card-vapor::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 14px; pointer-events: none;
+  background: url('/themes/vapor-tea.svg') left center / auto 14px repeat-x; opacity: .95;
+}
+[data-theme='vapor'] .card-vapor, [data-theme='vapor'] .cyber-card {
+  border: 1px solid rgba(255, 95, 210, 0.45) !important;
+  box-shadow: 0 8px 32px rgba(10, 2, 30, 0.55), 0 0 calc(18px * var(--glow)) rgba(255, 95, 210, 0.22), inset 0 0 22px rgba(61, 242, 255, 0.05) !important;
+}
+[data-theme='vapor'] .neon-text { text-shadow: 0 0 calc(8px * var(--glow)) rgba(255, 95, 210, 0.7), 0 0 calc(2px * var(--glow)) rgba(61, 242, 255, 0.6) !important; }
+[data-theme='vapor'] .cyber-button, [data-theme='vapor'] .cyber-button-sm, [data-theme='vapor'] .btn-neon {
+  background: linear-gradient(90deg, #ff5fd2 0%, #ff8a5c 55%, #ffd36a 100%) !important; color: #14052e !important; border: none !important;
+  box-shadow: 0 0 calc(14px * var(--glow)) rgba(255, 95, 210, 0.55) !important;
+}
+
+/* ── Matrices: a dark green terminal with code falling slowly behind it ────────────────────────────────────────────── */
+[data-theme='matrices'] {
+  --bg-dark: #020a05; --bg-darker: #010603; --bg-card: rgba(2, 16, 8, 0.9);
+  --bg-gradient-1: #010603; --bg-gradient-2: #02120a; --bg-gradient-3: #031a0d;
+  --neon-cyan: #00ff9c; --neon-cyan-rgb: 0, 255, 156;
+  --neon-pink: #5dff7a; --neon-pink-rgb: 93, 255, 122;
+  --neon-purple: #00cc6a; --neon-purple-rgb: 0, 204, 106;
+  --neon-green: #00ff6a; --neon-green-rgb: 0, 255, 106;
+  --neon-yellow: #d6ff6a; --neon-yellow-rgb: 214, 255, 106;
+  --text-cyan: #5dffc0; --text-pink: #9dff9a; --text-purple: #5df09a; --text-green: #7dff9e; --text-yellow: #e2ff8a;
+  --text-primary: #c9ffd9; --text-secondary: #8fdca8; --text-muted: #6fc08a; --text-muted-rgb: 111, 192, 138;
+  --card-bg-1: rgba(3, 20, 10, 0.92); --card-bg-2: rgba(1, 10, 5, 0.9);
+  --card-border: rgba(0, 255, 106, 0.32);
+  --card-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 14px rgba(0, 255, 106, 0.12);
+  --input-bg: rgba(1, 10, 5, 0.88); --input-border: rgba(0, 255, 106, 0.4);
+  --button-text: #00180a; --focus-outline: #00ff6a;
+  --modal-bg-1: rgba(3, 22, 11, 0.99); --modal-bg-2: rgba(1, 10, 5, 0.99);
+  --modal-border: #00ff6a; --modal-shadow: rgba(0, 255, 106, 0.4);
+  --surface-dim: rgba(1, 10, 5, 0.5); --surface-muted: rgba(2, 16, 8, 0.75); --surface-strong: rgba(3, 26, 13, 0.85);
+  --status-info: #00ff9c;
+  --font-ui: var(--font-code), ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+[data-theme='matrices'] body { background: #010603; }
+html[data-theme='matrices']::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: url('/themes/matrix-a.svg') 0 0 / 480px 700px repeat, url('/themes/matrix-b.svg') 0 0 / 576px 720px repeat;
+  opacity: .27; animation: matrix-rain 160s linear infinite;
+}
+@keyframes matrix-rain { to { background-position: 0 700px, 0 720px; } }
+@media (prefers-reduced-motion: reduce) { html[data-theme='matrices']::before { animation: none; } }
+[data-theme='matrices'] .retro-grid { background-image: none !important; }
+[data-theme='matrices'] .card-vapor, [data-theme='matrices'] .cyber-card {
+  border: 1px solid rgba(0, 255, 106, 0.35) !important; border-radius: 6px !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 calc(10px * var(--glow)) rgba(0, 255, 106, 0.18) !important;
+}
+[data-theme='matrices'] .neon-text { text-shadow: 0 0 calc(7px * var(--glow)) rgba(0, 255, 106, 0.6) !important; }
+[data-theme='matrices'] .cyber-button, [data-theme='matrices'] .cyber-button-sm, [data-theme='matrices'] .btn-neon {
+  background: linear-gradient(90deg, #00ff6a, #5dff9c) !important; color: #00180a !important; border: none !important; border-radius: 4px !important;
+  box-shadow: 0 0 calc(12px * var(--glow)) rgba(0, 255, 106, 0.5) !important;
+}
+
+/* ── Girlypop: bright pinks, hearts, sparkles and neon on everything ───────────────────────────────────────────────── */
+[data-theme='girlypop'] {
+  --bg-dark: #4a0838; --bg-darker: #3a0630; --bg-card: rgba(88, 8, 66, 0.9);
+  --bg-gradient-1: #4a0838; --bg-gradient-2: #7a0c58; --bg-gradient-3: #a0107a;
+  --neon-cyan: #ff9be0; --neon-cyan-rgb: 255, 155, 224;
+  --neon-pink: #ff4fc3; --neon-pink-rgb: 255, 79, 195;
+  --neon-purple: #ff2e9a; --neon-purple-rgb: 255, 46, 154;
+  --neon-green: #ffc2ee; --neon-green-rgb: 255, 194, 238;
+  --neon-yellow: #fff08a; --neon-yellow-rgb: 255, 240, 138;
+  --text-cyan: #ffd0f2; --text-pink: #ffb0e6; --text-purple: #ffc0ea; --text-green: #d6ffe8; --text-yellow: #fff2a0;
+  --text-primary: #fff3fb; --text-secondary: #ffd6f1; --text-muted: #ffbfe8; --text-muted-rgb: 255, 191, 232;
+  --card-bg-1: rgba(96, 8, 70, 0.92); --card-bg-2: rgba(66, 6, 52, 0.9);
+  --card-border: rgba(255, 79, 195, 0.8);
+  --card-shadow: 0 0 26px rgba(255, 46, 154, 0.55), 0 8px 28px rgba(30, 0, 24, 0.5);
+  --input-bg: rgba(60, 5, 46, 0.88); --input-border: rgba(255, 120, 215, 0.85);
+  --button-text: #4a0030; --focus-outline: #fff08a;
+  --modal-bg-1: rgba(104, 9, 76, 0.99); --modal-bg-2: rgba(62, 5, 48, 0.99);
+  --modal-border: #ff4fc3; --modal-shadow: rgba(255, 46, 154, 0.7);
+  --surface-dim: rgba(60, 5, 46, 0.5); --surface-muted: rgba(88, 8, 66, 0.75); --surface-strong: rgba(120, 12, 88, 0.85);
+  --status-info: #ff9be0;
+  --font-ui: var(--font-round), ui-rounded, 'Segoe UI', system-ui, sans-serif;
+}
+[data-theme='girlypop'] body { background: linear-gradient(160deg, #4a0838 0%, #8a0e66 50%, #c4188c 100%); background-attachment: fixed; }
+html[data-theme='girlypop']::before {
+  content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: url('/themes/girlypop-hearts.svg') 0 0 / 400px 400px repeat; opacity: .8; animation: girly-float 90s linear infinite;
+}
+@keyframes girly-float { to { background-position: 0 -400px; } }
+@media (prefers-reduced-motion: reduce) { html[data-theme='girlypop']::before { animation: none; } }
+[data-theme='girlypop'] .retro-grid { background-image: none !important; }
+[data-theme='girlypop'] .card-vapor, [data-theme='girlypop'] .cyber-card {
+  background: url('/themes/girlypop-corner.svg') right 10px top 7px / 52px auto no-repeat, linear-gradient(135deg, var(--card-bg-1), var(--card-bg-2)) !important;
+  border: 2px solid #ff4fc3 !important; border-radius: 22px !important;
+  box-shadow: 0 0 calc(14px * var(--glow)) #ff4fc3, 0 0 calc(34px * var(--glow)) rgba(255, 46, 154, 0.6), inset 0 0 18px rgba(255, 120, 215, 0.25) !important;
+}
+[data-theme='girlypop'] nav.card-vapor { background: linear-gradient(135deg, rgba(96, 8, 70, 0.95), rgba(66, 6, 52, 0.95)) !important; border-radius: 0 0 22px 22px !important; }
+[data-theme='girlypop'] .fixed.inset-0 .card-vapor { background: linear-gradient(135deg, var(--modal-bg-1), var(--modal-bg-2)) !important; }
+[data-theme='girlypop'] .neon-text, [data-theme='girlypop'] h1, [data-theme='girlypop'] h2, [data-theme='girlypop'] h3 {
+  text-shadow: 0 0 calc(5px * var(--glow)) #ff4fc3, 0 0 calc(16px * var(--glow)) #ff1fa8, 0 0 calc(34px * var(--glow)) rgba(255, 31, 168, 0.8) !important;
+}
+[data-theme='girlypop'] h2.neon-text::after { content: ' ♥'; color: #ff8fdc; }
+[data-theme='girlypop'] .cyber-button, [data-theme='girlypop'] .cyber-button-sm, [data-theme='girlypop'] .btn-neon {
+  background: linear-gradient(135deg, #ff9be0 0%, #ff4fc3 55%, #ff2e9a 100%) !important; color: #4a0030 !important; font-weight: 800 !important;
+  border: 2px solid #fff !important; border-radius: 999px !important;
+  box-shadow: 0 0 calc(12px * var(--glow)) #ff4fc3, 0 0 calc(30px * var(--glow)) rgba(255, 46, 154, 0.7) !important;
+}
+[data-theme='girlypop'] .docklite-square-btn { border-radius: 50% !important; box-shadow: 0 0 calc(12px * var(--glow)) #ff4fc3, 0 0 calc(24px * var(--glow)) rgba(255, 46, 154, 0.6) !important; }
+[data-theme='girlypop'] input, [data-theme='girlypop'] select, [data-theme='girlypop'] textarea { border-radius: 14px !important; box-shadow: 0 0 calc(8px * var(--glow)) rgba(255, 79, 195, 0.6) !important; }
+[data-theme='girlypop'] nav a { border-radius: 999px !important; }
+
+/* Theme choices on Settings → Appearance */
+.theme-preview-vapor { background: linear-gradient(180deg, #1a0840 0%, #6a1b8a 45%, #ff7a9c 70%, #ffd36a 72%, #2a0a52 73%, #2a0a52 100%); }
+.theme-preview-matrices { background: repeating-linear-gradient(90deg, #010603 0 10px, #03230f 10px 12px), #010603; box-shadow: inset 0 0 24px rgba(0, 255, 106, 0.55); }
+.theme-preview-girlypop { background: radial-gradient(circle at 20% 30%, #ffc2ee 0 6%, transparent 7%), radial-gradient(circle at 70% 60%, #ffc2ee 0 8%, transparent 9%), linear-gradient(135deg, #ff9be0, #ff2e9a 60%, #a0107a); box-shadow: 0 0 18px #ff4fc3; }
+
+/* A dialog panel is never see-through: the ones that don't paint their own background take the theme's modal colours. */
+.fixed.inset-0 > .card-vapor, .fixed.inset-0 > .relative.card-vapor {
+  background: linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%);
+}
+
+/* The side tabs sit over the sunset art, so their text is the readable pink and the tab itself is solid. */
+[data-theme='vapor'] .docklite-sidebar-toggle { background: #1b0840 !important; color: #ffb3ee !important; }
