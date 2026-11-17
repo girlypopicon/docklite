@@ -25,8 +25,8 @@ interface GroupCardProps {
 
 type MenuView = 'main' | 'colour' | 'icon';
 
-// Boxes shown as little tiles on the card; the last tile says how many more there are.
-const MAX_TILES = 6;
+// Boxes listed on the card; past this, a "+N more" line.
+const MAX_LISTED = 5;
 
 /**
  * A group, as a card the same shape as a box. Instead of one box's details it lists the boxes inside. Click it to open them.
@@ -73,8 +73,8 @@ export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLink
   const rgb = (style.color && BOX_COLOR_RGB[style.color]) || undefined;
   const BigIcon = groupIconFor(style.icon);
   const running = boxes.filter((b) => b.state === 'running').length;
-  const overflow = boxes.length > MAX_TILES ? boxes.length - (MAX_TILES - 1) : 0;
-  const tiles = overflow ? boxes.slice(0, MAX_TILES - 1) : boxes;
+  const listed = boxes.slice(0, MAX_LISTED);
+  const overflow = Math.max(0, boxes.length - MAX_LISTED);
 
   const pick = (next: { color?: string; icon?: string }) => {
     const merged = { color: next.color ?? style.color, icon: next.icon ?? style.icon };
@@ -208,7 +208,7 @@ export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLink
         }}
       >
         <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true">
-          <BigIcon weight="duotone" className="absolute -right-6 -bottom-6" style={{ width: '82%', height: 'auto', aspectRatio: '1', color: 'rgba(var(--c), 0.14)' }} />
+          <BigIcon weight="light" className="absolute -right-8 -bottom-10" style={{ width: '68%', height: 'auto', aspectRatio: '1', color: 'rgba(var(--c), var(--bigicon-a, 0.5))', filter: 'var(--bigicon-filter, none)' }} />
         </div>
 
         <div className="relative z-10 flex flex-col h-full p-3 min-w-0">
@@ -269,40 +269,30 @@ export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLink
             {showOwner && group.owner_username ? ` · ${group.owner_username}` : ''}
           </p>
 
-          {/* The boxes inside, as little rounded squares in their own colour and icon. */}
-          <ul className="mt-auto grid grid-cols-3 gap-1.5 min-w-0" aria-label={`Boxes in ${group.name}`}>
-            {tiles.map((b) => {
+          {/* The boxes inside, one per row: a little neon icon in a rounded square, then the name. */}
+          <ul className="mt-3 space-y-1.5 min-w-0 overflow-hidden" aria-label={`Boxes in ${group.name}`}>
+            {listed.map((b) => {
               const tileRgb = (b.style?.color && BOX_COLOR_RGB[b.style.color]) || 'var(--c)';
-              const TileIcon = boxIconFor(b.style?.icon);
+              const RowIcon = boxIconFor(b.style?.icon);
               const up = b.state === 'running';
               return (
-                <li
-                  key={b.id}
-                  title={`${containerDisplayName(b)}${up ? '' : ' (stopped)'}`}
-                  className="relative aspect-square rounded-lg grid place-items-center"
-                  style={{ border: `1.5px solid rgba(${tileRgb}, ${up ? 0.8 : 0.35})`, background: `rgba(${tileRgb}, ${up ? 0.14 : 0.05})`, boxShadow: up ? `0 0 8px rgba(${tileRgb}, 0.35)` : 'none', opacity: up ? 1 : 0.65 }}
-                >
-                  <TileIcon weight="duotone" style={{ width: '58%', height: '58%', color: `rgb(${tileRgb})` }} />
+                <li key={b.id} className="flex items-center gap-2 min-w-0" title={`${containerDisplayName(b)}${up ? '' : ' (stopped)'}`} style={{ opacity: up ? 1 : 0.65 }}>
                   <span
-                    className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full"
-                    style={{ background: up ? 'var(--neon-green)' : 'var(--status-error)' }}
-                  />
+                    className="relative shrink-0 grid place-items-center rounded-md"
+                    style={{ width: 22, height: 22, border: `1.5px solid rgba(${tileRgb}, ${up ? 0.9 : 0.4})`, background: `rgba(${tileRgb}, 0.12)`, boxShadow: up ? `0 0 7px rgba(${tileRgb}, 0.55)` : 'none' }}
+                  >
+                    <RowIcon weight="bold" style={{ width: 13, height: 13, color: `rgb(${tileRgb})`, filter: up ? `drop-shadow(0 0 3px rgba(${tileRgb}, 0.9))` : 'none' }} />
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full" style={{ background: up ? 'var(--neon-green)' : 'var(--status-error)' }} />
+                  </span>
+                  <span className="truncate text-xs font-mono" style={{ color: 'var(--text-primary)' }}>{containerDisplayName(b)}</span>
                 </li>
               );
             })}
             {overflow > 0 && (
-              <li
-                className="aspect-square rounded-lg grid place-items-center font-mono font-bold text-xs"
-                style={{ border: '1.5px dashed rgba(var(--c), 0.6)', color: 'var(--text-primary)' }}
-                title={`${overflow} more`}
-              >
-                +{overflow}
-              </li>
+              <li className="text-xs font-mono pl-8" style={{ color: 'var(--text-secondary)' }}>+{overflow} more</li>
             )}
             {boxes.length === 0 && (
-              <li className="col-span-3 text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-                Empty. Drag a box here.
-              </li>
+              <li className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>Empty. Drag a box here.</li>
             )}
           </ul>
         </div>

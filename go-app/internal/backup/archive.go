@@ -51,7 +51,7 @@ func writeSiteArchive(ctx context.Context, srcDir, dest string, rep *Reporter) (
 	if err := checkFolder(srcDir); err != nil {
 		return 0, err
 	}
-	total := treeSize(srcDir)
+	total := TreeSize(srcDir)
 	rep.Phase(kindWorking, "Compressing files", total)
 	out, err := os.Create(dest)
 	if err != nil {
@@ -89,8 +89,8 @@ func checkFolder(srcDir string) error {
 	return nil
 }
 
-// treeSize adds up the sizes of the regular files under dir, for the progress bar.
-func treeSize(dir string) int64 {
+// TreeSize adds up the sizes of the regular files under dir, for the progress bar.
+func TreeSize(dir string) int64 {
 	var total int64
 	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
 		if err != nil {

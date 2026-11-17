@@ -5,6 +5,28 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.8.0 (2026-11-17)
+
+### Added
+- **Projected backup size.** Picking what to back up now shows "about 120 MB" (and what that is made of), measured from the site
+  folders and database sizes, plus the free space on the server, with a warning if it may not fit. Off-server destinations come next.
+- The new-database form can **make a strong password for you** and show or hide what you typed. It also now says plainly why SQLite
+  has no username or password (it is one file; access is whoever can reach the website's files).
+
+### Changed
+- **Each theme now has its own box-card look**: Cyberpunk keeps the neon tubes; Corpo is a flat business panel with a coloured edge;
+  Corpo Blue is frosted glass with a blue-tinted shadow; Unicorn is a milky pastel card inside a rainbow border. The card buttons
+  follow (squared for Corpo, rounded for the others, rainbow-edged in Unicorn).
+- The big icon on each card is drawn as an outline that glows like the border (softer or flatter in the other themes).
+- Group cards list the boxes inside again, one per row with a little neon icon on the left (green dot running, red stopped).
+- The close button on dialogs is an X in a rounded square.
+- The **Ingress** tab (Network) now reads from nginx itself: version, what is listening on 80/443, how many sites have HTTPS, redirect
+  HTTP to HTTPS and send HSTS. No more "unknown" and empty fields.
+
+### Fixed
+- The Server tab said the DockLite agent was **stopped** on servers that still had an old, disabled systemd unit. It now only trusts
+  a unit that is actually running, otherwise it reports the agent that is serving the page.
+
 ## 1.7.0 (2026-11-16)
 
 ### Added

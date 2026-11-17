@@ -461,6 +461,10 @@ on('POST', /^\/api\/backups\/trigger$/, (r, _m, s) => {
 // Automatic HTTPS (the real agent waits for DNS, then asks Let's Encrypt); the demo has nothing pending.
 on('GET', /^\/api\/ssl\/auto$/, () => ok({ jobs: [], email: '' }));
 on('POST', /^\/api\/ssl\/auto$/, () => ok({ started: [], jobs: [] }));
+on('POST', /^\/api\/backups\/estimate$/, (_r, _m, s) => {
+  const raw = s.sites.length * 48 * 1024 * 1024 + 6 * 1024 * 1024;
+  return ok({ items: s.sites.map((x) => ({ name: x.domain, kind: 'site', bytes: 48 * 1024 * 1024, known: true })), raw_bytes: raw, estimate_bytes: Math.round(raw * 0.58), unknown: 0, free_bytes: 38 * 1024 * 1024 * 1024 });
+});
 on('GET', /^\/api\/backups\/destinations$/, () => ok({ destinations: [{ id: 1, name: 'Local Server', type: 'local', config: '{"path":"/var/backups/docklite"}', enabled: 1, created_at: iso(Date.now() - 60 * T.DAY) }] }));
 
 // SSL + nginx

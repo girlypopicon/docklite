@@ -165,7 +165,7 @@ func CreatePackage(ctx context.Context, st *store.SQLiteStore, dockerClient *doc
 	// 2. Pack the site folders and the dumps into one archive.
 	var total int64
 	for _, site := range resolved.Sites {
-		total += treeSize(site.CodePath)
+		total += TreeSize(site.CodePath)
 	}
 	for _, d := range dumps {
 		total += d.info.Bytes

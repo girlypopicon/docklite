@@ -254,7 +254,7 @@
   [data-theme='unicorn'] .neon-text,
   [data-theme='unicorn'] .neon-text-pink,
   [data-theme='unicorn'] .neon-text-cyan {
-    text-shadow: 0 0 calc(4px * var(--glow)) currentColor, 0 0 calc(10px * var(--glow)) currentColor;
+    text-shadow: 0 2px calc(8px * var(--glow)) rgba(var(--neon-pink-rgb), 0.35);
   }
 
   [data-theme='corpo'] [class*='border-purple-'] {
@@ -758,24 +758,6 @@
     background-color: var(--surface-muted) !important;
     border-color: rgba(var(--neon-pink-rgb), 0.25) !important;
     color: var(--text-primary) !important;
-  }
-
-  [data-theme='unicorn'] .docklite-container-card {
-    isolation: isolate;
-    filter: drop-shadow(0 0 8px rgba(var(--neon-pink-rgb), 0.35));
-    border-color: rgba(var(--neon-pink-rgb), 0.35) !important;
-  }
-
-  [data-theme='unicorn'] .docklite-container-card::after {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: inherit;
-    box-shadow: 0 0 12px rgba(var(--neon-pink-rgb), 0.4);
-    filter: blur(3px);
-    opacity: 0.55;
-    pointer-events: none;
-    z-index: -1;
   }
 
   [data-theme='corpo'] .docklite-nav-containers,
@@ -2016,3 +1998,75 @@
 [data-theme='corpo-blue'] .docklite-terminal-btn {
   background: linear-gradient(135deg, var(--neon-green) 0%, var(--neon-purple) 100%) !important;
 }
+
+/* ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Box cards and their buttons, one look per theme. Unlayered on purpose, so they win over the shared card rules.
+   --c is the card's own colour ("r, g, b").
+     cyberpunk  neon tubes (the shared .docklite-neon rules above)
+     corpo      a flat business panel: thin border, soft shadow, a coloured edge down the left side
+     corpo-blue frosted glass: rounded, light, a blue-tinted shadow instead of a glow
+     unicorn    a rainbow border around a milky pastel card, very round
+   ──────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+.docklite-container-card { --bigicon-a: 0.5; --bigicon-filter: drop-shadow(0 0 3px rgba(var(--c), 0.9)) drop-shadow(0 0 10px rgba(var(--c), 0.55)); }
+
+[data-theme='corpo'] .docklite-container-card.docklite-neon {
+  --bigicon-a: 0.2;
+  --bigicon-filter: none;
+  border: 1px solid rgba(var(--c), 0.4);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.86) !important;
+  box-shadow: 0 1px 2px rgba(20, 24, 40, 0.08), 0 8px 20px rgba(20, 24, 40, 0.08);
+}
+[data-theme='corpo'] .docklite-container-card.docklite-neon::before {
+  inset: auto;
+  top: 0; bottom: 0; left: 0; right: auto;
+  width: 4px;
+  border: none;
+  border-radius: 10px 0 0 10px;
+  background: rgb(var(--c));
+  box-shadow: none;
+}
+
+[data-theme='corpo-blue'] .docklite-container-card.docklite-neon {
+  --bigicon-a: 0.3;
+  --bigicon-filter: drop-shadow(0 0 10px rgba(var(--c), 0.25));
+  border: 1.5px solid rgba(var(--c), 0.5);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(226, 235, 252, 0.82)) !important;
+  box-shadow: 0 12px 30px rgba(var(--c), 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+[data-theme='corpo-blue'] .docklite-container-card.docklite-neon::before {
+  inset: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 15px;
+  box-shadow: none;
+}
+
+[data-theme='unicorn'] .docklite-container-card.docklite-neon {
+  --bigicon-a: 0.5;
+  --bigicon-filter: drop-shadow(0 0 8px rgba(var(--c), 0.4));
+  border: 3px solid transparent;
+  border-radius: 26px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8)) padding-box,
+    linear-gradient(135deg, #FF6AD5, #FF9A8B, #FFD166, #B8F2A2, #9AD0FF, #C7A4FF) border-box !important;
+  box-shadow: 0 10px 26px rgba(199, 164, 255, 0.35);
+  filter: none;
+}
+[data-theme='unicorn'] .docklite-container-card.docklite-neon::before,
+[data-theme='unicorn'] .docklite-container-card.docklite-neon::after { display: none; }
+
+/* The little buttons in a card's top row. */
+.docklite-square-btn { box-shadow: 0 0 calc(6px * var(--glow, 1)) rgba(var(--c, var(--neon-purple-rgb)), 0.4); }
+[data-theme='corpo'] .docklite-square-btn { --c: var(--neon-pink-rgb); border-radius: 4px; background: #fff; box-shadow: 0 1px 2px rgba(20, 24, 40, 0.12); border-color: rgba(20, 24, 40, 0.25); }
+[data-theme='corpo-blue'] .docklite-square-btn { border-radius: 10px; background: rgba(255, 255, 255, 0.8); box-shadow: 0 2px 6px rgba(var(--c), 0.25); }
+[data-theme='unicorn'] .docklite-square-btn {
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(135deg, #FF6AD5, #FFD166, #9AD0FF, #C7A4FF) border-box;
+  box-shadow: 0 2px 8px rgba(199, 164, 255, 0.45);
+}
+[data-theme='corpo'] .docklite-square-btn:hover,
+[data-theme='corpo-blue'] .docklite-square-btn:hover { background: rgba(var(--c), 0.12); }

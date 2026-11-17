@@ -254,9 +254,9 @@ export default function ContainerCard({
       {/* The big icon, muted, bleeding off the bottom right corner. Clipped by its own box so the glow isn't. */}
       <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true">
         <BigIcon
-          weight="duotone"
+          weight="light"
           className="absolute -right-6 -bottom-6"
-          style={{ width: '82%', height: 'auto', aspectRatio: '1', color: 'rgba(var(--c), 0.16)' }}
+          style={{ width: '82%', height: 'auto', aspectRatio: '1', color: 'rgba(var(--c), var(--bigicon-a, 0.5))', filter: 'var(--bigicon-filter, none)' }}
         />
       </div>
 
