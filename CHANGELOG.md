@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.11.0 (2026-11-17)
+
 ### Fixed
 - **Changing a card's colour now shows in every theme.** It already saved, but Unicorn drew the rainbow border and glow regardless, so only a
   faint icon tint changed. A picked colour now tints the card's border, glow and wash in Unicorn, and Very basic gets a coloured top edge.
