@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.12.0 (2026-11-17)
+
 ### Added
 - **Three new themes** in Settings → Appearance:
   - **Vapor**: a striped sunset over a neon grid, palm trees, an iced tea can, and a can-pattern strip under the top bar and along the bottom.
