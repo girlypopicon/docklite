@@ -5,6 +5,23 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.11.0 (2026-11-17)
+
+### Fixed
+- **Changing a card's colour now shows in every theme.** It already saved, but Unicorn drew the rainbow border and glow regardless, so only a
+  faint icon tint changed. A picked colour now tints the card's border, glow and wash in Unicorn, and Very basic gets a coloured top edge.
+- **SQLite databases open straight into the table editor, with no password.** A SQLite file has no login, but the window still asked
+  for one and the editor behind it only understood Postgres. The tables, rows, SQL box, row edits and download now work for SQLite
+  directly from the site's folder (the download is a clean copy even while the site is writing).
+- **Unicorn is readable.** Cards are milky white behind the text instead of a rainbow gradient, secondary text is darker, and fields
+  are white; the rainbow lives in the borders and glows.
+
+### Changed
+- **A little neon in every theme except Very basic**: soft accent glows on cards, headings, buttons and the card icons in Corpo (rose),
+  Corpo Blue (blue) and Unicorn (rainbow).
+- **Buttons and headings now sound like their theme.** Cyberpunk: capitals, wide letter-spacing and cut corners. Corpo: square,
+  solid and restrained. Corpo Blue: smooth and glassy. Unicorn: round pastel pills with dark text that bounce, and rainbow page titles.
+
 ## 1.10.0 (2026-11-17)
 
 ### Added

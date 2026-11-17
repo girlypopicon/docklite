@@ -240,6 +240,7 @@ export default function ContainerCard({
         opacity: isRunning ? 1 : 0.8,
         containerType: 'inline-size', // lets the name size itself to the card's width
       }}
+      data-picked={pickedRgb ? '' : undefined}
       title={container.name}
       onPointerDown={(e) => {
         downAt.current = { x: e.clientX, y: e.clientY };
