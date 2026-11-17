@@ -187,7 +187,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
               boxShadow: terminalOpen ? '0 0 18px rgba(var(--status-info-rgb), 0.6)' : '0 0 12px rgba(var(--status-success-rgb), 0.45)',
             }}
           >
-            <TerminalWindow size={18} weight="duotone" />
+            <TerminalWindow size={18} weight="regular" />
             <span className="hidden sm:inline">Terminal</span>
           </button>
         );
@@ -202,7 +202,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
             title="Settings"
             className="flex items-center justify-center p-1.5 sm:p-2 transition-all hover:scale-105 card-vapor rounded-xl border text-accent-pink/70 hover:text-accent-pink border-neon-pink/20 hover:border-neon-pink/40"
           >
-            <Gear size={22} weight="duotone" />
+            <Gear size={22} weight="regular" />
           </button>
         );
 
@@ -218,7 +218,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
               boxShadow: '0 0 12px rgba(var(--neon-pink-rgb), 0.4)',
             }}
           >
-            <SignOut size={16} weight="duotone" />
+            <SignOut size={16} weight="regular" />
             <span className="hidden sm:inline">Logout</span>
           </button>
         );
@@ -238,7 +238,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
               }`}
             >
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-xl relative" style={{ background: 'rgba(var(--neon-pink-rgb), 0.2)' }}>
-                <UserCircle size={22} weight="duotone" />
+                <UserCircle size={22} weight="regular" />
                 {roleBadge && <span className="absolute -top-1 -right-1 text-xs">{roleBadge}</span>}
               </div>
             </button>
@@ -282,7 +282,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
                       openSettings();
                     }}
                   >
-                    <Gear size={16} weight="duotone" className="group-hover:scale-110 transition-transform" />
+                    <Gear size={16} weight="regular" className="group-hover:scale-110 transition-transform" />
                     <span>Settings</span>
                   </button>
                   {user.isAdmin && (
@@ -294,7 +294,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
                         openSettings('users');
                       }}
                     >
-                      <UsersThree size={16} weight="duotone" className="group-hover:scale-110 transition-transform" />
+                      <UsersThree size={16} weight="regular" className="group-hover:scale-110 transition-transform" />
                       <span>Users</span>
                     </button>
                   )}
@@ -303,7 +303,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold transition-all group nav-dropdown-link text-left"
                     onClick={handleLogout}
                   >
-                    <SignOut size={16} weight="duotone" className="group-hover:scale-110 transition-transform" />
+                    <SignOut size={16} weight="regular" className="group-hover:scale-110 transition-transform" />
                     <span>Log out</span>
                   </button>
                 </div>
@@ -347,7 +347,7 @@ export default function DashboardNav({ user, terminalOpen, onToggleTerminal }: D
             </h1>
             <Sparkle
               size={24}
-              weight="duotone"
+              weight="regular"
               color="var(--neon-pink)"
               className="hidden sm:block opacity-70 group-hover:opacity-100 transition-opacity"
               style={{ filter: 'drop-shadow(0 0 6px rgba(var(--neon-pink-rgb), 0.6))' }}

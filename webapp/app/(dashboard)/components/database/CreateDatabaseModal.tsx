@@ -66,7 +66,7 @@ export default function CreateDatabaseModal({ isOpen, onClose, onSuccess, onErro
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-            <Database size={16} weight="duotone" />
+            <Database size={16} weight="regular" />
             DATABASE NAME
           </label>
           <input
@@ -85,7 +85,7 @@ export default function CreateDatabaseModal({ isOpen, onClose, onSuccess, onErro
 
         <div>
           <label htmlFor="username" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-purple)' }}>
-            <UserCircle size={16} weight="duotone" />
+            <UserCircle size={16} weight="regular" />
             USERNAME
           </label>
           <input
@@ -104,7 +104,7 @@ export default function CreateDatabaseModal({ isOpen, onClose, onSuccess, onErro
 
         <div>
           <label htmlFor="password" className="block text-sm font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-            <Key size={16} weight="duotone" />
+            <Key size={16} weight="regular" />
             PASSWORD
           </label>
           <input
@@ -127,12 +127,12 @@ export default function CreateDatabaseModal({ isOpen, onClose, onSuccess, onErro
         >
           {creating ? (
             <span className="inline-flex items-center gap-2">
-              <SpinnerGap size={16} weight="duotone" className="animate-spin" />
+              <SpinnerGap size={16} weight="regular" className="animate-spin" />
               Creating...
             </span>
           ) : (
             <span className="inline-flex items-center gap-2">
-              <Sparkle size={16} weight="duotone" />
+              <Sparkle size={16} weight="regular" />
               Create PostgreSQL Database
             </span>
           )}

@@ -16,7 +16,7 @@ export default function SettingsPage() {
 
       <div className="card-vapor p-6 rounded-xl">
         <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-          <Tag size={20} weight="duotone" />
+          <Tag size={20} weight="regular" />
           System Information
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -28,19 +28,19 @@ export default function SettingsPage() {
           </div>
           <div className="text-center">
             <div className="flex justify-center text-2xl font-bold neon-text" style={{ color: 'var(--text-purple)' }}>
-              <Cube size={24} weight="duotone" />
+              <Cube size={24} weight="regular" />
             </div>
             <div className="text-xs font-mono opacity-70">Docker</div>
           </div>
           <div className="text-center">
             <div className="flex justify-center text-2xl font-bold neon-text" style={{ color: 'var(--text-pink)' }}>
-              <Lightning size={24} weight="duotone" />
+              <Lightning size={24} weight="regular" />
             </div>
             <div className="text-xs font-mono opacity-70">Status</div>
           </div>
           <div className="text-center">
             <div className="flex justify-center text-2xl font-bold neon-text" style={{ color: 'var(--text-yellow)' }}>
-              <Lock size={24} weight="duotone" />
+              <Lock size={24} weight="regular" />
             </div>
             <div className="text-xs font-mono opacity-70">Secure</div>
           </div>

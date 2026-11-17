@@ -76,7 +76,7 @@ export function IconGrid({ value, onPick }: { value: string; onPick: (id: string
             border: value === id ? '2px solid var(--text-primary)' : '1px solid rgba(var(--neon-purple-rgb), 0.3)',
           }}
         >
-          <Icon size={24} weight="duotone" />
+          <Icon size={24} weight="regular" />
         </button>
       ))}
     </div>

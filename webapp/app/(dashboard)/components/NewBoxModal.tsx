@@ -61,18 +61,18 @@ export default function NewBoxModal({ sites, onClose, onCreated }: NewBoxModalPr
 
         <h3 className="mt-5 mb-2 text-xs uppercase tracking-[0.2em]" style={{ color: 'var(--text-purple)' }}>Website</h3>
         <div className="grid gap-3 sm:grid-cols-2">
-          {tile('website', 'A website', 'Static files, PHP or Node.js, on its own domain. Gets its own address and a certificate.', <Globe size={26} weight="duotone" />, () => setStep({ kind: 'website' }))}
+          {tile('website', 'A website', 'Static files, PHP or Node.js, on its own domain. Gets its own address and a certificate.', <Globe size={26} weight="regular" />, () => setStep({ kind: 'website' }))}
         </div>
 
         <h3 className="mt-5 mb-2 text-xs uppercase tracking-[0.2em]" style={{ color: 'var(--text-purple)' }}>Database</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           {DB_ENGINES.map((e) =>
-            tile(e.id, e.label, e.blurb, <e.Icon size={26} weight="duotone" />, () => setStep({ kind: 'database', type: e.id })),
+            tile(e.id, e.label, e.blurb, <e.Icon size={26} weight="regular" />, () => setStep({ kind: 'database', type: e.id })),
           )}
         </div>
 
         <p className="mt-5 text-xs flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-          <DatabaseIcon size={14} weight="duotone" /> More kinds of box (game and media servers, and others) are coming.
+          <DatabaseIcon size={14} weight="regular" /> More kinds of box (game and media servers, and others) are coming.
         </p>
       </div>
     </div>

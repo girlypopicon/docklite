@@ -125,7 +125,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
         {/* Header */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold neon-text flex items-center gap-3" style={{ color: 'var(--text-cyan)' }}>
-            <Globe size={32} weight="duotone" color="var(--status-success)" />
+            <Globe size={32} weight="regular" color="var(--status-success)" />
             Add DNS Record
           </h2>
           <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
@@ -292,7 +292,7 @@ export default function AddDnsRecordModal({ zones, selectedZone, onClose, onSucc
               />
               <div className="flex-1">
                 <label htmlFor="proxied" className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--status-warning)' }}>
-                  <Cloud size={16} weight="duotone" />
+                  <Cloud size={16} weight="regular" />
                   Proxy through Cloudflare
                 </label>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>

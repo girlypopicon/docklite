@@ -189,7 +189,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
       <div className="fixed inset-0 bg-black/80 backdrop-blur-lg z-[9999] flex items-center justify-center p-4" onClick={onClose}>
         <div className="text-center" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-center mb-4 animate-float">
-            <Lightning size={48} weight="duotone" color="var(--neon-cyan)" />
+            <Lightning size={48} weight="regular" color="var(--neon-cyan)" />
           </div>
           <div className="text-2xl font-bold neon-text animate-pulse" style={{ color: 'var(--text-cyan)' }}>
             Loading...
@@ -204,7 +204,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
       <div className="fixed inset-0 bg-black/80 backdrop-blur-lg z-[9999] flex items-center justify-center p-4" onClick={onClose}>
         <div className="card-vapor p-8 max-w-md" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-center mb-4 text-center">
-            <WarningCircle size={48} weight="duotone" color="var(--status-error)" />
+            <WarningCircle size={48} weight="regular" color="var(--status-error)" />
           </div>
           <div className="text-xl font-bold mb-4 text-center" style={{ color: 'var(--status-error)' }}>
             {error}
@@ -234,7 +234,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
           <div className="flex items-center gap-4 min-w-0">
             <div className="min-w-0">
               <h2 className="text-xl sm:text-3xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)', overflowWrap: 'anywhere' }}>
-                <Package size={22} weight="duotone" className="shrink-0" />
+                <Package size={22} weight="regular" className="shrink-0" />
                 {containerDisplayName(details)}
               </h2>
               {/* The Docker name is what you type in a terminal, so it stays visible here */}
@@ -261,10 +261,10 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
           {[
-            { id: 'overview', label: 'Overview', icon: <ChartBar size={16} weight="duotone" /> },
-            { id: 'logs', label: 'Logs', icon: <NotePencil size={16} weight="duotone" /> },
-            { id: 'env', label: 'Environment', icon: <Wrench size={16} weight="duotone" /> },
-            { id: 'network', label: 'Network', icon: <Globe size={16} weight="duotone" /> },
+            { id: 'overview', label: 'Overview', icon: <ChartBar size={16} weight="regular" /> },
+            { id: 'logs', label: 'Logs', icon: <NotePencil size={16} weight="regular" /> },
+            { id: 'env', label: 'Environment', icon: <Wrench size={16} weight="regular" /> },
+            { id: 'network', label: 'Network', icon: <Globe size={16} weight="regular" /> },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -301,7 +301,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
               {isRunning && stats && stats.cpu !== undefined && (
                 <div className="card-vapor p-6 rounded-xl">
                   <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-                    <ChartBar size={18} weight="duotone" />
+                    <ChartBar size={18} weight="regular" />
                     Real-time Resources
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -356,7 +356,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
               {/* Container Info */}
               <div className="card-vapor p-6 rounded-xl">
                 <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-                  <Info size={18} weight="duotone" />
+                  <Info size={18} weight="regular" />
                   Container Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm">
@@ -389,7 +389,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
               {details.mounts.length > 0 && (
                 <div className="card-vapor p-6 rounded-xl">
                   <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-                    <Database size={18} weight="duotone" />
+                    <Database size={18} weight="regular" />
                     Volumes & Mounts
                   </h3>
                   <div className="space-y-3">
@@ -408,12 +408,12 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                             <span style={{ color: mount.RW ? 'var(--status-success)' : 'var(--status-error)' }}>
                               {mount.RW ? (
                                 <span className="inline-flex items-center gap-2">
-                                  <LockOpen size={12} weight="duotone" />
+                                  <LockOpen size={12} weight="regular" />
                                   Read/Write
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-2">
-                                  <Lock size={12} weight="duotone" />
+                                  <Lock size={12} weight="regular" />
                                   Read-Only
                                 </span>
                               )}
@@ -434,7 +434,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
             <div className="card-vapor p-6 rounded-xl">
               <div className="flex flex-wrap items-center justify-between mb-6 gap-4">
                 <h3 className="text-xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-                  <NotePencil size={18} weight="duotone" />
+                  <NotePencil size={18} weight="regular" />
                   Container Logs
                 </h3>
                 <div className="flex items-center gap-4 flex-wrap">
@@ -461,7 +461,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                     <option value="500">500 lines</option>
                   </select>
                   <button onClick={fetchLogs} className="btn-neon px-4 py-2 text-sm inline-flex items-center gap-2">
-                    <ArrowClockwise size={14} weight="duotone" />
+                    <ArrowClockwise size={14} weight="regular" />
                     Refresh
                   </button>
                 </div>
@@ -481,7 +481,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
           {activeTab === 'env' && (
             <div className="card-vapor p-6 rounded-xl">
               <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-                <Wrench size={18} weight="duotone" />
+                <Wrench size={18} weight="regular" />
                 Environment Variables
               </h3>
               {details.env.length === 0 ? (
@@ -514,7 +514,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
             <>
               <div className="card-vapor p-6 rounded-xl">
                 <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-                  <Globe size={18} weight="duotone" />
+                  <Globe size={18} weight="regular" />
                   Network Configuration
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-sm mb-6">
@@ -562,7 +562,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
 
               <div className="card-vapor p-6 rounded-xl">
                 <h3 className="text-xl font-bold neon-text mb-4 flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
-                  <Plug size={18} weight="duotone" />
+                  <Plug size={18} weight="regular" />
                   Port Mappings
                 </h3>
                 {Object.keys(details.networkSettings.ports).length === 0 ? (

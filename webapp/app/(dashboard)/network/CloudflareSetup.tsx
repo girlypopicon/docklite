@@ -123,7 +123,7 @@ export default function CloudflareSetup({ config, onSaved }: { config: Cloudflar
             )
           ) : (
             <span className="text-status-warning inline-flex items-center gap-1">
-              <WarningCircle size={14} weight="duotone" /> Not connected yet
+              <WarningCircle size={14} weight="regular" /> Not connected yet
             </span>
           )}
         </div>

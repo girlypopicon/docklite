@@ -127,7 +127,7 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 card-vapor p-6 border border-neon-purple/30">
         <h2 className="text-xl font-bold text-accent-cyan flex items-center gap-2">
-          <ShieldCheck size={22} weight="duotone" /> Restore a site
+          <ShieldCheck size={22} weight="regular" /> Restore a site
         </h2>
         <p className="text-sm text-ink-muted mt-2">
           Pick a backup to put a site back the way it was. Before anything changes, DockLite saves what the site has now, so a restore can itself be undone.
@@ -160,7 +160,7 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
                   </div>
                 </div>
                 <button onClick={() => choose(f)} className="cyber-button-sm flex items-center gap-1" title={isPackage(f.name) ? 'A .litpkg package' : undefined}>
-                  <ArrowCounterClockwise size={14} weight="duotone" /> Restore…
+                  <ArrowCounterClockwise size={14} weight="regular" /> Restore…
                 </button>
               </div>
             ))
@@ -187,7 +187,7 @@ export default function RestoreSiteBackups({ focusPath }: { focusPath?: string }
               {!inspection && !inspectError && <div>Checking the backup…</div>}
               {inspectError && (
                 <div className="flex items-start gap-2" style={{ color: 'var(--status-error)' }}>
-                  <WarningCircle size={18} weight="duotone" /> {inspectError}
+                  <WarningCircle size={18} weight="regular" /> {inspectError}
                 </div>
               )}
               {inspection?.package && (

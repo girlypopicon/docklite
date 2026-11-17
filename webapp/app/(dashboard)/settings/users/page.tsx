@@ -229,7 +229,7 @@ export default function ManageUsersPage() {
     return (
       <div className="text-center py-16">
         <div className="flex justify-center mb-4 animate-float">
-          <Lightning size={48} weight="duotone" color="var(--neon-cyan)" />
+          <Lightning size={48} weight="regular" color="var(--neon-cyan)" />
         </div>
         <div className="text-2xl font-bold neon-text animate-pulse" style={{ color: 'var(--text-cyan)' }}>
           Loading users...
@@ -242,7 +242,7 @@ export default function ManageUsersPage() {
     return (
       <div className="text-center py-16">
         <div className="flex justify-center mb-4">
-          <WarningCircle size={48} weight="duotone" color="var(--status-error)" />
+          <WarningCircle size={48} weight="regular" color="var(--status-error)" />
         </div>
         <div className="text-xl font-bold mb-4" style={{ color: 'var(--status-error)' }}>
           {error}

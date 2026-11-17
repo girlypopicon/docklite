@@ -418,7 +418,7 @@ export default function BackupsPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold neon-text-pink flex items-center gap-3">
-            <HardDrives size={32} weight="duotone" color="var(--neon-pink)" />
+            <HardDrives size={32} weight="regular" color="var(--neon-pink)" />
             Backups
           </h1>
           <p className="text-sm text-ink-muted mt-1">
@@ -427,12 +427,12 @@ export default function BackupsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button onClick={() => setShowRunNow(true)} className="cyber-button flex items-center gap-2">
-            <Play size={18} weight="duotone" />
+            <Play size={18} weight="regular" />
             Run backup now
           </button>
           {activeTab === 'backups' && (
             <button onClick={loadBackups} className="cyber-button-sm flex items-center gap-2">
-              <ArrowsClockwise size={16} weight="duotone" />
+              <ArrowsClockwise size={16} weight="regular" />
               Refresh
             </button>
           )}
@@ -445,7 +445,7 @@ export default function BackupsPage() {
               }}
               className="cyber-button flex items-center gap-2"
             >
-              <ClockCounterClockwise size={18} weight="duotone" />
+              <ClockCounterClockwise size={18} weight="regular" />
               Add a schedule
             </button>
           )}
@@ -461,7 +461,7 @@ export default function BackupsPage() {
               : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
-          <ClockCounterClockwise size={20} weight="duotone" className="inline mr-2" />
+          <ClockCounterClockwise size={20} weight="regular" className="inline mr-2" />
           Schedule
         </button>
         <button
@@ -472,7 +472,7 @@ export default function BackupsPage() {
               : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
-          <HardDrives size={20} weight="duotone" className="inline mr-2" />
+          <HardDrives size={20} weight="regular" className="inline mr-2" />
           Restore points
         </button>
         <button
@@ -483,7 +483,7 @@ export default function BackupsPage() {
               : 'text-ink-muted hover:text-accent-cyan'
           }`}
         >
-          <ShieldCheck size={20} weight="duotone" className="inline mr-2" />
+          <ShieldCheck size={20} weight="regular" className="inline mr-2" />
           Restore
         </button>
       </div>
@@ -749,14 +749,14 @@ function BackupsTab({
                             onClick={() => onRestore(backup)}
                             className="cyber-button-sm flex items-center gap-1"
                           >
-                            <ShieldCheck size={14} weight="duotone" />
+                            <ShieldCheck size={14} weight="regular" />
                             Restore
                           </button>
                           <button
                             onClick={() => onDetails(backup)}
                             className="cyber-button-sm flex items-center gap-1"
                           >
-                            <Info size={14} weight="duotone" />
+                            <Info size={14} weight="regular" />
                             Details
                           </button>
                           {downloadUrl && (
@@ -764,7 +764,7 @@ function BackupsTab({
                               href={downloadUrl}
                               className="cyber-button-sm flex items-center gap-1"
                             >
-                              <DownloadSimple size={14} weight="duotone" />
+                              <DownloadSimple size={14} weight="regular" />
                               Download
                             </a>
                           )}
@@ -773,7 +773,7 @@ function BackupsTab({
                             className="cyber-button-sm bg-red-500/20 hover:bg-red-500/30 border border-red-500/30"
                             style={{ color: 'var(--status-error)' }}
                           >
-                            <Trash size={14} weight="duotone" />
+                            <Trash size={14} weight="regular" />
                             Delete
                           </button>
                         </div>
@@ -833,22 +833,22 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => onRun(job.id)} className="cyber-button-sm flex items-center gap-1">
-                    <Play size={14} weight="duotone" />
+                    <Play size={14} weight="regular" />
                     Run now
                   </button>
                   <button onClick={() => onEdit(job)} className="cyber-button-sm flex items-center gap-1">
-                    <PencilSimple size={14} weight="duotone" />
+                    <PencilSimple size={14} weight="regular" />
                     Edit
                   </button>
                   <button onClick={() => onDuplicate(job)} className="cyber-button-sm flex items-center gap-1">
-                    <Copy size={14} weight="duotone" />
+                    <Copy size={14} weight="regular" />
                     Duplicate
                   </button>
                   <button
                     onClick={() => onToggle(job, enabled ? 0 : 1)}
                     className="cyber-button-sm flex items-center gap-1"
                   >
-                    <ArrowsClockwise size={14} weight="duotone" />
+                    <ArrowsClockwise size={14} weight="regular" />
                     {enabled ? 'Disable' : 'Enable'}
                   </button>
                   <button
@@ -856,7 +856,7 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
                     className="px-3 py-1.5 rounded-lg text-sm font-bold inline-flex items-center gap-1"
                     style={{ color: 'var(--status-error)', background: 'transparent', border: '1px solid var(--status-error)' }}
                   >
-                    <Trash size={14} weight="duotone" />
+                    <Trash size={14} weight="regular" />
                     Delete
                   </button>
                 </div>
@@ -963,7 +963,7 @@ function RunBackupDialog({
                 Everything, all sites, all databases, or pick. It all goes into one .litpkg file, kept on the server or downloaded.
               </p>
             </div>
-            <Sparkle size={28} weight="duotone" color="var(--status-success)" />
+            <Sparkle size={28} weight="regular" color="var(--status-success)" />
           </div>
 
           <div className="mt-6">
@@ -1011,7 +1011,7 @@ function RunBackupDialog({
             disabled={exportLoading}
             className="cyber-button mt-6 flex items-center gap-2"
           >
-            <Play size={18} weight="duotone" />
+            <Play size={18} weight="regular" />
             {exportLoading ? 'Backing up...' : 'Back up now'}
           </button>
 

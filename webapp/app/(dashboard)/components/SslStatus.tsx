@@ -140,10 +140,10 @@ export default function SslStatus() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'valid': return <CheckCircle size={14} weight="duotone" />;
-      case 'expiring': return <WarningCircle size={14} weight="duotone" />;
-      case 'expired': return <XCircle size={14} weight="duotone" />;
-      default: return <Circle size={14} weight="duotone" />;
+      case 'valid': return <CheckCircle size={14} weight="regular" />;
+      case 'expiring': return <WarningCircle size={14} weight="regular" />;
+      case 'expired': return <XCircle size={14} weight="regular" />;
+      default: return <Circle size={14} weight="regular" />;
     }
   };
 
@@ -163,7 +163,7 @@ export default function SslStatus() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
             <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
-              <Lock size={20} weight="duotone" />
+              <Lock size={20} weight="regular" />
               SSL Certificates
             </h2>
             <div className="text-xs font-mono mt-1 space-y-1" style={{ color: 'var(--text-secondary)' }}>
@@ -174,7 +174,7 @@ export default function SslStatus() {
             </div>
             {error && (
               <div className="text-xs font-bold mt-1 flex items-center gap-2" style={{ color: 'var(--status-error)' }}>
-                <XCircle size={14} weight="duotone" />
+                <XCircle size={14} weight="regular" />
                 {error}
               </div>
             )}
@@ -196,12 +196,12 @@ export default function SslStatus() {
             >
               {refreshing ? (
                 <span className="inline-flex items-center gap-2">
-                  <SpinnerGap size={14} weight="duotone" className="animate-spin" />
+                  <SpinnerGap size={14} weight="regular" className="animate-spin" />
                   Refreshing…
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-2">
-                  <ArrowClockwise size={14} weight="duotone" />
+                  <ArrowClockwise size={14} weight="regular" />
                   Refresh
                 </span>
               )}
@@ -211,7 +211,7 @@ export default function SslStatus() {
 
         {loading ? (
           <div className="text-sm font-mono flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-            <SpinnerGap size={14} weight="duotone" className="animate-spin" />
+            <SpinnerGap size={14} weight="regular" className="animate-spin" />
             Loading SSL status...
           </div>
         ) : (() => {

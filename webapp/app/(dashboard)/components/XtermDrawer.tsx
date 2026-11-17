@@ -259,7 +259,7 @@ export default function XtermDrawer({ open, onClose, containerId, containerName,
             >
               <div className="flex flex-wrap items-center gap-3">
                 <div className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-                  <Lightning size={16} weight="duotone" />
+                  <Lightning size={16} weight="regular" />
                   Terminal
                 </div>
                 <TerminalContainerPicker

@@ -23,17 +23,17 @@ export default function ConfirmModal({
 }: ConfirmModalProps) {
   const typeStyles = {
     danger: {
-      icon: <WarningCircle size={48} weight="duotone" />,
+      icon: <WarningCircle size={48} weight="regular" />,
       color: 'var(--status-error)',
       gradient: 'linear-gradient(135deg, var(--status-error) 0%, var(--neon-pink) 100%)',
     },
     warning: {
-      icon: <Lightning size={48} weight="duotone" />,
+      icon: <Lightning size={48} weight="regular" />,
       color: 'var(--text-yellow)',
       gradient: 'linear-gradient(135deg, var(--neon-yellow) 0%, var(--neon-pink) 100%)',
     },
     info: {
-      icon: <Info size={48} weight="duotone" />,
+      icon: <Info size={48} weight="regular" />,
       color: 'var(--text-cyan)',
       gradient: 'linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%)',
     },

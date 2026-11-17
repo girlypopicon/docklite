@@ -63,7 +63,7 @@ export default function ShellAccessCard() {
   return (
     <div className="card-vapor p-6 rounded-xl">
       <h3 className="text-xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-green)' }}>
-        <TerminalWindow size={20} weight="duotone" />
+        <TerminalWindow size={20} weight="regular" />
         Shell access
       </h3>
       <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
@@ -72,7 +72,7 @@ export default function ShellAccessCard() {
         further: they can run it with <b>full admin rights and no login</b>.
       </p>
       <div className="text-xs flex items-start gap-2 p-3 rounded-lg mb-4" style={{ background: 'rgba(var(--status-warning-rgb), 0.12)', border: '1px solid rgba(var(--status-warning-rgb), 0.4)' }}>
-        <WarningCircle size={16} weight="duotone" style={{ color: 'var(--status-warning)', flexShrink: 0 }} />
+        <WarningCircle size={16} weight="regular" style={{ color: 'var(--status-warning)', flexShrink: 0 }} />
         <span>This lets them read the server&apos;s master token, so it is like giving them root for DockLite. Only add people you trust. Every change is written to the audit log.</span>
       </div>
 
