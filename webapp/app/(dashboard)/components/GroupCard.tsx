@@ -197,6 +197,7 @@ export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLink
           outline: highlight ? '3px dashed rgba(var(--c), 0.9)' : undefined,
           outlineOffset: 4,
         }}
+        data-picked={rgb ? '' : undefined}
         title={group.name}
         onPointerDown={(e) => {
           downAt.current = { x: e.clientX, y: e.clientY };

@@ -207,11 +207,11 @@ export default function DatabaseBoxModal({ db, container, onClose, onChanged, on
           {(panel === 'editor' || panel === 'download' || panel === 'credentials') && (
             <div className="space-y-4">
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {panel === 'editor' && 'Open the table editor. It needs the database login.'}
-                {panel === 'download' && 'Download a copy of this database. It needs the database login.'}
+                {panel === 'editor' && (type === 'sqlite' ? 'Open the table editor. A SQLite file has no login, so there is nothing to enter.' : 'Open the table editor. It needs the database login.')}
+                {panel === 'download' && (type === 'sqlite' ? 'Download a copy of the database file.' : 'Download a copy of this database. It needs the database login.')}
                 {panel === 'credentials' && 'Set a new password for this database. Sites that use the old one need updating.'}
               </p>
-              {creds}
+              {type !== 'sqlite' && creds}
               {panel === 'download' && (
                 <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-primary)' }}>
                   <input type="checkbox" checked={gzip} onChange={(e) => setGzip(e.target.checked)} /> Compress it (.gz)

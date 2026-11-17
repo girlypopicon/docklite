@@ -264,8 +264,8 @@
     --neon-yellow: #FFD166;
     --neon-yellow-rgb: 255, 209, 102;
     --text-primary: #2a2233;
-    --text-secondary: #51495f;
-    --text-muted: #6a6375;
+    --text-secondary: #3f3849;
+    --text-muted: #4f4859;
     --text-muted-rgb: 106, 99, 117;
     --card-bg-1: rgba(19, 13, 31, 0.92);
     --card-bg-2: rgba(12, 9, 20, 0.92);
@@ -2365,4 +2365,97 @@
 [data-theme='basic'] nav a:not(.bg-gradient-to-r):not(.neon-glow) { background-image: none !important; box-shadow: none !important; }
 [data-theme='basic'] body::before, [data-theme='basic'] body::after, [data-theme='basic'] html::before, [data-theme='basic'] html::after { display: none !important; }
 [data-theme='basic'] .retro-grid { background-color: #f1f3f4 !important; }
+}
+
+/* ── Theme voice, pass two: readable Unicorn, a little neon in every theme but Very basic, and buttons and headings that
+   each sound like their theme. Layered so it outranks the shared theme rules above. ──────────────────────────────── */
+@layer components {
+  /* Unicorn: a milky card behind the text (the rainbow stays in the borders and glows), so nothing sits on a gradient. */
+  [data-theme='unicorn'] .card-vapor,
+  [data-theme='unicorn'] .cyber-card,
+  [data-theme='unicorn'] .fixed.inset-0 .card-vapor {
+    background: rgba(255, 255, 255, 0.88) !important;
+    border: 1.5px solid rgba(var(--neon-pink-rgb), 0.45) !important;
+    box-shadow: 0 0 16px rgba(var(--neon-pink-rgb), 0.28), 0 0 34px rgba(var(--neon-cyan-rgb), 0.22) !important;
+  }
+  [data-theme='unicorn'] input.input-vapor,
+  [data-theme='unicorn'] select.input-vapor,
+  [data-theme='unicorn'] textarea.input-vapor { background: #fff !important; color: #241f2e !important; border: 1.5px solid rgba(var(--neon-purple-rgb), 0.55) !important; }
+
+  /* ── a little neon everywhere ─────────────────────────────────────────────────────────────────────────────────── */
+  [data-theme='corpo'] .card-vapor, [data-theme='corpo'] .cyber-card { box-shadow: 0 8px 22px rgba(31, 33, 43, 0.1), 0 0 14px rgba(var(--neon-pink-rgb), 0.22) !important; }
+  [data-theme='corpo-blue'] .card-vapor, [data-theme='corpo-blue'] .cyber-card { box-shadow: 0 8px 24px rgba(31, 33, 43, 0.1), 0 0 16px rgba(var(--neon-cyan-rgb), 0.3) !important; }
+  [data-theme='corpo'] h1, [data-theme='corpo'] h2 { text-shadow: 0 0 12px rgba(var(--neon-pink-rgb), 0.28) !important; }
+  [data-theme='corpo-blue'] h1, [data-theme='corpo-blue'] h2 { text-shadow: 0 0 12px rgba(var(--neon-cyan-rgb), 0.35) !important; }
+  [data-theme='unicorn'] h1, [data-theme='unicorn'] h2 { text-shadow: 0 0 14px rgba(var(--neon-pink-rgb), 0.3) !important; }
+  [data-theme='corpo'] .docklite-container-card.docklite-neon { box-shadow: 0 1px 2px rgba(20, 24, 40, 0.08), 0 8px 20px rgba(20, 24, 40, 0.08), 0 0 16px rgba(var(--c), 0.3); }
+  [data-theme='corpo-blue'] .docklite-container-card.docklite-neon { box-shadow: 0 10px 26px rgba(var(--c), 0.2), 0 0 18px rgba(var(--c), 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.9); }
+  [data-theme='unicorn'] .docklite-container-card.docklite-neon { box-shadow: 0 0 18px rgba(255, 106, 213, 0.4), 0 0 38px rgba(154, 208, 255, 0.35); }
+  [data-theme='corpo'] .docklite-container-card { --bigicon-a: 0.34; --bigicon-filter: drop-shadow(0 0 5px rgba(var(--c), 0.45)); }
+  [data-theme='corpo-blue'] .docklite-container-card { --bigicon-a: 0.42; --bigicon-filter: drop-shadow(0 0 8px rgba(var(--c), 0.5)); }
+  [data-theme='unicorn'] .docklite-container-card { --bigicon-a: 0.55; --bigicon-filter: drop-shadow(0 0 4px rgba(var(--c), 0.8)) drop-shadow(0 0 12px rgba(var(--c), 0.45)); }
+  [data-theme='corpo'] .docklite-square-btn { box-shadow: 0 0 8px rgba(var(--c), 0.35); }
+  [data-theme='corpo-blue'] .docklite-square-btn { box-shadow: 0 0 10px rgba(var(--c), 0.4); }
+  [data-theme='unicorn'] .docklite-square-btn { box-shadow: 0 0 10px rgba(255, 106, 213, 0.5), 0 0 18px rgba(154, 208, 255, 0.4); }
+
+  /* ── buttons that sound like their theme ───────────────────────────────────────────────────────────────────────── */
+  /* Cyberpunk: shouting caps, cut corners, a neon halo */
+  [data-theme='cyberpunk'] .btn-neon, [data-theme='cyberpunk'] .cyber-button, [data-theme='cyberpunk'] .cyber-button-sm {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    border-radius: 10px 2px 10px 2px; /* cut-corner look without clip-path, which would clip the glow */
+    box-shadow: 0 0 14px rgba(var(--neon-cyan-rgb), 0.55), 0 0 28px rgba(var(--neon-purple-rgb), 0.3);
+  }
+  [data-theme='cyberpunk'] main h1 { text-transform: uppercase; letter-spacing: 0.12em; }
+  [data-theme='cyberpunk'] .docklite-terminal-btn, [data-theme='cyberpunk'] nav button[style*='gradient'] { text-transform: uppercase; letter-spacing: 0.08em; border-radius: 4px !important; }
+
+  /* Corpo: rectangular, solid, restrained, with a rosy edge-light */
+  [data-theme='corpo'] .btn-neon, [data-theme='corpo'] .cyber-button, [data-theme='corpo'] .cyber-button-sm {
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(20, 24, 40, 0.2), 0 0 12px rgba(var(--neon-pink-rgb), 0.4);
+  }
+  [data-theme='corpo'] .docklite-terminal-btn, [data-theme='corpo'] nav button[style*='gradient'] { border-radius: 4px !important; box-shadow: 0 0 10px rgba(var(--neon-pink-rgb), 0.35); }
+  [data-theme='corpo'] main h1 { letter-spacing: -0.01em; font-weight: 700; }
+
+  /* Corpo Blue: smooth, glassy, a blue glow */
+  [data-theme='corpo-blue'] .btn-neon, [data-theme='corpo-blue'] .cyber-button, [data-theme='corpo-blue'] .cyber-button-sm {
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 3px 10px rgba(var(--neon-cyan-rgb), 0.35), 0 0 16px rgba(var(--neon-cyan-rgb), 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  [data-theme='corpo-blue'] .docklite-terminal-btn, [data-theme='corpo-blue'] nav button[style*='gradient'] { border-radius: 12px !important; box-shadow: 0 0 14px rgba(var(--neon-cyan-rgb), 0.45); }
+
+  /* Unicorn: round pastel pills with dark, readable text and a rainbow glow; they bounce */
+  [data-theme='unicorn'] .btn-neon, [data-theme='unicorn'] .cyber-button, [data-theme='unicorn'] .cyber-button-sm {
+    border-radius: 999px;
+    font-weight: 800;
+    color: #2a1736 !important;
+    background: linear-gradient(135deg, #FF9AD9 0%, #FFD98A 33%, #B8F2A2 55%, #8FD0FF 78%, #C7A4FF 100%) !important;
+    box-shadow: 0 0 14px rgba(255, 106, 213, 0.5), 0 0 26px rgba(154, 208, 255, 0.45) !important;
+    border: 2px solid rgba(255, 255, 255, 0.85) !important;
+  }
+  [data-theme='unicorn'] .btn-neon:hover, [data-theme='unicorn'] .cyber-button:hover, [data-theme='unicorn'] .cyber-button-sm:hover { transform: translateY(-2px) scale(1.04); }
+  [data-theme='unicorn'] .docklite-terminal-btn { background: linear-gradient(135deg, #B8F2A2, #9AD0FF) !important; color: #123022 !important; border-radius: 999px !important; box-shadow: 0 0 14px rgba(154, 208, 255, 0.7); }
+  [data-theme='unicorn'] nav button.hidden[style*='gradient'] { background: linear-gradient(135deg, #FFB3A6, #FF8AD8) !important; color: #3a0a2a !important; border-radius: 999px !important; box-shadow: 0 0 14px rgba(255, 106, 213, 0.6); }
+  [data-theme='unicorn'] main h1 { background: linear-gradient(90deg, #c026d3, #6d4cf0, #0b79c9); -webkit-background-clip: text; background-clip: text; color: transparent !important; -webkit-text-fill-color: transparent; text-shadow: none !important; filter: drop-shadow(0 0 8px rgba(255, 106, 213, 0.3)); }
+
+  /* Buttons that carry their own inline gradient (New group, filter chips...) get the theme's shape and voice too */
+  [data-theme='cyberpunk'] main button[style*='linear-gradient'], [data-theme='cyberpunk'] main a[style*='linear-gradient'] { text-transform: uppercase; letter-spacing: 0.08em; border-radius: 10px 2px 10px 2px !important; }
+  [data-theme='corpo'] main button[style*='linear-gradient'], [data-theme='corpo'] main a[style*='linear-gradient'] { border-radius: 4px !important; }
+  [data-theme='corpo-blue'] main button[style*='linear-gradient'], [data-theme='corpo-blue'] main a[style*='linear-gradient'] { border-radius: 12px !important; }
+  [data-theme='unicorn'] main button[style*='linear-gradient'], [data-theme='unicorn'] main a[style*='linear-gradient'] { border-radius: 999px !important; }
+  /* the gradient-filled title makes its text transparent, so icons beside it need a colour of their own */
+  [data-theme='unicorn'] main h1 svg { color: #a23fd0 !important; -webkit-text-fill-color: initial; }
+
+  /* A colour picked for a card must show in every theme, including the ones whose borders are not the card colour */
+  [data-theme='unicorn'] .docklite-container-card[data-picked].docklite-neon {
+    background:
+      linear-gradient(rgba(var(--c), 0.16), rgba(255, 255, 255, 0.86)) padding-box,
+      linear-gradient(135deg, rgb(var(--c)), rgba(var(--c), 0.4)) border-box !important;
+    box-shadow: 0 0 18px rgba(var(--c), 0.6), 0 0 38px rgba(var(--c), 0.32);
+  }
+  [data-theme='basic'] .docklite-container-card[data-picked].docklite-neon { border-top: 3px solid rgb(var(--c)); }
 }

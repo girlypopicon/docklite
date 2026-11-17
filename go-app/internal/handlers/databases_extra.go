@@ -169,6 +169,13 @@ func (h *Handlers) DatabaseRoutes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if rec, err := h.store.GetDatabaseByID(dbID); err == nil && rec != nil && rec.Type == "sqlite" {
+		switch parts[1] {
+		case "query", "schema", "table", "update-rows", "download":
+			h.sqliteRoute(w, r, rec, parts[1])
+			return
+		}
+	}
 	switch parts[1] {
 	case "query", "schema", "table", "update-rows":
 		if rec, err := h.store.GetDatabaseByID(dbID); err == nil && rec != nil && rec.Type != "" && rec.Type != "postgres" && rec.Type != "sqlite" {
