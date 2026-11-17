@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.12.1 (2026-11-17)
+
 ### Fixed
 - The popup that asks "Update to X?" was drawn inside the Updates card, so it was cut off at the top and only dimmed that card. It now
   opens in the middle of the page with the whole page dimmed. Every other confirmation popup (stopping a box and so on) had the same
