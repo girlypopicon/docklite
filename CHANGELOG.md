@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.11.2 (2026-11-17)
+
 ### Fixed
 - **A new SQLite database now opens.** The form offered `/app/data/db.sqlite` even for static websites, whose files live somewhere else,
   so the editor said the file was "not inside a folder the site shares". The form now suggests the right folder for the site, DockLite
