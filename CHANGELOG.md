@@ -5,6 +5,20 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Fixed
+- **A new SQLite database now opens.** The form offered `/app/data/db.sqlite` even for static websites, whose files live somewhere else,
+  so the editor said the file was "not inside a folder the site shares". The form now suggests the right folder for the site, DockLite
+  checks the path when you create the database (and names the folders that work), and it creates the empty database file so the table
+  editor opens straight away. The Table details panel also shows the real reason instead of a generic message.
+- **Unicorn no longer shows pale, unreadable text after switching themes.** Switching theme slid text colours across, so light text from
+  the old theme sat on Unicorn's white cards. Themes now switch instantly.
+- **Glow on the Overview / Logs / Settings tabs is no longer cut off** at the edges.
+- **Opening a database from inside a group now shows the database window**, which used to open behind the group window.
+
+### Added
+- **Buttons for basic database jobs**, in the table editor's right-hand panel: make a new table, add a row, add a column, delete some rows,
+  rename, empty or delete a table. Each asks for what it needs in plain boxes, writes the SQL for you and shows what it ran.
+
 ## 1.11.1 (2026-11-17)
 
 ### Changed
