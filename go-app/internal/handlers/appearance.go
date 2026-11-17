@@ -16,7 +16,7 @@ type userAppearance struct {
 }
 
 var (
-	appearanceThemes    = map[string]bool{"cyberpunk": true, "corpo": true, "corpo-blue": true, "unicorn": true}
+	appearanceThemes    = map[string]bool{"cyberpunk": true, "corpo": true, "corpo-blue": true, "unicorn": true, "basic": true}
 	appearanceFontSizes = map[string]bool{"small": true, "medium": true, "large": true, "xlarge": true}
 )
 

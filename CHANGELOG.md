@@ -5,6 +5,11 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **A fifth theme, "Very basic".** Plain white and grey with a single blue, small corners, no glow, no gradients: the quiet,
+  familiar look of a classic hosting panel, for anyone who wants DockLite to look like the boring competition. Pick it in
+  Settings, Appearance.
+
 ## 1.9.0 (2026-11-17)
 
 ### Changed
