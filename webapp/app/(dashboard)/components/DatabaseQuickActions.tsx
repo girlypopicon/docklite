@@ -14,7 +14,6 @@ export interface QAColumn {
 
 type Action = 'new-table' | 'add-row' | 'add-column' | 'delete-rows' | 'rename-table' | 'empty-table' | 'drop-table';
 
-const quote = (identifier: string) => `"${identifier.replace(/"/g, '""')}"`;
 const isNumeric = (type: string) => ['int', 'numeric', 'decimal', 'real', 'double', 'float', 'serial'].some((t) => type.toLowerCase().includes(t));
 
 /** A value typed in a box, as SQL text: numbers stay numbers, everything else is quoted with its quotes doubled. */
@@ -34,6 +33,9 @@ const COLUMN_KINDS = [
 ];
 
 function kindToSql(kind: string, engine: string): string {
+  if (engine === 'mariadb' || engine === 'mysql') {
+    return { number: 'INT', decimal: 'DOUBLE', yesno: 'TINYINT(1)', date: 'DATE' }[kind] || 'TEXT';
+  }
   const sqlite = engine === 'sqlite';
   switch (kind) {
     case 'number': return sqlite ? 'INTEGER' : 'integer';
@@ -56,6 +58,9 @@ interface Props {
  * writing the SQL itself. The SQL it ran is shown afterwards, so it doubles as a way to learn.
  */
 export default function DatabaseQuickActions({ dbId, engine, table, onDone }: Props) {
+  const mysqlLike = engine === 'mariadb' || engine === 'mysql';
+  // MariaDB and MySQL quote names with backticks; a double-quoted word there is a piece of text.
+  const quote = (identifier: string) => (mysqlLike ? `\`${identifier.replace(/`/g, '``')}\`` : `"${identifier.replace(/"/g, '""')}"`);
   const [action, setAction] = useState<Action | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -79,7 +84,7 @@ export default function DatabaseQuickActions({ dbId, engine, table, onDone }: Pr
         const cols = (values.cols || '').split(',').map((c) => c.trim()).filter(Boolean);
         if (!name) { setError('Give the table a name.'); return null; }
         if (!cols.length) { setError('Add at least one column, like "name, email".'); return null; }
-        const id = engine === 'sqlite' ? '"id" INTEGER PRIMARY KEY AUTOINCREMENT' : '"id" SERIAL PRIMARY KEY';
+        const id = engine === 'sqlite' ? '"id" INTEGER PRIMARY KEY AUTOINCREMENT' : mysqlLike ? '`id` INT AUTO_INCREMENT PRIMARY KEY' : '"id" SERIAL PRIMARY KEY';
         return `CREATE TABLE ${quote(name)} (${[id, ...cols.map((c) => `${quote(c)} ${kindToSql('text', engine)}`)].join(', ')});`;
       }
       case 'add-row': {

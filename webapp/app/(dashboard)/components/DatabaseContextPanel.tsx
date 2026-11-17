@@ -21,10 +21,12 @@ interface TableInfo {
 
 const STORAGE_PREFIX = 'docklite-db-edit-';
 
-const quote = (identifier: string) => `"${identifier.replace(/"/g, '""')}"`;
+type Quoter = (identifier: string) => string;
+const quoteAnsi: Quoter = (identifier) => `"${identifier.replace(/"/g, '""')}"`;
+const quoteMysql: Quoter = (identifier) => `\`${identifier.replace(/`/g, '``')}\``;
 
 /** CREATE TABLE text from a column list. It can't know indexes or foreign keys, so it says so. */
-function buildCreateTable(table: TableInfo): string {
+function buildCreateTable(table: TableInfo, quote: Quoter): string {
   const lines = table.columns.map((col) => {
     const parts = [`  ${quote(col.name)} ${col.type}`];
     if (!col.nullable) parts.push('NOT NULL');
@@ -46,7 +48,7 @@ export default function DatabaseContextPanel() {
   const dbId = useMemo(() => pathname?.match(/^\/databases\/(\d+)\/edit/)?.[1] || null, [pathname]);
   const toast = useToast();
   const [tables, setTables] = useState<TableInfo[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(() => (typeof window !== 'undefined' ? ((window as any).__dockliteSelectedTable as string | undefined) || null : null));
   const [rowCount, setRowCount] = useState<number | null>(null);
   const [dbName, setDbName] = useState<string | null>(null);
   const [port, setPort] = useState<number | null>(null);
@@ -116,6 +118,7 @@ export default function DatabaseContextPanel() {
   }, []);
 
   const table = tables.find((t) => t.name === selected) || null;
+  const quote = engine === 'mariadb' || engine === 'mysql' ? quoteMysql : quoteAnsi;
 
   const copy = async (text: string, what: string) => {
     try {
@@ -177,7 +180,7 @@ export default function DatabaseContextPanel() {
         <button type="button" className="btn-neon w-full px-3 py-2 text-xs font-bold inline-flex items-center justify-center gap-2" onClick={() => copy(`SELECT * FROM ${quote(table.name)} LIMIT 100;`, 'the SELECT query')}>
           <Copy size={14} weight="regular" /> Copy SELECT query
         </button>
-        <button type="button" className="btn-neon w-full px-3 py-2 text-xs font-bold inline-flex items-center justify-center gap-2" onClick={() => copy(buildCreateTable(table), 'CREATE TABLE')}>
+        <button type="button" className="btn-neon w-full px-3 py-2 text-xs font-bold inline-flex items-center justify-center gap-2" onClick={() => copy(buildCreateTable(table, quote), 'CREATE TABLE')}>
           <Copy size={14} weight="regular" /> Copy CREATE TABLE
         </button>
         <p className="text-[11px] opacity-60">

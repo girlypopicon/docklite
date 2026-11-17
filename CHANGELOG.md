@@ -5,6 +5,14 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **MariaDB and MySQL databases can now be browsed and edited** in the table editor, like Postgres: pick a table, see its first 100 rows and
+  columns, edit rows, and run SQL. The buttons for basic jobs (new table, add a row, and so on) work for them too. Tested against a real
+  MariaDB. (Mongo and Redis still use your own client.)
+
+### Fixed
+- The Table details panel remembers the table you are looking at if you open it after the table has loaded.
+
 ## 1.11.2 (2026-11-17)
 
 ### Fixed
