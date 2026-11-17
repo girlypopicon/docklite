@@ -8,6 +8,7 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## 1.12.1 (2026-11-17)
 
 ### Fixed
+- Vapor: the patterned strips under the top bar and along the bottom looked like red and green hearts. They are now plain neon bars.
 - Switching to the Unicorn theme could leave pale, unreadable text on the theme cards (and elsewhere) in some browsers, because the text
   colour was still sliding from the old theme. Theme changes now take effect instantly and any slide still running is finished.
 - The popup that asks "Update to X?" was drawn inside the Updates card, so it was cut off at the top and only dimmed that card. It now
