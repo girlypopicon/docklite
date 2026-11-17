@@ -120,6 +120,9 @@ interface IngressResponse {
   entrypoints: string[];
   httpRedirect: string;
   hsts: string;
+  version?: string;
+  sites?: { sites: number; https: number; redirecting: number; hsts: number };
+  note?: string;
 }
 
 interface DiagnosticResult {
@@ -672,89 +675,88 @@ function NetworkPageInner() {
             </div>
           ) : ingress ? (
             <>
+              {ingress.note && (
+                <div className="text-sm font-mono p-3 rounded-lg" style={{ background: 'rgba(var(--neon-yellow-rgb), 0.1)', color: 'var(--text-yellow)' }}>
+                  {ingress.note}
+                </div>
+              )}
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="card-vapor p-6 rounded-xl">
                   <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-cyan)' }}>
-                    Reverse Proxy
+                    Reverse proxy
                   </h2>
                   <div className="space-y-3 text-sm font-mono">
-                    <div className="flex justify-between gap-3">
-                      <span style={{ color: 'var(--text-secondary)' }}>Provider</span>
-                      <span>{ingress.provider}</span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span style={{ color: 'var(--text-secondary)' }}>Container</span>
-                      <span>{ingress.containerName || '—'}</span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span style={{ color: 'var(--text-secondary)' }}>Image</span>
-                      <span>{ingress.image || '—'}</span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span style={{ color: 'var(--text-secondary)' }}>State</span>
-                      <span>{ingress.state || '—'}</span>
-                    </div>
+                    {[
+                      ['Software', ingress.provider],
+                      ['Version', ingress.version],
+                      ['Status', ingress.state ? (ingress.state === 'running' ? 'Running' : ingress.state) : ''],
+                      ['Container', ingress.containerName],
+                      ['Image', ingress.image],
+                    ].filter(([, v]) => v).map(([label, value]) => (
+                      <div key={label} className="flex justify-between gap-3">
+                        <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+                        <span className="text-right break-all">{value}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
                 <div className="card-vapor p-6 rounded-xl">
                   <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-pink)' }}>
-                    Bindings
+                    Listening on
                   </h2>
                   <div className="space-y-2 text-sm font-mono">
                     {ingress.bindings.length === 0 ? (
-                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        No bindings detected.
-                      </div>
+                      <div style={{ color: 'var(--text-yellow)' }}>Nothing is answering on ports 80 or 443.</div>
                     ) : ingress.bindings.map((binding) => (
-                      <div key={binding}>{binding}</div>
+                      <div key={binding} className="flex justify-between gap-3">
+                        <span>{binding}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{binding.endsWith(':443') ? 'https' : 'http'}</span>
+                      </div>
                     ))}
                   </div>
-                  <div className="text-xs mt-3" style={{ color: 'var(--text-secondary)' }}>
-                    Entrypoints: {ingress.entrypoints.length ? ingress.entrypoints.join(', ') : '—'}
-                  </div>
                 </div>
 
+                {ingress.sites && (
+                  <div className="card-vapor p-6 rounded-xl">
+                    <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-purple)' }}>
+                      Sites
+                    </h2>
+                    <div className="space-y-3 text-sm font-mono">
+                      {[
+                        ['Served by nginx', String(ingress.sites.sites)],
+                        ['With HTTPS', `${ingress.sites.https} of ${ingress.sites.sites}`],
+                        ['HTTP sends visitors to HTTPS', ingress.httpRedirect],
+                        ['HSTS (HTTPS sites)', ingress.hsts],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex justify-between gap-3">
+                          <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+                          <span className="text-right">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {ingress.ports.length > 0 && (
                 <div className="card-vapor p-6 rounded-xl">
-                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-purple)' }}>
-                    TLS + Redirect
+                  <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-cyan)' }}>
+                    Published ports
                   </h2>
-                  <div className="space-y-2 text-sm font-mono">
-                    <div className="flex justify-between">
-                      <span style={{ color: 'var(--text-secondary)' }}>HTTP → HTTPS</span>
-                      <span>{ingress.httpRedirect}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span style={{ color: 'var(--text-secondary)' }}>HSTS</span>
-                      <span>{ingress.hsts}</span>
-                    </div>
-                  </div>
-                  <div className="text-xs mt-3" style={{ color: 'var(--text-secondary)' }}>
-                    Read-only view (reverse proxy config).
+                  <div className="flex flex-wrap gap-2">
+                    {ingress.ports.map((port, index) => (
+                      <span
+                        key={`${port.hostIp}-${port.hostPort}-${index}`}
+                        className="text-xs font-mono px-3 py-1 rounded-full"
+                        style={{ background: 'rgba(var(--neon-cyan-rgb), 0.12)', color: 'var(--text-cyan)' }}
+                      >
+                        {port.hostIp}:{port.hostPort} → {port.containerPort}/{port.proto}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              </div>
-
-              <div className="card-vapor p-6 rounded-xl">
-                <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text-cyan)' }}>
-                  Port Exposure
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {ingress.ports.length === 0 ? (
-                    <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-                      No published ports.
-                    </span>
-                  ) : ingress.ports.map((port, index) => (
-                    <span
-                      key={`${port.hostIp}-${port.hostPort}-${index}`}
-                      className="text-xs font-mono px-3 py-1 rounded-full"
-                      style={{ background: 'rgba(var(--neon-cyan-rgb), 0.12)', color: 'var(--text-cyan)' }}
-                    >
-                      {port.hostIp}:{port.hostPort} → {port.containerPort}/{port.proto}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              )}
             </>
           ) : (
             <div className="text-sm font-mono" style={{ color: 'var(--text-secondary)' }}>

@@ -10,7 +10,7 @@ interface Props {
 }
 
 /**
- * The one close button for dialogs: a round, clearly visible button in the theme's own button colours
+ * The one close button for dialogs: an X in a rounded square, clearly visible, in the theme's own button colours
  * (the rainbow in Unicorn, the neon gradient elsewhere), big enough to hit. Pass `absolute top-4 right-4`
  * to pin it to the corner of a dialog that is `relative`.
  */
@@ -25,9 +25,9 @@ export default function CloseButton({ onClick, label = 'Close', disabled, classN
       disabled={disabled}
       aria-label={label}
       title={label}
-      className={`btn-neon inline-flex items-center justify-center w-12 h-12 rounded-full shrink-0 transition-transform hover:scale-110 disabled:opacity-50 ${className}`}
+      className={`btn-neon inline-flex items-center justify-center w-10 h-10 rounded-xl shrink-0 transition-transform hover:scale-110 disabled:opacity-50 ${className}`}
     >
-      <X size={28} weight="bold" />
+      <X size={22} weight="bold" />
     </button>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Database, Globe } from '@phosphor-icons/react';
+import { formatBytes } from '@/lib/database-engines';
 
 // What goes into one .litpkg. Mirrors backup.Selection in go-app/internal/backup/selection.go.
 export type BackupSelection = {
@@ -83,6 +84,35 @@ export default function BackupPicker({ value, onChange, disabled, forSchedule }:
   useEffect(() => {
     load();
   }, [load]);
+
+  // How big the package would be, asked of the server a moment after the ticks stop changing.
+  const [estimate, setEstimate] = useState<Estimate | null>(null);
+  const [estimating, setEstimating] = useState(false);
+  const selectionKey = JSON.stringify(value);
+  useEffect(() => {
+    if (selectionIsEmpty(value)) {
+      setEstimate(null);
+      return;
+    }
+    let cancelled = false;
+    setEstimating(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/backups/estimate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ selection: value }) });
+        const data = await res.json();
+        if (!cancelled) setEstimate(res.ok ? data : null);
+      } catch {
+        if (!cancelled) setEstimate(null);
+      } finally {
+        if (!cancelled) setEstimating(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionKey]);
 
   // Non-admins pick from the databases they can reach, whatever site those belong to.
   const loose = useMemo(() => (isAdmin ? databases.filter((d) => d.site_id === null) : databases), [databases, isAdmin]);
@@ -265,6 +295,44 @@ export default function BackupPicker({ value, onChange, disabled, forSchedule }:
       )}
 
       <div className="text-sm text-accent-cyan">{summary}</div>
+      {!selectionIsEmpty(value) && <EstimateLine estimate={estimate} loading={estimating} />}
+    </div>
+  );
+}
+
+type Estimate = {
+  items: { name: string; kind: string; bytes: number; known: boolean }[];
+  raw_bytes: number;
+  estimate_bytes: number;
+  unknown?: number;
+  free_bytes?: number;
+};
+
+// "About 120 MB" with what it is made of, and a warning when it wouldn't fit where backups are kept.
+function EstimateLine({ estimate, loading }: { estimate: Estimate | null; loading: boolean }) {
+  if (!estimate) return loading ? <div className="text-xs text-ink-muted">Working out the size…</div> : null;
+  const tooBig = estimate.free_bytes ? estimate.estimate_bytes > estimate.free_bytes * 0.9 : false;
+  const sites = estimate.items.filter((i) => i.kind === 'site');
+  const dbs = estimate.items.filter((i) => i.kind !== 'site');
+  const sum = (xs: { bytes: number }[]) => xs.reduce((n, x) => n + x.bytes, 0);
+  return (
+    <div className="text-xs space-y-1" style={{ color: 'var(--text-secondary)' }}>
+      <div>
+        <span style={{ color: 'var(--text-primary)' }}>Projected size: about {formatBytes(estimate.estimate_bytes)}</span>
+        {' '}
+        ({formatBytes(estimate.raw_bytes)} before compressing
+        {sites.length > 0 ? `; sites ${formatBytes(sum(sites))}` : ''}
+        {dbs.length > 0 ? `; databases ${formatBytes(sum(dbs))}` : ''})
+        {loading ? ' …' : ''}
+      </div>
+      {estimate.unknown ? (
+        <div>{estimate.unknown} {estimate.unknown === 1 ? 'database' : 'databases'} couldn&apos;t be measured (stopped, or a file database), so the real size may be a bit more.</div>
+      ) : null}
+      {estimate.free_bytes ? (
+        <div style={{ color: tooBig ? 'var(--status-error)' : undefined }}>
+          {formatBytes(estimate.free_bytes)} free on this server{tooBig ? ': this may not fit' : ''}.
+        </div>
+      ) : null}
     </div>
   );
 }

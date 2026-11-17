@@ -110,7 +110,7 @@ export function hostApi(req: DemoRequest, s: DemoState): DemoResponse | null {
       httpOpen: true, httpsOpen: true, sshOpen: true, otherPorts: [], dockerExposed: sitePorts, lastUpdated: new Date().toISOString() });
   }
   if (method === 'GET' && path === '/api/network/ingress') {
-    return ok({ provider: 'nginx', containerName: 'nginx (system service)', image: '', state: 'running', status: 'active', ports: [], bindings: ['0.0.0.0:80', '0.0.0.0:443'], entrypoints: ['http', 'https'], httpRedirect: 'enabled', hsts: 'enabled' });
+    const n = s.sites.length; return ok({ provider: 'nginx', version: 'nginx/1.26.0 (demo)', containerName: '', image: '', state: 'running', status: 'active', ports: [], bindings: ['0.0.0.0:80', '0.0.0.0:443'], entrypoints: ['web (80)', 'websecure (443)'], httpRedirect: `all ${n}`, hsts: `all ${n}`, sites: { sites: n, https: n, redirecting: n, hsts: n } });
   }
   if (method === 'GET' && path === '/api/network/public-ip') return ok({ ip: '203.0.113.10' });
   if (method === 'POST' && path === '/api/network/diagnostics') {

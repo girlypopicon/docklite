@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ContainerInfo } from '@/types';
-import { WarningCircle } from '@phosphor-icons/react';
+import { WarningCircle, Info, Eye, EyeSlash, DiceFive } from '@phosphor-icons/react';
 import CloseButton from './CloseButton';
 import { DB_ENGINES, type DbType } from '@/lib/database-engines';
 import { containerDisplayName } from '@/lib/container-names';
@@ -32,11 +32,21 @@ export default function CreateDatabaseModal({ type, sites, onBack, onClose, onCr
   const [name, setName] = useState('');
   const [username, setUsername] = useState('docklite');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [siteId, setSiteId] = useState('');
   const [path, setPath] = useState('/app/data/db.sqlite');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState<ConnectionInfo | null>(null);
+
+  // A strong random password, made here so the person can see it before saving the database.
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const bytes = new Uint32Array(24);
+    crypto.getRandomValues(bytes);
+    setPassword(Array.from(bytes, (b) => chars[b % chars.length]).join(''));
+    setShowPassword(true);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,6 +156,13 @@ export default function CreateDatabaseModal({ type, sites, onBack, onClose, onCr
             <span className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>File path inside the website</span>
             <input value={path} onChange={(e) => setPath(e.target.value)} required className="input-vapor w-full font-mono" />
           </label>
+          <p className="text-xs flex gap-2 p-3 rounded-lg" style={{ background: 'rgba(var(--neon-cyan-rgb), 0.08)', color: 'var(--text-secondary)' }}>
+            <Info size={16} weight="duotone" className="shrink-0 mt-0.5" style={{ color: 'var(--text-cyan)' }} />
+            <span>
+              SQLite is a single file, so it has no username or password of its own: whoever can read the file can open the database.
+              Access is controlled by who can reach the website&apos;s files. Pick Postgres, MariaDB, MySQL or MongoDB when you need accounts.
+            </span>
+          </p>
         </>
       ) : (
         <>
@@ -157,7 +174,21 @@ export default function CreateDatabaseModal({ type, sites, onBack, onClose, onCr
           )}
           <label className="block">
             <span className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Password (leave empty for a strong random one)</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" className="input-vapor w-full" />
+            <div className="flex gap-2">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                className="input-vapor w-full font-mono"
+              />
+              <button type="button" onClick={() => setShowPassword((v) => !v)} className="docklite-square-btn !w-10 !h-10" style={{ color: 'var(--text-primary)' }} title={showPassword ? 'Hide' : 'Show'} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+              </button>
+              <button type="button" onClick={generatePassword} className="docklite-square-btn !w-10 !h-10" style={{ color: 'var(--text-cyan)' }} title="Make a strong password" aria-label="Make a strong password">
+                <DiceFive size={18} />
+              </button>
+            </div>
           </label>
         </>
       )}

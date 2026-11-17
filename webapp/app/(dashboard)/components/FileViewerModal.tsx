@@ -1,6 +1,8 @@
 
 'use client';
 
+import CloseButton from './CloseButton';
+
 interface FileViewerModalProps {
   content: string;
   onClose: () => void;
@@ -12,7 +14,7 @@ export default function FileViewerModal({ content, onClose }: FileViewerModalPro
       <div className="bg-gray-800 text-white rounded-lg shadow-lg w-3/4 h-3/4 flex flex-col">
         <div className="p-4 border-b border-gray-700 flex justify-between items-center">
           <h2 className="text-lg font-bold">File Content</h2>
-          <button onClick={onClose} className="text-white">&times;</button>
+          <CloseButton onClick={onClose} className="!w-8 !h-8" />
         </div>
         <div className="flex-1 p-4 overflow-auto">
           <pre className="whitespace-pre-wrap">{content}</pre>

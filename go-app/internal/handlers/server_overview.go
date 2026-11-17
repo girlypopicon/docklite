@@ -884,7 +884,9 @@ func (h *Handlers) findContainer(ctx context.Context, match func(types.Container
 // unrelated container.)
 func (h *Handlers) detectDockliteService() *serviceStatus {
 	// Old systemd-style installs: the service manager knows about it.
-	if systemdStatus, ok := systemdUnitStatus([]string{"docklite-agent.service", "docklite.service", "docklite-web.service"}); ok && systemdStatus != nil {
+	// Only trust a unit that is actually running. A disabled, inactive unit left over from an old install says
+	// "stopped" while this very process is answering the request, so it must not be reported as the agent.
+	if systemdStatus, ok := systemdUnitStatus([]string{"docklite-agent.service", "docklite.service", "docklite-web.service"}); ok && systemdStatus != nil && systemdStatus.Status == "active" {
 		return systemdStatus
 	}
 	version := "unknown"

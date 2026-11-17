@@ -105,16 +105,19 @@ type firewallResponse struct {
 }
 
 type ingressResponse struct {
-	Provider      string       `json:"provider"`
-	ContainerName string       `json:"containerName"`
-	Image         string       `json:"image"`
-	State         string       `json:"state"`
-	Status        string       `json:"status"`
-	Ports         []dockerPort `json:"ports"`
-	Bindings      []string     `json:"bindings"`
-	Entrypoints   []string     `json:"entrypoints"`
-	HTTPRedirect  string       `json:"httpRedirect"`
-	HSTS          string       `json:"hsts"`
+	Provider      string        `json:"provider"`
+	ContainerName string        `json:"containerName"`
+	Image         string        `json:"image"`
+	State         string        `json:"state"`
+	Status        string        `json:"status"`
+	Ports         []dockerPort  `json:"ports"`
+	Bindings      []string      `json:"bindings"`
+	Entrypoints   []string      `json:"entrypoints"`
+	HTTPRedirect  string        `json:"httpRedirect"`
+	HSTS          string        `json:"hsts"`
+	Version       string        `json:"version,omitempty"`
+	Sites         *ingressSites `json:"sites,omitempty"`
+	Note          string        `json:"note,omitempty"`
 }
 
 type diagnosticResult struct {
@@ -234,6 +237,37 @@ func (h *Handlers) NetworkIngress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// nginx is what DockLite runs behind: describe it from its own configs. (Traefik below is only for old setups.)
+	if nginxIsActive() {
+		version := ""
+		if out, err := exec.Command("nginx", "-v").CombinedOutput(); err == nil {
+			version = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(out)), "nginx version:"))
+		}
+		sites := summarizeIngress(readEnabledSites("/etc/nginx/sites-enabled"))
+		var bindings, entrypoints []string
+		for _, p := range listeningPorts(80, 443) {
+			bindings = append(bindings, fmt.Sprintf("0.0.0.0:%d", p))
+			if p == 80 {
+				entrypoints = append(entrypoints, "web (80)")
+			} else {
+				entrypoints = append(entrypoints, "websecure (443)")
+			}
+		}
+		writeJSON(w, http.StatusOK, ingressResponse{
+			Provider:     "nginx",
+			State:        "running",
+			Status:       "active",
+			Ports:        []dockerPort{},
+			Bindings:     bindings,
+			Entrypoints:  entrypoints,
+			HTTPRedirect: describeCount(sites.Redirecting, sites.Sites),
+			HSTS:         describeCount(sites.HSTS, sites.HTTPS),
+			Version:      version,
+			Sites:        &sites,
+		})
+		return
+	}
+
 	provider := "traefik"
 	containerName := ""
 	image := ""
@@ -284,8 +318,9 @@ func (h *Handlers) NetworkIngress(w http.ResponseWriter, r *http.Request) {
 		Ports:         ports,
 		Bindings:      bindings,
 		Entrypoints:   entrypoints,
-		HTTPRedirect:  "unknown",
-		HSTS:          "unknown",
+		HTTPRedirect:  "not checked",
+		HSTS:          "not checked",
+		Note:          "No reverse proxy was found running on this server.",
 	})
 }
 
