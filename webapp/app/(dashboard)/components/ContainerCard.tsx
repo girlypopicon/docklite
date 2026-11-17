@@ -5,13 +5,14 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Clock, Plug, Eye, Trash, Play, ArrowsClockwise, Stop, DotsThree, Copy, UserCircle, Folder, TerminalWindow,
-  PaintBrush, Shapes, CaretRight, CaretLeft, FolderSimple, FolderMinus, ArrowsInLineVertical, ArrowsOutLineVertical,
+  PaintBrush, Shapes, CaretRight, CaretLeft, FolderSimple, FolderMinus, Lock, LockOpen, WarningCircle, ArrowsInLineVertical, ArrowsOutLineVertical,
 } from '@phosphor-icons/react';
 import { useToast } from '@/lib/hooks/useToast';
 import { containerDisplayName } from '@/lib/container-names';
 import { DB_CONTAINER_TYPES } from '@/lib/database-engines';
 import { BOX_COLOR_RGB, boxIconFor, boxNameFontSize } from '@/lib/box-styles';
 import { ColourGrid, IconGrid } from './BoxStylePickers';
+import { useSslStatuses } from '@/lib/ssl-status';
 import { placeMenu, type MenuPlacement } from '@/lib/menu-position';
 
 interface ContainerCardProps {
@@ -71,6 +72,29 @@ export default function ContainerCard({
   useEffect(() => {
     setStyle({ color: container.style?.color || '', icon: container.style?.icon || '' });
   }, [container.style?.color, container.style?.icon]);
+
+  // The padlock for a website: the certificate state, checked in the background and shared by all cards.
+  const domain = (container.labels?.['docklite.domain'] || '').toLowerCase();
+  const certs = useSslStatuses();
+  const cert = domain && certs ? certs[domain] : undefined;
+  const padlock = cert
+    ? (() => {
+        const days = cert.days;
+        const table = {
+          valid: { Icon: Lock, color: 'var(--text-green)', tip: days != null ? `HTTPS is on: certificate valid for ${days} more days` : 'HTTPS is on' },
+          expiring: { Icon: WarningCircle, color: 'var(--text-yellow)', tip: `HTTPS certificate expires in ${days ?? 'a few'} days` },
+          expired: { Icon: WarningCircle, color: 'var(--status-error)', tip: 'HTTPS certificate has expired' },
+          none: { Icon: LockOpen, color: 'var(--text-muted)', tip: 'No HTTPS certificate yet' },
+          unknown: { Icon: LockOpen, color: 'var(--text-muted)', tip: 'HTTPS status unknown' },
+        } as const;
+        const m = table[cert.state] || table.unknown;
+        return (
+          <span className="shrink-0 inline-flex" style={{ color: m.color }} title={m.tip} aria-label={m.tip}>
+            <m.Icon size={14} weight={cert.state === 'valid' ? 'fill' : 'regular'} />
+          </span>
+        );
+      })()
+    : null;
 
   const isRunning = container.state === 'running';
   // A SQLite database is a file inside a site, not a container: no start/stop, terminal, colour or grouping.
@@ -263,6 +287,7 @@ export default function ContainerCard({
             style={{ background: isRunning ? 'var(--neon-green)' : 'var(--status-error)', boxShadow: isRunning ? '0 0 8px var(--neon-green)' : 'none' }}
             aria-label={isRunning ? 'Running' : 'Stopped'}
           />
+          {padlock}
           <span className="docklite-bar-title flex-1 min-w-0 truncate font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
             {displayName}
           </span>
@@ -418,6 +443,14 @@ export default function ContainerCard({
             <Clock size={14} weight="regular" className="shrink-0" />
             <span className="truncate">{isRunning ? container.uptime || 'Running' : 'Not running'}</span>
           </div>
+          {cert && (
+            <div className="flex items-center gap-1.5 min-w-0" style={{ color: 'var(--text-secondary)' }}>
+              {padlock}
+              <span className="truncate">
+                {cert.state === 'valid' ? `HTTPS${cert.days != null ? ` · ${cert.days}d left` : ''}` : cert.state === 'expiring' ? `HTTPS expires in ${cert.days ?? '?'}d` : cert.state === 'expired' ? 'HTTPS expired' : 'No HTTPS'}
+              </span>
+            </div>
+          )}
           {ports && (
             <div className="flex items-center gap-1.5 min-w-0" style={{ color: 'var(--text-purple)' }}>
               <Plug size={14} weight="regular" className="shrink-0" />

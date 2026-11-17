@@ -75,7 +75,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
   const [logs, setLogs] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'env' | 'network'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ssl' | 'logs' | 'env' | 'network'>('overview');
   const [autoRefreshLogs, setAutoRefreshLogs] = useState(true);
   const [logLines, setLogLines] = useState(100);
 
@@ -262,6 +262,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
         <div className="flex gap-2 overflow-x-auto p-5 -m-5 mb-1 docklite-tabs-scroll">
           {[
             { id: 'overview', label: 'Overview', icon: <ChartBar size={16} weight="regular" /> },
+            ...(details.labels?.['docklite.domain'] ? [{ id: 'ssl', label: 'SSL', icon: <Lock size={16} weight="regular" /> }] : []),
             { id: 'logs', label: 'Logs', icon: <NotePencil size={16} weight="regular" /> },
             { id: 'env', label: 'Environment', icon: <Wrench size={16} weight="regular" /> },
             { id: 'network', label: 'Network', icon: <Globe size={16} weight="regular" /> },
@@ -292,11 +293,6 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <>
-              {/* HTTPS status, for containers that serve a website */}
-              {details.labels?.['docklite.domain'] && (
-                <SiteHttpsCard domain={details.labels['docklite.domain']} />
-              )}
-
               {/* Real-time Stats */}
               {isRunning && stats && stats.cpu !== undefined && (
                 <div className="card-vapor p-6 rounded-xl">
@@ -427,6 +423,11 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                 </div>
               )}
             </>
+          )}
+
+          {/* SSL Tab: the certificate and HTTPS settings, for containers that serve a website */}
+          {activeTab === 'ssl' && details.labels?.['docklite.domain'] && (
+            <SiteHttpsCard domain={details.labels['docklite.domain']} />
           )}
 
           {/* Logs Tab */}
