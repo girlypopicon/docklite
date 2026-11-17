@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.8.0 (2026-11-17)
+
 ### Added
 - **Projected backup size.** Picking what to back up now shows "about 120 MB" (and what that is made of), measured from the site
   folders and database sizes, plus the free space on the server, with a warning if it may not fit. Off-server destinations come next.
