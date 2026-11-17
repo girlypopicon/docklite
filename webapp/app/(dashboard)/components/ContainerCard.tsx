@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Clock, Plug, Eye, Trash, Play, ArrowsClockwise, Stop, DotsThree, Copy, UserCircle, Folder, TerminalWindow,
-  PaintBrush, Shapes, CaretRight, CaretLeft, FolderSimple, FolderMinus,
+  PaintBrush, Shapes, CaretRight, CaretLeft, FolderSimple, FolderMinus, ArrowsInLineVertical, ArrowsOutLineVertical,
 } from '@phosphor-icons/react';
 import { useToast } from '@/lib/hooks/useToast';
 import { containerDisplayName } from '@/lib/container-names';
@@ -29,6 +29,9 @@ interface ContainerCardProps {
   isTracked?: boolean;
   // Save the colour and icon this box was given (the card already shows them; this is for keeping them).
   onStyle?: (containerId: string, style: { color: string; icon: string }) => void;
+  // Collapsing: a collapsed box is a thin bar with just its name and the menu; six of them fit where one open card does.
+  collapsed?: boolean;
+  onToggleCollapse?: (containerId: string) => void;
 }
 
 type MenuView = 'main' | 'colour' | 'icon';
@@ -50,6 +53,8 @@ export default function ContainerCard({
   onToggleTracking,
   isTracked = true,
   onStyle,
+  collapsed = false,
+  onToggleCollapse,
 }: ContainerCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [view, setView] = useState<MenuView>('main');
@@ -198,6 +203,7 @@ export default function ContainerCard({
         {view === 'main' && (
           <>
             {onViewDetails && item('View details', <Eye size={16} weight="regular" />, () => onViewDetails(container.id, container.name))}
+            {onToggleCollapse && item(collapsed ? 'Expand' : 'Collapse', collapsed ? <ArrowsOutLineVertical size={16} weight="regular" /> : <ArrowsInLineVertical size={16} weight="regular" />, () => onToggleCollapse(container.id))}
             {!isVirtual && item('Open in terminal', <TerminalWindow size={16} weight="regular" />, () =>
               window.dispatchEvent(new CustomEvent('docklite-open-terminal', { detail: { containerId: container.id, containerName: container.name } })),
             )}
@@ -229,6 +235,69 @@ export default function ContainerCard({
       </div>
     </div>
   );
+
+  if (collapsed) {
+    return (
+      <div
+        className={`docklite-container-card docklite-neon docklite-box-bar ${pickedRgb ? '' : neonClass} relative w-full h-full rounded-lg cursor-pointer select-none`}
+        style={{
+          ...(pickedRgb ? ({ '--c': pickedRgb } as React.CSSProperties) : {}),
+          background: 'var(--surface-dim)',
+          opacity: isRunning ? 1 : 0.8,
+          containerType: 'inline-size',
+        }}
+        data-picked={pickedRgb ? '' : undefined}
+        title={container.name}
+        onPointerDown={(e) => {
+          downAt.current = { x: e.clientX, y: e.clientY };
+        }}
+        onClick={(e) => {
+          const d = downAt.current;
+          if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 6) return;
+          onViewDetails?.(container.id, container.name);
+        }}
+      >
+        <div className="relative z-10 flex items-center gap-2 h-full px-2 min-w-0">
+          <span
+            className="w-2 h-2 rounded-full shrink-0"
+            style={{ background: isRunning ? 'var(--neon-green)' : 'var(--status-error)', boxShadow: isRunning ? '0 0 8px var(--neon-green)' : 'none' }}
+            aria-label={isRunning ? 'Running' : 'Stopped'}
+          />
+          <span className="docklite-bar-title flex-1 min-w-0 truncate font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+            {displayName}
+          </span>
+          <div
+            ref={menuRef}
+            className="ml-auto shrink-0"
+            onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd} onPointerDownCapture={stopDnd} onMouseDownCapture={stopDnd} onTouchStartCapture={stopDnd}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = !menuOpen;
+                setMenuOpen(next);
+                if (!next) setView('main');
+                onMenuOpenChange?.(next);
+              }}
+              onPointerDown={stopDnd} onMouseDown={stopDnd} onTouchStart={stopDnd}
+              className="docklite-square-btn"
+              style={{ color: 'var(--text-primary)' }}
+              title="More options"
+              aria-label={`Options for ${displayName}`}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+            >
+              <DotsThree size={16} weight="bold" />
+            </button>
+            {menuOpen && menuPos && typeof document !== 'undefined' && createPortal(menu, document.body)}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

@@ -2462,3 +2462,8 @@
 
 /* A theme switch snaps instead of sliding (see applyAppearance). */
 [data-theme-switching] *, [data-theme-switching] *::before, [data-theme-switching] *::after { transition: none !important; animation-duration: 0s !important; }
+
+/* Collapsed boxes: a thin bar, so the name only shows when it fits beside the menu button. */
+.docklite-box-bar { overflow: visible; }
+@container (max-width: 96px) { .docklite-box-bar .docklite-bar-title { display: none; } }
+@media (hover: hover) { .docklite-box-bar:hover { transform: translateY(-1px); } }
