@@ -81,6 +81,12 @@ export default function AppearanceSettingsPage() {
       description: 'Spectrum palette with DockLite brand colors',
       preview: 'theme-preview-unicorn',
     },
+    {
+      id: 'basic',
+      name: 'Very basic',
+      description: 'Plain white and grey with one blue. Familiar and quiet, like a classic hosting panel',
+      preview: 'theme-preview-basic',
+    },
   ];
 
   const fontSizes = [
