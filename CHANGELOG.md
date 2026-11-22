@@ -5,6 +5,13 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **Terminal app: move a box to a group.** Open any box and choose **Move to group**: pick one of your groups, make a new one (and say
+  whether it's linked) or take the box out of its group.
+- **Terminal app: Groups view.** Press **g** on the Containers list to see your groups and **link or unlink** them (Enter), make a new one
+  (n), rename (r) or remove one (d, asks first; its boxes are never deleted). A linked group is one whose boxes are meant to talk to each
+  other, like a website and its database.
+
 ## 1.18.2 (2026-11-22)
 
 ### Fixed

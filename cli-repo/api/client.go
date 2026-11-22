@@ -46,6 +46,7 @@ type Container struct {
 type Group struct {
 	ID      int64    `json:"id"`
 	Name    string   `json:"name"`
+	Linked  bool     `json:"linked"`
 	Members []string `json:"members"`
 }
 
@@ -703,4 +704,67 @@ func mustRequest(method, url string, body io.Reader, token string) *http.Request
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	return req
+}
+
+// send makes a JSON request to the agent and returns the body of a successful answer.
+func (c *Client) send(method, path string, payload any) ([]byte, error) {
+	var body io.Reader
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		body = bytes.NewReader(b)
+	}
+	resp, err := c.doRequest(method, path, body, "application/json")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, &APIError{Status: resp.StatusCode, Body: string(data)}
+	}
+	return data, nil
+}
+
+// CreateGroup makes a group, optionally with its first boxes (container ids) and linked.
+func (c *Client) CreateGroup(name string, containerIDs []string, linked bool) (*Group, error) {
+	data, err := c.send(http.MethodPost, "/api/groups", map[string]any{"name": name, "container_ids": containerIDs, "linked": linked})
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Group Group `json:"group"`
+	}
+	_ = json.Unmarshal(data, &out)
+	return &out.Group, nil
+}
+
+// AddToGroup puts a box in a group; if it was in another group it leaves that one.
+func (c *Client) AddToGroup(groupID int64, containerID string) error {
+	_, err := c.send(http.MethodPost, fmt.Sprintf("/api/groups/%d/members", groupID), map[string]any{"container_id": containerID})
+	return err
+}
+
+// RemoveFromGroup takes a box out of a group; it goes back to the desktop.
+func (c *Client) RemoveFromGroup(groupID int64, containerID string) error {
+	_, err := c.send(http.MethodDelete, fmt.Sprintf("/api/groups/%d/members?container_id=%s", groupID, url.QueryEscape(containerID)), nil)
+	return err
+}
+
+func (c *Client) SetGroupLinked(groupID int64, linked bool) error {
+	_, err := c.send(http.MethodPut, fmt.Sprintf("/api/groups/%d", groupID), map[string]any{"linked": linked})
+	return err
+}
+
+func (c *Client) RenameGroup(groupID int64, name string) error {
+	_, err := c.send(http.MethodPut, fmt.Sprintf("/api/groups/%d", groupID), map[string]any{"name": name})
+	return err
+}
+
+// DeleteGroup removes the group; its boxes are not deleted, they go back to the desktop.
+func (c *Client) DeleteGroup(groupID int64) error {
+	_, err := c.send(http.MethodDelete, fmt.Sprintf("/api/groups/%d", groupID), nil)
+	return err
 }
