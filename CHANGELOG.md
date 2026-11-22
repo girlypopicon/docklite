@@ -5,6 +5,17 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **SQLite databases a site makes by itself now get a card automatically.** DockLite looks inside each site's folders for real SQLite files
+  (`.db`, `.sqlite`, `.sqlite3`), names them after the file, links them to the site (so backups include them) and shows their size. It only
+  reads, skips `node_modules` and similar folders, and never follows links out of the site. Remove a card and it stays removed.
+  `docklite databases scan` (or `POST /api/databases/scan`) does it on demand; `docklite databases create NAME --type sqlite --site DOMAIN --path FILE`
+  registers one by hand. This is for sites built after the box exists, for example with Claude.
+
+### Fixed
+- **Removing a SQLite database from the dashboard no longer removes the website.** It tried to delete the "container" behind the database,
+  which for SQLite is the site itself. Now only the card is forgotten and the file stays.
+
 ## 1.15.0 (2026-11-22)
 
 ### Added
