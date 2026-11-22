@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.20.0 (2026-11-22)
+
 ### Added
 - **One dashboard for several servers.** Install DockLite on another server first (the agent alone is enough; the dashboard and terminal app there
   are optional). On it run `docklite share`, which prints a join code; paste the code into **Add server** on the dashboard (or run
