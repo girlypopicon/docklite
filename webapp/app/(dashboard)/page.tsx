@@ -141,7 +141,7 @@ export default function DashboardPage() {
       setGroups(data.groups || []);
       setError('');
     } catch {
-      setError('Failed to load your boxes');
+      setError('Failed to load your containers');
     } finally {
       setLoading(false);
     }
@@ -249,8 +249,8 @@ export default function DashboardPage() {
   const handleAction = async (id: string, action: 'start' | 'stop' | 'restart') => {
     try {
       const res = await fetch(`/api/containers/${id}/${action}`, { method: 'POST' });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Could not ${action} the box`);
-      toast.success(`Box ${action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted'}`);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Could not ${action} the container`);
+      toast.success(`Container ${action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted'}`);
       fetchData();
     } catch (err: any) {
       toast.error(`Error: ${err.message || err}`);
@@ -261,7 +261,7 @@ export default function DashboardPage() {
     if (!confirm(`Delete "${name}"? This stops and removes the box.`)) return;
     try {
       const res = await fetch(`/api/containers/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not delete the box');
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not delete the container');
       toast.success(`Deleted ${name}`);
       refresh();
     } catch (err: any) {
@@ -273,7 +273,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`/api/containers/${id}/${tracked ? 'untrack' : 'track'}`, { method: 'POST' });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not change tracking');
-      toast.success(tracked ? 'Box untracked' : 'Box tracked');
+      toast.success(tracked ? 'Container untracked' : 'Container tracked');
       fetchData();
     } catch (err: any) {
       toast.error(`Error: ${err.message || err}`);
@@ -316,13 +316,13 @@ export default function DashboardPage() {
         body: JSON.stringify({ user_id: Number(assignUserId) }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Could not assign the box');
+      if (!res.ok) throw new Error(data.error || 'Could not assign the container');
       if (data.warning) toast.warning(`Assigned ${assignTarget.name}, but: ${data.warning}`, 12000);
       else toast.success(data.old_folder_moved_to ? `Assigned ${assignTarget.name}; the old folder is in the trash` : `Assigned ${assignTarget.name}`);
       setAssignTarget(null);
       refresh();
     } catch (err: any) {
-      setAssignError(err.message || 'Could not assign the box');
+      setAssignError(err.message || 'Could not assign the container');
     } finally {
       setAssignBusy(false);
     }
@@ -391,7 +391,7 @@ export default function DashboardPage() {
     if (!deleteGroupTarget) return;
     try {
       await api(`/api/groups/${deleteGroupTarget.id}`, 'DELETE');
-      toast.success(`Group "${deleteGroupTarget.name}" deleted. Its boxes are back on the desktop`);
+      toast.success(`Group "${deleteGroupTarget.name}" deleted. Its containers are back on the desktop`);
       if (openGroupId === deleteGroupTarget.id) setOpenGroupId(null);
     } catch (err: any) {
       toast.error(`Error: ${err.message}`);
@@ -562,7 +562,7 @@ export default function DashboardPage() {
             <Package size={80} weight="regular" style={{ color: 'var(--text-cyan)', filter: 'drop-shadow(0 0 20px var(--neon-cyan))' }} />
           </div>
           <h2 className="text-3xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>Welcome to DockLite!</h2>
-          <p className="text-lg mb-8" style={{ color: 'var(--text-secondary)' }}>No boxes yet. Make a website or a database to get started.</p>
+          <p className="text-lg mb-8" style={{ color: 'var(--text-secondary)' }}>No containers yet. Make a website or a database to get started.</p>
           <div className="flex gap-4 justify-center flex-wrap">
             <button onClick={() => setShowNewBox(true)} className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3">
               <PlusCircle size={22} weight="regular" />
@@ -579,7 +579,7 @@ export default function DashboardPage() {
           <div className="flex justify-center mb-4 opacity-50">
             <WarningCircle size={64} weight="regular" style={{ color: 'var(--text-yellow)' }} />
           </div>
-          <p className="text-xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>No boxes match this filter</p>
+          <p className="text-xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>No containers match this filter</p>
           <button
             onClick={() => {
               setFilterType('all');
@@ -704,7 +704,7 @@ export default function DashboardPage() {
       {nameDialog && (
         <GroupNameModal
           title={nameDialog.kind === 'rename' ? 'Rename group' : nameDialog.kind === 'make' ? 'Make a group' : 'New group'}
-          intro={nameDialog.kind === 'make' ? `${nameDialog.names.join(' and ')} will go in it. Linked groups are for boxes that belong together.` : undefined}
+          intro={nameDialog.kind === 'make' ? `${nameDialog.names.join(' and ')} will go in it. Linked groups are for containers that belong together.` : undefined}
           initial={nameDialog.kind === 'rename' ? nameDialog.group.name : ''}
           confirmLabel={nameDialog.kind === 'rename' ? 'Rename' : 'Make group'}
           busy={nameBusy}
@@ -729,7 +729,7 @@ export default function DashboardPage() {
       {deleteGroupTarget && (
         <ConfirmModal
           title="Delete group"
-          message={`Delete the group "${deleteGroupTarget.name}"? Its ${deleteGroupTarget.members.length} ${deleteGroupTarget.members.length === 1 ? 'box goes' : 'boxes go'} back on the desktop. Nothing is stopped or deleted.`}
+          message={`Delete the group "${deleteGroupTarget.name}"? Its ${deleteGroupTarget.members.length} ${deleteGroupTarget.members.length === 1 ? 'container goes' : 'containers go'} back on the desktop. Nothing is stopped or deleted.`}
           confirmText="Delete group"
           onConfirm={deleteGroup}
           onCancel={() => setDeleteGroupTarget(null)}

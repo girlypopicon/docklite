@@ -57,6 +57,8 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/network/ingress", handlers.Auth(handlers.NetworkIngress))
 	mux.HandleFunc("/api/network/public-ip", handlers.Auth(handlers.NetworkPublicIP))
 	mux.HandleFunc("/api/network/diagnostics", handlers.Auth(handlers.NetworkDiagnostics))
+	mux.HandleFunc("/api/panel-domain", handlers.Auth(hnd.CSRFMiddleware(handlers.PanelDomain)))
+	mux.HandleFunc("/api/ssl/autorenew", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLAutoRenew)))
 	mux.HandleFunc("/api/groups", handlers.Auth(hnd.CSRFMiddleware(handlers.GroupRoutes)))
 	mux.HandleFunc("/api/groups/", handlers.Auth(hnd.CSRFMiddleware(handlers.GroupRoutes)))
 	mux.HandleFunc("/api/folders", handlers.Auth(hnd.CSRFMiddleware(handlers.Folders)))

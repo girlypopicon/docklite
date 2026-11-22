@@ -5,7 +5,7 @@ import {
 } from '@phosphor-icons/react';
 
 /**
- * How a box's card can look: its colour (the glow and the big icon behind it) and that icon. The ids are what the agent
+ * How a container's card can look: its colour (the glow and the big icon behind it) and that icon. The ids are what the agent
  * stores (go-app/internal/handlers/box_style.go lists the same ones, and rejects anything else). "" is the default: a colour
  * by what the box is (sites pink, databases green, the rest cyan) and the box icon.
  */
@@ -32,7 +32,7 @@ export const BOX_COLOR_RGB: Record<string, string> = Object.fromEntries(BOX_COLO
 export type BoxIconId = '' | 'globe' | 'heart' | 'sparkle' | 'rocket' | 'lightning' | 'planet' | 'cloud' | 'flower' | 'moon' | 'star' | 'gamepad' | 'cat' | 'camera' | 'storefront' | 'music';
 
 export const BOX_ICONS: { id: BoxIconId; label: string; Icon: Icon }[] = [
-  { id: '', label: 'Box', Icon: Package },
+  { id: '', label: 'Container', Icon: Package },
   { id: 'globe', label: 'Globe', Icon: Globe },
   { id: 'heart', label: 'Heart', Icon: Heart },
   { id: 'sparkle', label: 'Sparkle', Icon: Sparkle },

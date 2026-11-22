@@ -171,7 +171,7 @@ on('POST', /^\/api\/groups$/, (r, _m, s) => {
   const members: string[] = [];
   for (const id of (r.body?.container_ids ?? []) as string[]) {
     const n = boxNameOf(s, id);
-    if (!n) return err(404, 'box not found');
+    if (!n) return err(404, 'container not found');
     members.push(n);
   }
   for (const g of groupsOf(s)) g.members = g.members.filter((m) => !members.includes(m));
@@ -272,12 +272,43 @@ on('POST', new RegExp(`^/api/containers/${ID}/template$`), (r, m, s) => {
   save();
   return ok({ success: true, domain: site.domain, template_type: kind, port: site.internalPort, container_id: site.containerId, ...(kind === 'node' && was !== 'node' ? { note: "Added index.js and package.json to the site's folder: a small server that serves your existing files. Replace it with your own whenever you like." } : {}) });
 });
+// Forwarded domains (demo): remembered in memory only; the real agent also sets up the new site, nginx and a linked group.
+const demoForwards: Record<string, { domain: string; mode: string }[]> = {};
+on('GET', new RegExp(`^/api/containers/${ID}/forward$`), (_r, m) => ok({ forwards: demoForwards[m[1]] ?? [] }));
+on('POST', new RegExp(`^/api/containers/${ID}/forward$`), (r, m, s) => {
+  const f = findContainer(s, m[1]);
+  if (!f?.site) return err(404, "this isn't one of DockLite's websites, so nothing can be forwarded to it");
+  const domain = String(r.body?.domain || '').trim().toLowerCase();
+  const mode = String(r.body?.mode || 'redirect');
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) return err(400, 'enter the new domain, like new-name.com');
+  if (mode !== 'redirect' && mode !== 'proxy') return err(400, 'mode must be redirect or proxy');
+  if (s.sites.some((x) => x.domain === domain)) return err(409, `${domain} is already a site on this server`);
+  (demoForwards[m[1]] ??= []).push({ domain, mode });
+  return ok({ success: true, domain, to: f.site.domain, mode, group: f.site.domain });
+});
+// The dashboard's own domain and automatic certificate renewal (demo: in memory).
+let demoPanel = { domain: 'demo.docklite.net', enabled: true, https: true };
+let demoRenewAll = true;
+const panelView = () => ({ ...demoPanel, url: demoPanel.enabled ? `https://${demoPanel.domain}` : 'http://203.0.113.7:3000', fallback_url: 'http://203.0.113.7:3000', ip: '203.0.113.7', port: 3000 });
+on('GET', /^\/api\/panel-domain$/, () => ok(panelView()));
+on('PUT', /^\/api\/panel-domain$/, (r) => {
+  if (typeof r.body?.domain === 'string') demoPanel.domain = r.body.domain.trim().toLowerCase();
+  if (typeof r.body?.enabled === 'boolean') demoPanel.enabled = r.body.enabled;
+  if (demoPanel.enabled && !demoPanel.domain) return err(400, 'set a domain first');
+  return ok(panelView());
+});
+on('GET', /^\/api\/ssl\/autorenew$/, () => ok({ all: demoRenewAll }));
+on('PUT', /^\/api\/ssl\/autorenew$/, (r) => {
+  if (!r.body?.domain) demoRenewAll = Boolean(r.body?.enabled);
+  else if (!demoRenewAll) return err(409, 'automatic renewal is set to none in Settings; set it to all first');
+  return ok(r.body?.domain ? { domain: r.body.domain, enabled: Boolean(r.body.enabled) } : { all: demoRenewAll });
+});
 on('POST', new RegExp(`^/api/containers/${ID}/(track|untrack|claim|write-manifest)$`), () => ok());
 on('POST', /^\/api\/containers\/(scan|onboard)$/, () => ok({ sites: [] }));
-// Colour and icon on a box's card: kept with the demo's own data, so it shows after a refresh like the real thing.
+// Colour and icon on a container's card: kept with the demo's own data, so it shows after a refresh like the real thing.
 on('PUT', /^\/api\/containers\/([^/]+)\/style$/, (r, m, s) => {
   const found = findContainer(s, m[1]);
-  if (!found) return err(404, 'box not found');
+  if (!found) return err(404, 'container not found');
   const style = { color: String(r.body?.color || ''), icon: String(r.body?.icon || '') };
   const target = found.site || found.db!;
   target.style = style.color || style.icon ? style : undefined;

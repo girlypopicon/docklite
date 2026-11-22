@@ -25,6 +25,25 @@ const (
 	ScreenSettings
 )
 
+// sidebarEntries is the left menu, in order. Groups lives inside the Containers screen but has its own entry.
+var sidebarEntries = []struct {
+	label  string
+	screen Screen
+	view   View
+}{
+	{"Dashboard", ScreenDashboard, ViewList},
+	{"Containers", ScreenContainers, ViewList},
+	{"Groups", ScreenContainers, ViewGroups},
+	{"Databases", ScreenDatabases, ViewList},
+	{"Files", ScreenFiles, ViewList},
+	{"Logs", ScreenLogs, ViewList},
+	{"Network", ScreenNetwork, ViewList},
+	{"Settings", ScreenSettings, ViewList},
+	{"Quit", ScreenDashboard, ViewList},
+}
+
+const sidebarQuit = 8
+
 type FocusArea int
 
 const (
@@ -90,9 +109,12 @@ type Model struct {
 	searchMode         bool
 	searchQuery        string
 	filteredContainers []api.Container
-	actionCursor       int // For selecting actions in details view
+	collapsed          map[string]bool // group name -> folded away in the Containers list ("" is the not-in-a-group heading)
+	rows               []listRow       // what the Containers list shows: group headings and the containers under them
+	actionCursor       int             // For selecting actions in details view
 
 	// Change site type (details of a website)
+	fw       forwardState
 	ctMode   int // 0 off, 1 choosing the kind, 2 typing the port, 3 confirming
 	ctCursor int
 	ctPort   string
@@ -302,6 +324,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			fetchDatabases(m.client),
 			tickCmd(),
 		}
+		if m.currentScreen == ScreenDatabases {
+			cmds[2] = fetchDatabaseCatalog(m.client)
+		}
 		if m.showingStats && m.selectedContainer != nil {
 			cmds = append(cmds, fetchContainerStats(m.client, m.selectedContainer.ID))
 		}
@@ -409,6 +434,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.creatingDatabase = false
 		return m, nil
 
+	case forwardListMsg:
+		m.fw.existing = msg.Rows
+		return m, nil
+
+	case forwardDoneMsg:
+		m.fw.mode = fwOff
+		if msg.Err != nil {
+			m.err = friendlyErr(msg.Err)
+			if e, ok := msg.Err.(*api.APIError); ok {
+				m.err = apiMessage(e)
+			}
+			return m, nil
+		}
+		m.err, m.notice = "", msg.Notice
+		m.currentView = ViewList
+		return m, fetchContainers(m.client)
+
 	case siteTypeDoneMsg:
 		m.ctMode = 0
 		if msg.Err != nil {
@@ -488,7 +530,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.createDbPort = ""
 		m.createDbStep = CreateDbStepName
 		m.createDbTypeIdx = 0
-		return m, fetchDatabases(m.client)
+		return m, fetchDatabaseCatalog(m.client)
 
 	case databaseActionSuccessMsg:
 		m.notice = string(msg)
@@ -497,7 +539,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentView = ViewList
 		m.selectedDatabase = nil
 		m.dbActionCursor = 0
-		return m, fetchDatabases(m.client)
+		return m, fetchDatabaseCatalog(m.client)
 
 	case fileContentMsg:
 		m.fileActivePath = msg.Path
@@ -620,6 +662,9 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.gv.mode != gvList {
 				m.gv.mode = gvList
 				m.err = ""
+			} else if m.sidebarSelected == 2 { // opened from the Groups menu entry: Esc goes back to the menu
+				m.focusArea = FocusSidebar
+				m.err = ""
 			} else {
 				m.currentView = ViewList
 				m.err = ""
@@ -628,6 +673,11 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if m.currentView == ViewDetails && m.mg.mode != mgOff {
 			m.mg.mode = mgOff
+			m.err = ""
+			return m, nil
+		}
+		if m.currentView == ViewDetails && m.fw.mode != fwOff {
+			m.fw.mode = fwOff
 			m.err = ""
 			return m, nil
 		}
@@ -661,7 +711,7 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		// If already in sidebar, jump to Quit
 		if m.focusArea == FocusSidebar {
-			m.sidebarSelected = 7
+			m.sidebarSelected = sidebarQuit
 			return m, nil
 		}
 		return m, nil
@@ -692,16 +742,21 @@ func (m Model) handleSidebarInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.sidebarSelected--
 		}
 	case tea.KeyDown:
-		if m.sidebarSelected < 7 { // 8 items (0-7)
+		if m.sidebarSelected < sidebarQuit {
 			m.sidebarSelected++
 		}
 	case tea.KeyEnter:
 		// Handle selection
-		if m.sidebarSelected == 7 { // Quit
+		if m.sidebarSelected == sidebarQuit {
 			return m, tea.Quit
 		}
-		m.currentScreen = Screen(m.sidebarSelected)
-		m.currentView = ViewList
+		entry := sidebarEntries[m.sidebarSelected]
+		m.currentScreen = entry.screen
+		m.currentView = entry.view
+		if entry.view == ViewGroups {
+			m.gv = groupsViewState{}
+			m.err, m.notice = "", ""
+		}
 		m.selectedContainer = nil
 		m.selectedDatabase = nil
 		m.searchMode = false
@@ -713,7 +768,7 @@ func (m Model) handleSidebarInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.updateFilteredContainers()
 		m.updateFilteredDatabases()
 		// Auto-switch focus to main panel for Containers/Databases/Files screens
-		if m.currentScreen == ScreenContainers || m.currentScreen == ScreenDatabases || m.currentScreen == ScreenFiles {
+		if m.currentScreen == ScreenContainers || m.currentScreen == ScreenDatabases || m.currentScreen == ScreenFiles || m.currentView == ViewGroups {
 			m.focusArea = FocusMain
 		}
 		if m.currentScreen == ScreenFiles {
@@ -732,9 +787,11 @@ func (m Model) handleSidebarInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case ScreenSettings:
 			m.focusArea = FocusMain
 			m.x.setView, m.x.setCursor = 0, 0
-			return m, fetchUpdateStatus(m.client, false)
+			return m, tea.Batch(fetchUpdateStatus(m.client, false), fetchSSLCmd(m.client), fetchPanelCmd(m.client))
 		case ScreenDashboard:
 			return m, m.refreshExtras()
+		case ScreenDatabases:
+			return m, fetchDatabaseCatalog(m.client)
 		}
 	}
 	return m, nil
@@ -793,22 +850,40 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.containersCursor--
 				}
 			case tea.KeyDown:
-				maxIdx := len(m.filteredContainers)
-				if m.containersCursor < maxIdx {
+				if m.containersCursor < len(m.rows) {
 					m.containersCursor++
 				}
+			case tea.KeyLeft, tea.KeyRight:
+				// Left folds a group, right opens it; on a container, left jumps up to its group's heading.
+				if m.containersCursor < len(m.rows) {
+					row := m.rows[m.containersCursor]
+					fold := msg.Type == tea.KeyLeft
+					if row.header {
+						m.toggleGroup(row.group, fold)
+					} else if fold && len(m.groups) > 0 {
+						for i := m.containersCursor; i >= 0; i-- {
+							if m.rows[i].header {
+								m.containersCursor = i
+								break
+							}
+						}
+					}
+				}
 			case tea.KeyEnter:
-				if m.containersCursor == len(m.filteredContainers) {
+				if m.containersCursor >= len(m.rows) {
 					m.showAllContainers = !m.showAllContainers
 					m.containersCursor = 0
 					m.updateFilteredContainers()
 					return m, nil
 				}
-				if len(m.filteredContainers) > 0 && m.containersCursor < len(m.filteredContainers) {
-					m.selectedContainer = &m.filteredContainers[m.containersCursor]
-					m.currentView = ViewDetails
-					m.actionCursor = 0
+				row := m.rows[m.containersCursor]
+				if row.header {
+					m.toggleGroup(row.group, !m.collapsed[row.group])
+					return m, nil
 				}
+				m.selectedContainer = &m.filteredContainers[row.ci]
+				m.currentView = ViewDetails
+				m.actionCursor = 0
 			}
 			if msg.String() == "g" || msg.String() == "G" {
 				m.currentView = ViewGroups
@@ -831,6 +906,9 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		} else if m.currentView == ViewDetails {
 			// Handle action selection in details view
+			if m.fw.mode != fwOff {
+				return m.handleForwardInput(msg)
+			}
 			if m.ctMode != 0 {
 				return m.handleChangeTypeInput(msg)
 			}
@@ -874,6 +952,11 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					}
 					m.err = ""
 					return m, nil
+				}
+				if actions[m.actionCursor] == "Forwarded domains" {
+					m.fw = forwardState{mode: fwDomain}
+					m.err = ""
+					return m, fetchForwardsCmd(m.client, m.selectedContainer.ID)
 				}
 				if actions[m.actionCursor] == "Change site type" {
 					m.ctMode = 1
@@ -919,6 +1002,10 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.dbConfirmDelete = false
 				}
 			}
+			if msg.String() == "s" || msg.String() == "S" {
+				m.err, m.notice = "", "Scanning the sites' folders for databases..."
+				return m, scanDatabasesCmd(m.client)
+			}
 			if msg.String() == "n" || msg.String() == "N" {
 				m.currentView = ViewCreateDatabase
 				m.createDbName = ""
@@ -947,6 +1034,9 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 				m.dbConfirmDelete = false
 			case tea.KeyDown:
+				if m.selectedDatabase != nil && m.selectedDatabase.IsFile {
+					break // a SQLite file has no actions: it is part of its site
+				}
 				if m.dbActionCursor < 3 {
 					m.dbActionCursor++
 				}
@@ -1454,7 +1544,7 @@ func (m *Model) updateFilteredContainers() {
 		base = filtered
 	}
 
-	// Which group each box sits in, and the order boxes appear in: a group's boxes together (in the group's own order),
+	// Which group each container sits in, and the order containers appear in: a group's containers together (in the group's own order),
 	// then everything not in a group.
 	m.groupOf = map[string]string{}
 	rank := map[string]int{}
@@ -1491,13 +1581,58 @@ func (m *Model) updateFilteredContainers() {
 		}
 	}
 
-	// Reset cursor if out of bounds
-	if m.containersCursor > len(m.filteredContainers) {
+	m.buildRows()
+	if m.containersCursor > len(m.rows) {
 		m.containersCursor = 0
 	}
 }
 
-// boxTitle is the name a person knows a box by: the site's address, or the container's name without DockLite's prefix.
+// listRow is one line of the Containers list: a group heading (ci is -1) or a container (ci indexes filteredContainers).
+type listRow struct {
+	group  string
+	header bool
+	ci     int
+	count  int // containers in the group, for headings
+}
+
+// buildRows lays out the list: with groups, a heading per group (and one for containers outside any group), and the
+// containers under each heading unless that group is folded. While searching, every group opens so matches are seen.
+func (m *Model) buildRows() {
+	m.rows = nil
+	if len(m.groups) == 0 {
+		for i := range m.filteredContainers {
+			m.rows = append(m.rows, listRow{ci: i})
+		}
+		return
+	}
+	count := map[string]int{}
+	for _, c := range m.filteredContainers {
+		count[m.groupOf[c.Name]]++
+	}
+	prev := "\x00"
+	for i, c := range m.filteredContainers {
+		g := m.groupOf[c.Name]
+		if g != prev {
+			m.rows = append(m.rows, listRow{group: g, header: true, ci: -1, count: count[g]})
+			prev = g
+		}
+		if m.collapsed[g] && m.searchQuery == "" {
+			continue
+		}
+		m.rows = append(m.rows, listRow{group: g, ci: i})
+	}
+}
+
+// toggleGroup folds or opens a group heading's containers.
+func (m *Model) toggleGroup(g string, fold bool) {
+	if m.collapsed == nil {
+		m.collapsed = map[string]bool{}
+	}
+	m.collapsed[g] = fold
+	m.updateFilteredContainers()
+}
+
+// boxTitle is the name a person knows a container by: the site's address, or the container's name without DockLite's prefix.
 func boxTitle(c api.Container) string {
 	if d := c.Labels["docklite.domain"]; d != "" {
 		return d
@@ -1513,7 +1648,7 @@ func boxTitle(c api.Container) string {
 	return c.Name
 }
 
-// boxKind says what a box is in a word: its DockLite type, else the image's name without the registry and tag.
+// boxKind says what a container is in a word: its DockLite type, else the image's name without the registry and tag.
 func boxKind(c api.Container) string {
 	if t := c.Labels["docklite.type"]; t != "" {
 		switch t {
@@ -1632,6 +1767,32 @@ func fetchDatabases(client *api.Client) tea.Cmd {
 	}
 }
 
+// fetchDatabaseCatalog is fetchDatabases plus the SQLite files and each database's site; heavier, so only the
+// Databases screen asks for it.
+func fetchDatabaseCatalog(client *api.Client) tea.Cmd {
+	return func() tea.Msg {
+		databases, err := client.GetDatabaseCatalog()
+		if err != nil {
+			return errMsg(err)
+		}
+		return databasesMsg(databases)
+	}
+}
+
+type dbScanMsg struct {
+	added    []string
+	existing int
+	err      error
+}
+
+// scanDatabasesCmd asks the agent to look through the sites' folders for databases it doesn't list yet.
+func scanDatabasesCmd(client *api.Client) tea.Cmd {
+	return func() tea.Msg {
+		added, existing, err := client.ScanDatabases()
+		return dbScanMsg{added: added, existing: existing, err: err}
+	}
+}
+
 func fetchFiles(client *api.Client, path string) tea.Cmd {
 	return func() tea.Msg {
 		files, err := client.ListFiles(path)
@@ -1692,7 +1853,7 @@ func (m Model) executeContainerAction() tea.Cmd {
 }
 
 func (m Model) executeDatabaseAction() tea.Cmd {
-	if m.selectedDatabase == nil {
+	if m.selectedDatabase == nil || m.selectedDatabase.IsFile {
 		return nil
 	}
 
@@ -1935,7 +2096,7 @@ func siteTypeIndex(t string) int {
 	return 0
 }
 
-// siteTypeOf is the kind of website a box is, or "" if it isn't one of DockLite's websites.
+// siteTypeOf is the kind of website a container is, or "" if it isn't one of DockLite's websites.
 func siteTypeOf(c api.Container) string {
 	if c.Labels["docklite.domain"] == "" || c.Labels["docklite.managed"] != "true" {
 		return ""
@@ -1947,11 +2108,11 @@ func siteTypeOf(c api.Container) string {
 	return ""
 }
 
-// detailActions are the buttons on a box's details; websites also get "Change site type".
+// detailActions are the buttons on a container's details; websites also get "Change site type".
 func (m Model) detailActions() []string {
 	actions := []string{"Start", "Stop", "Restart", "View Logs", "View Stats"}
 	if m.selectedContainer != nil && siteTypeOf(*m.selectedContainer) != "" {
-		actions = append(actions, "Change site type")
+		actions = append(actions, "Change site type", "Forwarded domains")
 	}
 	return append(actions, "Move to group", "Delete")
 }

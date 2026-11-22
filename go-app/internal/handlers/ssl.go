@@ -16,13 +16,23 @@ import (
 const letsencryptLiveDir = "/etc/letsencrypt/live"
 
 type sslCertInfo struct {
-	Domain          string   `json:"domain"`
-	Domains         []string `json:"domains"`
-	HasSSL          bool     `json:"hasSSL"`
-	ExpiryDate      *string  `json:"expiryDate"`
-	DaysUntilExpiry *int     `json:"daysUntilExpiry"`
-	Status          string   `json:"status"`
-	CertPath        string   `json:"certPath,omitempty"`
+	Domain          string         `json:"domain"`
+	Domains         []string       `json:"domains"`
+	HasSSL          bool           `json:"hasSSL"`
+	ExpiryDate      *string        `json:"expiryDate"`
+	DaysUntilExpiry *int           `json:"daysUntilExpiry"`
+	Status          string         `json:"status"`
+	CertPath        string         `json:"certPath,omitempty"`
+	AutoRenew       bool           `json:"autoRenew"`         // renews itself when under 30 days from expiry
+	Renewal         *renewalRecord `json:"renewal,omitempty"` // how the last automatic renewal went
+}
+
+// withRenewalState fills in a certificate's auto-renew switch and the outcome of its last automatic renewal.
+func (h *Handlers) withRenewalState(c sslCertInfo, asDomain string) sslCertInfo {
+	names := append(certDomains(c), asDomain)
+	c.AutoRenew = h.autoRenewFor(names...)
+	c.Renewal = h.lastRenewal(names...)
+	return c
 }
 
 func (h *Handlers) SSLStatus(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +63,7 @@ func (h *Handlers) SSLStatus(w http.ResponseWriter, r *http.Request) {
 		managedDomains[domain] = true
 
 		if cert, ok := certByDomain[domain]; ok {
-			entry := *cert
+			entry := h.withRenewalState(*cert, domain)
 			entry.Domain = domain
 			managed = append(managed, entry)
 		} else {
@@ -65,11 +75,15 @@ func (h *Handlers) SSLStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	for i := range certs {
+		certs[i] = h.withRenewalState(certs[i], certs[i].Domain)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"sites":    managed,
 		"allCerts": certs,
 		"meta": map[string]any{
 			"provider":     "certbot",
+			"autoRenewAll": h.autoRenewAll(),
 			"certCount":    len(certs),
 			"managedCount": len(managed),
 		},

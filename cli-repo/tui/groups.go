@@ -9,8 +9,8 @@ import (
 	"docklite-tui/api"
 )
 
-// Moving a box into a group, and the Groups view (press g on the Containers list) where groups are linked, unlinked,
-// renamed and deleted. A linked group is one whose boxes are meant to talk to each other (a website and its database);
+// Moving a container into a group, and the Groups view (press g on the Containers list) where groups are linked, unlinked,
+// renamed and deleted. A linked group is one whose containers are meant to talk to each other (a website and its database);
 // an unlinked one just keeps the desktop tidy.
 
 type groupDoneMsg struct {
@@ -18,7 +18,7 @@ type groupDoneMsg struct {
 	Err    error
 }
 
-// ── move a box to a group ───────────────────────────────────────────────────
+// ── move a container to a group ───────────────────────────────────────────────────
 
 const (
 	mgOff = iota
@@ -33,7 +33,7 @@ type moveGroupState struct {
 	name   string
 }
 
-// moveChoices are the rows of the "move to group" list: every group, a new one, and taking the box out.
+// moveChoices are the rows of the "move to group" list: every group, a new one, and taking the container out.
 func (m Model) moveChoices() []string {
 	var out []string
 	for _, g := range m.groups {
@@ -150,7 +150,7 @@ func (m Model) handleMoveGroupInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) renderMoveGroup() string {
 	c := m.selectedContainer
 	lines := []string{titleStyle.Render("Move to group"), "",
-		fmt.Sprintf("%s %s", labelStyle.Render("Box:"), statStyle.Render(boxTitle(*c)))}
+		fmt.Sprintf("%s %s", labelStyle.Render("Container:"), statStyle.Render(boxTitle(*c)))}
 	if g := m.groupOf[c.Name]; g != "" {
 		lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Now in:"), g))
 	}
@@ -187,7 +187,7 @@ func (m Model) renderMoveGroup() string {
 	case mgLink:
 		lines = append(lines,
 			statStyle.Render("New group: "+strings.TrimSpace(m.mg.name)), "",
-			labelStyle.Render("Link it? Boxes in a linked group are meant to talk to each other"),
+			labelStyle.Render("Link it? Containers in a linked group are meant to talk to each other"),
 			labelStyle.Render("(a website and its database). Unlinked just keeps things tidy."), "",
 			errorStyle.Render("y = linked • n = not linked • Esc cancel"))
 	}
@@ -259,7 +259,7 @@ func (m Model) handleGroupsInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			gid, name := sel.ID, sel.Name
 			gv.mode = gvList
 			return m, func() tea.Msg {
-				return groupDoneMsg{Notice: "Group " + name + " removed. Its boxes are still there.", Err: client.DeleteGroup(gid)}
+				return groupDoneMsg{Notice: "Group " + name + " removed. Its containers are still there.", Err: client.DeleteGroup(gid)}
 			}
 		}
 		gv.mode = gvList
@@ -307,20 +307,20 @@ func (m Model) renderGroupsView() string {
 		lines = append(lines, statStyle.Render(m.notice), "")
 	}
 	if len(m.groups) == 0 {
-		lines = append(lines, labelStyle.Render("No groups yet. Press n to make one, or use Move to group on a box."))
+		lines = append(lines, labelStyle.Render("No groups yet. Press n to make one, or use Move to group on a container."))
 	} else {
-		lines = append(lines, labelStyle.Render(fmt.Sprintf("%-26s %-8s %s", "NAME", "BOXES", "LINKED")))
+		lines = append(lines, labelStyle.Render(fmt.Sprintf("  %-26s %-11s %s", "NAME", "CONTAINERS", "LINKED")))
 	}
 	for i, g := range m.groups {
 		linked := "no"
 		if g.Linked {
-			linked = "yes: its boxes can talk to each other"
+			linked = "yes: its containers can talk to each other"
 		}
 		prefix, style := "  ", listItemStyle
 		if i == m.gv.cursor {
 			prefix, style = "▶ ", listItemSelectedStyle
 		}
-		lines = append(lines, style.Render(fmt.Sprintf("%s%-26s %-8d %s", prefix, truncate(g.Name, 26), len(g.Members), linked)))
+		lines = append(lines, style.Render(fmt.Sprintf("%s%-26s %-11d %s", prefix, truncate(g.Name, 26), len(g.Members), linked)))
 	}
 	switch m.gv.mode {
 	case gvNew:
@@ -329,7 +329,7 @@ func (m Model) renderGroupsView() string {
 		lines = append(lines, "", labelStyle.Render("New name:"), listItemStyle.Render("> "+m.gv.input+"_"))
 	case gvDelete:
 		if m.gv.cursor < len(m.groups) {
-			lines = append(lines, "", errorStyle.Render(fmt.Sprintf("Remove the group %s? Its boxes are NOT deleted. Enter = yes, any other key = no", m.groups[m.gv.cursor].Name)))
+			lines = append(lines, "", errorStyle.Render(fmt.Sprintf("Remove the group %s? Its containers are NOT deleted. Enter = yes, any other key = no", m.groups[m.gv.cursor].Name)))
 		}
 	}
 	if m.err != "" {

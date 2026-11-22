@@ -25,11 +25,11 @@ interface GroupCardProps {
 
 type MenuView = 'main' | 'colour' | 'icon';
 
-// Boxes listed on the card; past this, a "+N more" line.
+// Containers listed on the card; past this, a "+N more" line.
 const MAX_LISTED = 5;
 
 /**
- * A group, as a card the same shape as a box. Instead of one box's details it lists the boxes inside. Click it to open them.
+ * A group, as a card the same shape as a box. Instead of one container's details it lists the containers inside. Click it to open them.
  */
 export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLinked, onStyle, onDelete, onMenuOpenChange, highlight, showOwner }: GroupCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -175,7 +175,7 @@ export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLink
   const cVars = { '--c': rgb || 'var(--neon-purple-rgb)' } as React.CSSProperties;
 
   return (
-    // The card sits on top of two more, fanned out behind it: a little deck, so a group reads as "several boxes".
+    // The card sits on top of two more, fanned out behind it: a little deck, so a group reads as "several containers".
     <div className="group relative w-full aspect-[5/7]" style={cVars}>
       <div
         className="absolute inset-0 rounded-xl pointer-events-none transition-transform duration-200 group-hover:[transform:rotate(8.5deg)_scale(.95)]"
@@ -271,7 +271,7 @@ export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLink
           </p>
 
           {/* The boxes inside, one per row: a little neon icon in a rounded square, then the name. */}
-          <ul className="mt-3 space-y-1.5 min-w-0 overflow-hidden" aria-label={`Boxes in ${group.name}`}>
+          <ul className="mt-3 space-y-1.5 min-w-0 overflow-hidden" aria-label={`Containers in ${group.name}`}>
             {listed.map((b) => {
               const tileRgb = (b.style?.color && BOX_COLOR_RGB[b.style.color]) || 'var(--c)';
               const RowIcon = boxIconFor(b.style?.icon);
@@ -293,7 +293,7 @@ export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLink
               <li className="text-xs font-mono pl-8" style={{ color: 'var(--text-secondary)' }}>+{overflow} more</li>
             )}
             {boxes.length === 0 && (
-              <li className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>Empty. Drag a box here.</li>
+              <li className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>Empty. Drag a container here.</li>
             )}
           </ul>
         </div>

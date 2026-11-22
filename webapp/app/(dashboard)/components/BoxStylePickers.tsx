@@ -3,7 +3,7 @@
 import { Check } from '@phosphor-icons/react';
 import { BOX_COLORS, BOX_ICONS } from '@/lib/box-styles';
 
-// The colour and icon pickers inside a card's `⋯` menu, shared by box cards and group cards.
+// The colour and icon pickers inside a card's `⋯` menu, shared by container cards and group cards.
 
 const stop = (e: React.SyntheticEvent) => e.stopPropagation();
 

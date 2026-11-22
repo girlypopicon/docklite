@@ -77,8 +77,16 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Read a site's logs | `docklite containers logs example.com --tail 200` |
 | Run a website as another kind (keeps files, address, HTTPS) | `docklite sites type example.com node --port 3000 --yes` (static, php or node) |
 | Create a website | `docklite sites create example.com` (`--type php` or `--type node --port 3000`) |
+| Send another domain's visitors to a site (redirect, or `--mode proxy` to keep the new address) | `docklite sites forward old-name.com --to example.com` (both end up in one linked group; add more the same way) |
+| See the domains forwarded to a site | `docklite sites forwards example.com` |
 | Get HTTPS for a site | `docklite ssl issue example.com --www --email me@example.com` (DNS must point here first) |
 | See certificates and expiry | `docklite ssl status` |
+| See which certificates renew by themselves, and whether the last renewal worked | `docklite ssl auto-renew` |
+| Turn automatic renewal on for all certificates / off everywhere | `docklite ssl auto-renew all` / `docklite ssl auto-renew none` |
+| Keep one domain out of automatic renewal (others are not affected) | `docklite ssl auto-renew example.com off` |
+| Renew what is due right now | `docklite ssl auto-renew run` |
+| See / set the domain the dashboard itself is reached at | `docklite panel show` / `docklite panel set smoll.docklite.net --enable` |
+| Switch that domain off (the dashboard is then at the server's address and port) | `docklite panel disable` |
 | See sites still waiting for their automatic certificate | `docklite ssl pending` |
 | Make a waiting or stopped certificate job try again now | `docklite ssl retry example.com` (or `--all`) |
 | Set or show the email Let's Encrypt uses for automatic certificates | `docklite ssl email me@example.com` |

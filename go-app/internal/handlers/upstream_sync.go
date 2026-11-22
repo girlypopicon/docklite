@@ -152,6 +152,10 @@ func (h *Handlers) runningSitePorts(ctx context.Context) []sitePort {
 		if domain == "" || c.Labels["docklite.type"] == "postgres" {
 			continue
 		}
+		// A forwarded domain's nginx points at another site, not at its own container: never "fix" it.
+		if _, forwarded := h.forwardOf(domain); forwarded {
+			continue
+		}
 		internal := 80
 		if p, err := strconv.Atoi(c.Labels["docklite.internal_port"]); err == nil && p > 0 {
 			internal = p

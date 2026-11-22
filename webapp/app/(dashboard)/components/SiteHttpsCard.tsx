@@ -13,6 +13,8 @@ interface CertInfo {
   expiryDate?: string | null;
   daysUntilExpiry?: number | null;
   status: string;
+  autoRenew?: boolean;
+  renewal?: { at: string; ok: boolean; error?: string } | null;
 }
 
 interface DnsRecordPreview {
@@ -65,7 +67,29 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
   const [certJob, setCertJob] = useState<CertJob | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [showSsl, setShowSsl] = useState(false);
+  const [autoRenewAll, setAutoRenewAll] = useState(true);
+  const [renewBusy, setRenewBusy] = useState(false);
   const toast = useToast();
+
+  // Turn automatic renewal on or off for this domain only; other domains are not affected.
+  const setAutoRenew = async (enabled: boolean) => {
+    setRenewBusy(true);
+    try {
+      const res = await fetch('/api/ssl/autorenew', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, enabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not change automatic renewal');
+      setCert((c) => (c ? { ...c, autoRenew: enabled } : c));
+      toast.success(`Automatic renewal is ${enabled ? 'on' : 'off'} for ${domain}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Could not change automatic renewal');
+    } finally {
+      setRenewBusy(false);
+    }
+  };
 
   const loadDns = async () => {
     try {
@@ -132,6 +156,7 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
           const all: CertInfo[] = [...(data.sites || []), ...(data.allCerts || [])];
           const found = all.find((c) => c.hasSSL && certMatches(c, domain)) || null;
           if (!cancelled) setCert(found);
+          if (!cancelled && typeof data.meta?.autoRenewAll === 'boolean') setAutoRenewAll(data.meta.autoRenewAll);
         }
       } catch {
         /* certificate status is best-effort */
@@ -183,8 +208,15 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
     } else {
       icon = <Lock size={18} weight="regular" style={{ color: 'var(--text-green)' }} />;
       headline = 'HTTPS certificate is valid';
-      detail = date ? `Valid until ${date}${days !== null ? ` (${days} days)` : ''}; it renews automatically.` : 'Certificate installed.';
+      detail = date ? `Valid until ${date}${days !== null ? ` (${days} days)` : ''}${cert.autoRenew ? '; it renews automatically.' : '.'}` : 'Certificate installed.';
     }
+  }
+  const renewalFailed = !!cert && !!cert.renewal && !cert.renewal.ok;
+  if (cert && renewalFailed && !(cert.daysUntilExpiry != null && cert.daysUntilExpiry < 0)) {
+    const d = cert.daysUntilExpiry;
+    icon = <WarningCircle size={18} weight="regular" style={{ color: 'var(--status-error)' }} />;
+    headline = `Renewal failed${d != null ? `, expires in ${d} day${d === 1 ? '' : 's'}` : ''}`;
+    detail = cert.renewal?.error ? `Let’s Encrypt said: ${cert.renewal.error}` : 'The last automatic renewal did not work.';
   }
 
   return (
@@ -203,6 +235,25 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
               <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{detail}</div>
             </div>
           </div>
+          {cert && (
+            <label className="flex items-start gap-3 text-xs cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+              <input
+                type="checkbox"
+                role="switch"
+                className="mt-0.5"
+                checked={!!cert.autoRenew && autoRenewAll}
+                disabled={renewBusy || !autoRenewAll}
+                onChange={(e) => setAutoRenew(e.target.checked)}
+              />
+              <span>
+                <span className="font-bold" style={{ color: 'var(--text-primary)' }}>Renew this certificate automatically</span>
+                <br />
+                {autoRenewAll
+                  ? 'DockLite renews it once it has less than 30 days left. Switching it off here does not affect other domains.'
+                  : 'Automatic renewal is set to none for the whole server (Settings → System). Set it to all to use this switch.'}
+              </span>
+            </label>
+          )}
           {!cert && certJob && certJob.state !== 'issued' && (
             <div className="text-xs rounded-lg p-3 space-y-2" style={{ border: '1px solid rgba(var(--neon-purple-rgb), 0.35)', color: 'var(--text-secondary)' }}>
               <div className="font-bold" style={{ color: 'var(--text-primary)' }}>

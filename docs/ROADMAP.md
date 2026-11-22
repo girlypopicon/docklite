@@ -4,6 +4,8 @@ Versions are `MAJOR.MINOR.PATCH`. **Patch** releases (1.2.1, 1.2.2…) are fixes
 servers pick them up with the dashboard's Update button. **Minor** releases (1.3.0, 1.4.0…) ship when their goal below is done,
 not before. **1.5.0** is the "ready to run real websites for real people" release.
 
+> **Wording (1.20):** say **container**, not **box**. Older entries below still use "box" for the same thing.
+
 ## 1.2.x: steady and safe (now)
 Fixes found by running DockLite on a live server, plus proving the update path.
 - Prove the Update button on a live server (backup, install, health check, automatic rollback of code *and* data).

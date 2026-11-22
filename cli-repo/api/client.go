@@ -42,7 +42,7 @@ type Container struct {
 	Owner   string            `json:"owner_username"`
 }
 
-// Group is a card that holds several boxes (see /api/groups). Members are container names, in order.
+// Group is a card that holds several containers (see /api/groups). Members are container names, in order.
 type Group struct {
 	ID      int64    `json:"id"`
 	Name    string   `json:"name"`
@@ -74,6 +74,11 @@ type Database struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Status   string `json:"status"`
+	// Filled in from /api/databases/stats: what the database belongs to and how big it is.
+	UsedBy string `json:"used_by,omitempty"` // the site that uses it
+	DBPath string `json:"db_path,omitempty"` // SQLite only: the file's path inside the site's container
+	Size   int64  `json:"size,omitempty"`
+	IsFile bool   `json:"-"` // a SQLite file: no server to start or stop
 }
 
 type DatabasesResponse struct {
@@ -236,7 +241,7 @@ func (c *Client) GetSummary() (*SummaryResponse, error) {
 	return &summary, nil
 }
 
-// GetContainers asks for every box and the groups holding them. Agents older than groups answer /api/containers
+// GetContainers asks for every container and the groups holding them. Agents older than groups answer /api/containers
 // without a "boxes" list, so those fall back to the flat /api/containers/all (no groups).
 func (c *Client) GetContainers() (*ContainersResponse, error) {
 	resp, err := c.doRequest(http.MethodGet, "/api/containers", nil, "")
@@ -515,9 +520,27 @@ func (c *Client) ListFiles(path string) (*FilesResponse, error) {
 		return nil, &APIError{Status: resp.StatusCode, Body: string(body)}
 	}
 
-	var result FilesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	// The agent answers {path, entries:[{name,isDirectory,size}]}; the TUI wants a full path per entry.
+	var raw struct {
+		Path    string `json:"path"`
+		Entries []struct {
+			Name        string `json:"name"`
+			Path        string `json:"path"`
+			IsDir       bool   `json:"is_dir"`
+			IsDirectory bool   `json:"isDirectory"`
+			Size        int64  `json:"size"`
+		} `json:"entries"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, err
+	}
+	result := FilesResponse{Path: raw.Path}
+	for _, e := range raw.Entries {
+		p := e.Path
+		if p == "" {
+			p = joinFilePath(path, e.Name)
+		}
+		result.Entries = append(result.Entries, FileEntry{Name: e.Name, Path: p, IsDir: e.IsDir || e.IsDirectory, Size: e.Size})
 	}
 	return &result, nil
 }
@@ -728,7 +751,7 @@ func (c *Client) send(method, path string, payload any) ([]byte, error) {
 	return data, nil
 }
 
-// CreateGroup makes a group, optionally with its first boxes (container ids) and linked.
+// CreateGroup makes a group, optionally with its first containers (container ids) and linked.
 func (c *Client) CreateGroup(name string, containerIDs []string, linked bool) (*Group, error) {
 	data, err := c.send(http.MethodPost, "/api/groups", map[string]any{"name": name, "container_ids": containerIDs, "linked": linked})
 	if err != nil {
@@ -741,13 +764,13 @@ func (c *Client) CreateGroup(name string, containerIDs []string, linked bool) (*
 	return &out.Group, nil
 }
 
-// AddToGroup puts a box in a group; if it was in another group it leaves that one.
+// AddToGroup puts a container in a group; if it was in another group it leaves that one.
 func (c *Client) AddToGroup(groupID int64, containerID string) error {
 	_, err := c.send(http.MethodPost, fmt.Sprintf("/api/groups/%d/members", groupID), map[string]any{"container_id": containerID})
 	return err
 }
 
-// RemoveFromGroup takes a box out of a group; it goes back to the desktop.
+// RemoveFromGroup takes a container out of a group; it goes back to the desktop.
 func (c *Client) RemoveFromGroup(groupID int64, containerID string) error {
 	_, err := c.send(http.MethodDelete, fmt.Sprintf("/api/groups/%d/members?container_id=%s", groupID, url.QueryEscape(containerID)), nil)
 	return err
@@ -763,8 +786,94 @@ func (c *Client) RenameGroup(groupID int64, name string) error {
 	return err
 }
 
-// DeleteGroup removes the group; its boxes are not deleted, they go back to the desktop.
+// DeleteGroup removes the group; its containers are not deleted, they go back to the desktop.
 func (c *Client) DeleteGroup(groupID int64) error {
 	_, err := c.send(http.MethodDelete, fmt.Sprintf("/api/groups/%d", groupID), nil)
 	return err
+}
+
+// joinFilePath builds a path under /var/www/sites from the folder being listed and an entry name.
+func joinFilePath(dir, name string) string {
+	dir = strings.Trim(dir, "/")
+	if dir == "" {
+		return name
+	}
+	return dir + "/" + name
+}
+
+// GetDatabaseCatalog is every database DockLite knows: the database containers it runs, plus the SQLite files found in
+// sites' folders, each with the site that uses it. Older agents without the stats endpoint just give the containers.
+func (c *Client) GetDatabaseCatalog() (*DatabasesResponse, error) {
+	res, err := c.GetDatabases()
+	if err != nil {
+		return nil, err
+	}
+	var stats struct {
+		Databases []struct {
+			Name        string `json:"name"`
+			Type        string `json:"type"`
+			ContainerID string `json:"container_id"`
+			Size        int64  `json:"size"`
+			UsedBy      string `json:"used_by"`
+			DBPath      string `json:"db_path"`
+		} `json:"databases"`
+	}
+	if err := c.GetJSON("/api/databases/stats", &stats); err != nil {
+		return res, nil
+	}
+	byContainer := map[string]int{}
+	for i, d := range res.Databases {
+		byContainer[d.ID] = i
+	}
+	for _, s := range stats.Databases {
+		if s.Type == "sqlite" {
+			res.Databases = append(res.Databases, Database{
+				ID: s.ContainerID, Name: s.Name, Type: "sqlite", Status: "file",
+				UsedBy: s.UsedBy, DBPath: s.DBPath, Size: s.Size, IsFile: true,
+			})
+			continue
+		}
+		if i, ok := byContainer[s.ContainerID]; ok {
+			res.Databases[i].UsedBy = s.UsedBy
+			res.Databases[i].Size = s.Size
+		}
+	}
+	return res, nil
+}
+
+// ScanDatabases looks through the sites' folders for databases DockLite doesn't list yet and adds them. It returns the
+// names it added and how many it already knew.
+func (c *Client) ScanDatabases() ([]string, int, error) {
+	var out struct {
+		Added    []string `json:"added"`
+		Existing int      `json:"existing"`
+	}
+	if err := c.PostJSON("/api/databases/scan", &out); err != nil {
+		return nil, 0, err
+	}
+	return out.Added, out.Existing, nil
+}
+
+// PutJSON sends a JSON body with PUT (or any write) and reads the answer into a struct.
+func (c *Client) PutJSON(path string, payload any, into any) error {
+	data, err := c.send(http.MethodPut, path, payload)
+	if err != nil {
+		return err
+	}
+	if into == nil || len(data) == 0 {
+		return nil
+	}
+	return json.Unmarshal(data, into)
+}
+
+// PostBody sends a JSON body with POST and reads the answer into a struct.
+func (c *Client) PostBody(path string, payload any, into any) error {
+	data, err := c.send(http.MethodPost, path, payload)
+	if err != nil {
+		return err
+	}
+	if into == nil || len(data) == 0 {
+		return nil
+	}
+	return json.Unmarshal(data, into)
 }

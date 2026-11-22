@@ -200,7 +200,7 @@ export default function DatabaseQuickActions({ dbId, engine, table, onDone }: Pr
 
             {action === 'add-row' && table && (
               <>
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Fill in what you know; empty boxes are left for the database to fill in (an id numbers itself).</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Fill in what you know; empty fields are left for the database to fill in (an id numbers itself).</p>
                 {table.columns.map((c) => (
                   <label key={c.name} className="block">
                     <span className={label} style={{ color: 'var(--text-secondary)' }}>{c.name} <span className="opacity-60">· {c.type}{!c.nullable && c.key !== 'PRIMARY KEY' ? ' · required' : ''}</span></span>

@@ -20,6 +20,7 @@ const (
 type fileEntry struct {
 	Name        string `json:"name"`
 	IsDirectory bool   `json:"isDirectory"`
+	Size        int64  `json:"size"`
 }
 
 type fileContentResponse struct {
@@ -227,9 +228,16 @@ func (h *Handlers) listFiles(w http.ResponseWriter, r *http.Request) {
 		if i >= maxListEntries {
 			break
 		}
+		var size int64
+		if !entry.IsDir() {
+			if info, err := entry.Info(); err == nil {
+				size = info.Size()
+			}
+		}
 		results = append(results, fileEntry{
 			Name:        entry.Name(),
 			IsDirectory: entry.IsDir(),
+			Size:        size,
 		})
 	}
 

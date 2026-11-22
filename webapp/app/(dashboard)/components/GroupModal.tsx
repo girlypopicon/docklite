@@ -50,8 +50,8 @@ export default function GroupModal({ group, boxes, addable, renderBox, onAdd, on
           </h2>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
             {group.linked
-              ? 'Linked groups are for boxes that belong together, like a website and its database.'
-              : 'A group keeps related boxes together on your desktop.'}
+              ? 'Linked groups are for containers that belong together, like a website and its database.'
+              : 'A group keeps related containers together on your desktop.'}
           </p>
         </div>
 
@@ -80,9 +80,9 @@ export default function GroupModal({ group, boxes, addable, renderBox, onAdd, on
             }}
           >
             <label className="block flex-1 min-w-[14rem]">
-              <span className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Add a box to this group</span>
+              <span className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Add a container to this group</span>
               <select value={pick} onChange={(e) => setPick(e.target.value)} className="input-vapor w-full">
-                <option value="">Choose a box…</option>
+                <option value="">Choose a container…</option>
                 {addable.map((b) => (
                   <option key={b.id} value={b.id}>
                     {containerDisplayName(b)}

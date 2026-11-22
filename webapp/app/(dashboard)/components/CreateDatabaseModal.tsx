@@ -120,7 +120,7 @@ export default function CreateDatabaseModal({ type, sites, onBack, onClose, onCr
             </div>
             {info.container_url && (
               <div>
-                <div style={{ color: 'var(--text-cyan)' }}>From one of your sites (another box on this server):</div>
+                <div style={{ color: 'var(--text-cyan)' }}>From one of your sites (another container on this server):</div>
                 <div className="break-all select-all" style={{ color: 'var(--text-primary)' }}>{info.container_url}</div>
               </div>
             )}

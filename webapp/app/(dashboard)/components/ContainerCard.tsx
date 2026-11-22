@@ -24,7 +24,7 @@ interface ContainerCardProps {
   canAssign?: boolean;
   onAssign?: (containerId: string, containerName: string) => void;
   onMoveGroup?: (containerId: string, containerName: string) => void;
-  // When the card is shown inside a group's window: take the box out of the group.
+  // When the card is shown inside a group's window: take the container out of the group.
   onRemoveFromGroup?: (containerId: string, containerName: string) => void;
   onToggleTracking?: (containerId: string, tracked: boolean) => void;
   isTracked?: boolean;
@@ -106,7 +106,7 @@ export default function ContainerCard({
   const containerType = container.labels?.['docklite.type'] || 'other';
   const isSite = ['static', 'php', 'node'].includes(containerType);
   const isDatabase = DB_CONTAINER_TYPES.includes(containerType);
-  // The card's colour: the one picked, or one by what the box is. `--c` ("r, g, b") drives the glow and the icon.
+  // The card's colour: the one picked, or one by what the container is. `--c` ("r, g, b") drives the glow and the icon.
   const neonClass = isSite ? 'docklite-neon-pink' : isDatabase ? 'docklite-neon-green' : 'docklite-neon-cyan';
   const pickedRgb = style.color ? BOX_COLOR_RGB[style.color] : undefined;
   const BigIcon = boxIconFor(style.icon);
@@ -346,7 +346,7 @@ export default function ContainerCard({
         onViewDetails?.(container.id, container.name);
       }}
     >
-      {/* The big icon, muted, bleeding off the bottom right corner. Clipped by its own box so the glow isn't. */}
+      {/* The big icon, muted, bleeding off the bottom right corner. Clipped by its own container so the glow isn't. */}
       <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none" aria-hidden="true">
         <BigIcon
           weight="light"

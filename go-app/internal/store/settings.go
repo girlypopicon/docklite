@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"errors"
+	"strings"
 )
 
 // A small key-value table for server-wide settings that are plain text (for now: the contact line on the "this box
@@ -40,4 +41,22 @@ func (s *SQLiteStore) SetSetting(key, value string) error {
 		ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
 	`, key, value)
 	return err
+}
+
+// SettingsWithPrefix returns every setting whose key starts with prefix, key -> value.
+func (s *SQLiteStore) SettingsWithPrefix(prefix string) (map[string]string, error) {
+	rows, err := s.DB.Query(`SELECT key, value FROM app_settings WHERE key LIKE ? ESCAPE '\'`, strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(prefix)+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			return nil, err
+		}
+		out[k] = v
+	}
+	return out, rows.Err()
 }
