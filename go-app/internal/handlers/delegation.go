@@ -18,6 +18,8 @@ type delegationClaims struct {
 	Role   string `json:"role"`
 	Admin  bool   `json:"admin"`
 	Expiry int64  `json:"exp"`
+	// PV ties the session to the password it was made with: changing the password ends every older session.
+	PV string `json:"pv,omitempty"`
 }
 
 type contextKey string
@@ -25,7 +27,14 @@ type contextKey string
 const (
 	ctxUserIDKey   contextKey = "dockliteUserID"
 	ctxUserRoleKey contextKey = "dockliteUserRole"
+	ctxSessionPV   contextKey = "dockliteSessionPV"
 )
+
+// passwordVersion is a short fingerprint of a password hash (not reversible to it).
+func passwordVersion(passwordHash string) string {
+	sum := sha256.Sum256([]byte(passwordHash))
+	return base64.RawURLEncoding.EncodeToString(sum[:9])
+}
 
 func withDelegationContext(r *http.Request, secret string) (*http.Request, bool) {
 	cookie, err := r.Cookie(delegationCookieName)
@@ -40,6 +49,7 @@ func withDelegationContext(r *http.Request, secret string) (*http.Request, bool)
 
 	ctx := context.WithValue(r.Context(), ctxUserIDKey, claims.UserID)
 	ctx = context.WithValue(ctx, ctxUserRoleKey, claims.Role)
+	ctx = context.WithValue(ctx, ctxSessionPV, claims.PV)
 	return r.WithContext(ctx), true
 }
 

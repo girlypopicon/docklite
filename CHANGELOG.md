@@ -5,6 +5,17 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Security
+First pass of the agent security review (details and what is still open: `docs/SECURITY_REVIEW.md`).
+- **Raw nginx editing is now super-admin only, checked and reversible.** Any admin could write raw nginx config, and nginx runs as root, so
+  that was a way from admin to root. The config is now checked against a short list of safe directives and paths, and if nginx rejects it the
+  previous config is put back instead of breaking reloads for every site.
+- **Token scopes now mean something.** A token created with scope `read` can no longer change anything; `write` or `*` can; unknown scopes are refused.
+- **Login limits** now also stop one address trying many usernames and one account being guessed from many addresses.
+- **Unknown usernames take as long to answer as real ones**, so response time no longer shows which usernames exist.
+- **Changing a password ends the account's older sessions** (they used to last up to 24 hours).
+- **Tokens issued at login now expire after 90 days** unless you set another date (they never expired before).
+
 ## 1.20.0 (2026-11-22)
 
 ### Added

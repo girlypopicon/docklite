@@ -190,6 +190,11 @@ func (h *Handlers) createToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	scopes := normalizeTokenField(body.Scopes)
+	if err := validateScopes(scopes); err != nil {
+		recordTokenRateAction(rateKey)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	issuedFor := normalizeTokenField(body.IssuedFor)
 
 	// Apply default TTL if not specified
@@ -437,4 +442,62 @@ func parseBearerToken(r *http.Request) (string, error) {
 		return "", errors.New("invalid authorization header")
 	}
 	return strings.TrimSpace(parts[1]), nil
+}
+
+// Token scopes. A token with no scopes can do whatever its user can. With scopes it is limited: "read" lets it look
+// (GET, HEAD, OPTIONS) and "write" (or "*") lets it change things. Anything else is refused when the token is made, so
+// nobody believes they have restricted a token that is in fact unrestricted.
+func parseScopes(scopes *string) ([]string, error) {
+	if scopes == nil {
+		return nil, nil
+	}
+	var list []string
+	raw := strings.TrimSpace(*scopes)
+	if strings.HasPrefix(raw, "[") {
+		if err := json.Unmarshal([]byte(raw), &list); err != nil {
+			return nil, errors.New("scopes must be a list like [\"read\"]")
+		}
+	} else {
+		var one string
+		if err := json.Unmarshal([]byte(raw), &one); err != nil {
+			one = strings.Trim(raw, `"`)
+		}
+		for _, p := range strings.FieldsFunc(one, func(r rune) bool { return r == ',' || r == ' ' }) {
+			list = append(list, p)
+		}
+	}
+	return list, nil
+}
+
+func validateScopes(scopes *string) error {
+	list, err := parseScopes(scopes)
+	if err != nil {
+		return err
+	}
+	for _, s := range list {
+		switch strings.ToLower(strings.TrimSpace(s)) {
+		case "read", "write", "*":
+		default:
+			return fmt.Errorf("unknown scope %q: use read, write or *", s)
+		}
+	}
+	return nil
+}
+
+// readOnlyToken: the token has scopes and none of them allows changes.
+func readOnlyToken(rec *store.TokenRecord) bool {
+	list, err := parseScopes(rec.Scopes)
+	if err != nil || len(list) == 0 {
+		return err != nil && rec.Scopes != nil // unreadable scopes: err on the side of caution
+	}
+	for _, s := range list {
+		if v := strings.ToLower(strings.TrimSpace(s)); v == "write" || v == "*" {
+			return false
+		}
+	}
+	return true
+}
+
+func isSafeMethod(m string) bool {
+	return m == http.MethodGet || m == http.MethodHead || m == http.MethodOptions
 }

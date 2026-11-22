@@ -87,20 +87,28 @@ func (h *Handlers) AuthLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rateKey := loginRateKey(r, req.Username)
-	if isRateLimited(rateKey) {
+	ip, uname := clientIP(r), strings.ToLower(req.Username)
+	if isRateLimited(rateKey) || ipFailures.blocked(ip) || userFailures.blocked(uname) {
 		respondLoginError(w, r, shouldRedirect, http.StatusTooManyRequests, "too many login attempts")
 		return
+	}
+	fail := func() {
+		recordAttempt(rateKey)
+		ipFailures.record(ip)
+		userFailures.record(uname)
 	}
 
 	user, err := h.store.GetUserByUsername(req.Username)
 	if err != nil || user == nil {
-		recordAttempt(rateKey)
+		// Do the same work as for a real user, so the answer doesn't take visibly less time and give usernames away.
+		_ = h.store.VerifyPassword(&store.UserRecord{PasswordHash: dummyPasswordHash()}, req.Password)
+		fail()
 		respondLoginError(w, r, shouldRedirect, http.StatusUnauthorized, "invalid username or password")
 		return
 	}
 
 	if err := h.store.VerifyPassword(user, req.Password); err != nil {
-		recordAttempt(rateKey)
+		fail()
 		respondLoginError(w, r, shouldRedirect, http.StatusUnauthorized, "invalid username or password")
 		return
 	}
@@ -118,7 +126,7 @@ func (h *Handlers) AuthLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		ok, kind := h.verifySecondFactor(tf, req.Code)
 		if !ok {
-			recordAttempt(rateKey)
+			fail()
 			respondTwoFactorRequired(w, r, shouldRedirect, "That code didn't work. Use the newest code, or a recovery code")
 			return
 		}
@@ -195,6 +203,11 @@ func (h *Handlers) issueLoginToken(user *store.UserRecord, role string, req logi
 			expiresAt = &expires
 		}
 	}
+	if expiresAt == nil {
+		// Like tokens made from the token page: 90 days unless the caller asked for something else.
+		def := time.Now().Add(defaultTokenTTL).Format(time.RFC3339)
+		expiresAt = &def
+	}
 
 	secret, err := generateTokenSecret()
 	if err != nil {
@@ -245,6 +258,7 @@ func createDelegationToken(user *store.UserRecord, role string, secret string) (
 		return "", errors.New("user missing")
 	}
 	claims := delegationClaims{
+		PV:     passwordVersion(user.PasswordHash),
 		UserID: user.ID,
 		Role:   role,
 		Admin:  role == "admin" || role == "super_admin" || user.IsAdmin == 1,
