@@ -196,6 +196,7 @@ func (c *Client) CreateDatabaseOfType(ctx context.Context, dbType, name, usernam
 		hostConfig.Mounts = []mount.Mount{{Type: mount.TypeVolume, Source: volumeName, Target: e.DataDir, VolumeOptions: &mount.VolumeOptions{Labels: volLabels}}}
 	}
 
+	c.applyStoredLimits(containerName, hostConfig)
 	resp, err := c.Client.ContainerCreate(ctx, config, hostConfig, &network.NetworkingConfig{}, nil, containerName)
 	if err != nil && strings.Contains(err.Error(), "Conflict.") {
 		containerName = fmt.Sprintf("%s-%d", containerName, randomSuffix())

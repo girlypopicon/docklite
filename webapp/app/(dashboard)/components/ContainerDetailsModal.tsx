@@ -21,6 +21,7 @@ import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import SiteHttpsCard from './SiteHttpsCard';
 import SiteTypeCard from './SiteTypeCard';
 import ForwardCard from './ForwardCard';
+import LimitsCard from './LimitsCard';
 import { containerDisplayName } from '@/lib/container-names';
 
 interface ContainerStats {
@@ -314,6 +315,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                   onForwarded={(message) => onChanged?.(message)}
                 />
               )}
+              <LimitsCard containerId={containerId} />
               {/* Real-time Stats */}
               {isRunning && stats && stats.cpu !== undefined && (
                 <div className="card-vapor p-6 rounded-xl">

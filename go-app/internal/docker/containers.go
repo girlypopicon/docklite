@@ -266,6 +266,7 @@ func (c *Client) CreateSiteContainer(ctx context.Context, domain string, templat
 	}
 
 	containerName := fmt.Sprintf("docklite-site-%s", sanitized)
+	c.applyStoredLimits(containerName, hostConfig)
 	resp, err := c.Client.ContainerCreate(ctx, config, hostConfig, nil, nil, containerName)
 	if err != nil && strings.Contains(err.Error(), "Conflict.") {
 		containerName = fmt.Sprintf("docklite-site-%s-%d", sanitized, time.Now().Unix())

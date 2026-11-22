@@ -7,7 +7,8 @@ import (
 )
 
 type Client struct {
-	Client *client.Client
+	Client    *client.Client
+	limitsFor LimitsProvider
 }
 
 func NewClient(host string) (*Client, error) {

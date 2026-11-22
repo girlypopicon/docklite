@@ -5,6 +5,12 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **Limits per container: CPU, memory and processes.** On a container's details, a **Limits** card with quick choices (Small, Medium, Large,
+  No limit) and three boxes for exact numbers. Changes apply at once without a restart, are remembered, and are put back if the container is
+  re-created (a transfer, a type switch). Also `docklite containers limits <container> [--cpus N] [--memory MB] [--pids N] [--none]`.
+  Memory limits also stop swapping past the limit; the number of processes stops a runaway program from filling the server. Admins only.
+
 ## 1.21.0 (2026-11-22)
 
 ### Security

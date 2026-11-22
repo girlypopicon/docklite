@@ -356,6 +356,8 @@ func (h *Handlers) Container(w http.ResponseWriter, r *http.Request) {
 		h.handleLogs(w, r, id)
 	case "stats":
 		h.handleStats(w, r, id)
+	case "limits":
+		h.handleLimits(w, r, id)
 	case "inspect":
 		h.handleInspect(w, r, id)
 	case "export":
