@@ -208,6 +208,9 @@ func (m Model) renderMainPanel() string {
 		if m.currentView == ViewCreateSite {
 			return m.renderCreateSite()
 		}
+		if m.currentView == ViewGroups {
+			return m.renderGroupsView()
+		}
 		return m.renderContainers()
 	case ScreenDatabases:
 		if m.currentView == ViewCreateDatabase {
@@ -831,6 +834,9 @@ func (m Model) renderContainerDetails() string {
 	if m.ctMode != 0 {
 		return m.renderChangeType()
 	}
+	if m.mg.mode != mgOff {
+		return m.renderMoveGroup()
+	}
 	actions := m.detailActions()
 	for i, action := range actions {
 		style := buttonStyle
@@ -981,7 +987,7 @@ func (m Model) renderFooter() string {
 
 	help := focusIndicator + "↑/↓ move • Enter select • Tab focus • Esc back"
 	if m.currentScreen == ScreenContainers && m.currentView == ViewList && !m.searchMode {
-		help += " • / search • n new site"
+		help += " • / search • n new site • g groups"
 	}
 	if m.currentScreen == ScreenContainers && m.currentView == ViewCreateSite {
 		help = focusIndicator + "Type input • ↑/↓ choose • Space toggle • Enter next/create • Esc cancel"
@@ -1007,6 +1013,12 @@ func (m Model) renderFooter() string {
 		if m.dbConfirmDelete {
 			help = focusIndicator + "Enter confirms delete • Esc cancel"
 		}
+	}
+	if m.currentScreen == ScreenContainers && m.currentView == ViewGroups {
+		help = focusIndicator + "↑/↓ move • Enter link/unlink • n new • r rename • d remove • Esc back"
+	}
+	if m.currentScreen == ScreenContainers && m.currentView == ViewDetails && m.mg.mode != mgOff {
+		help = focusIndicator + "Esc cancel"
 	}
 	switch m.currentScreen {
 	case ScreenSettings:

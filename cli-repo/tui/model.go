@@ -41,6 +41,7 @@ const (
 	ViewCreateDatabase
 	ViewDatabaseDetails
 	ViewFileEdit
+	ViewGroups
 )
 
 type FilePromptMode int
@@ -92,9 +93,13 @@ type Model struct {
 	actionCursor       int // For selecting actions in details view
 
 	// Change site type (details of a website)
-	ctMode                 int // 0 off, 1 choosing the kind, 2 typing the port, 3 confirming
-	ctCursor               int
-	ctPort                 string
+	ctMode   int // 0 off, 1 choosing the kind, 2 typing the port, 3 confirming
+	ctCursor int
+	ctPort   string
+
+	// Move to group, and the Groups view (groups.go)
+	mg                     moveGroupState
+	gv                     groupsViewState
 	containerLogs          string
 	showingLogs            bool
 	containerStats         *api.ContainerStats
@@ -366,6 +371,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case containersMsg:
 		m.containers = msg.Containers
 		m.groups = msg.Groups
+		if m.gv.cursor >= len(m.groups) {
+			m.gv.cursor = max(0, len(m.groups)-1)
+		}
 		m.updateFilteredContainers()
 		m.err = ""
 		return m, nil
@@ -608,6 +616,21 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.dbActionCursor = 0
 			return m, nil
 		}
+		if m.currentView == ViewGroups {
+			if m.gv.mode != gvList {
+				m.gv.mode = gvList
+				m.err = ""
+			} else {
+				m.currentView = ViewList
+				m.err = ""
+			}
+			return m, nil
+		}
+		if m.currentView == ViewDetails && m.mg.mode != mgOff {
+			m.mg.mode = mgOff
+			m.err = ""
+			return m, nil
+		}
 		if m.currentView == ViewDetails && m.ctMode != 0 {
 			m.ctMode = 0
 			return m, nil
@@ -787,6 +810,12 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.actionCursor = 0
 				}
 			}
+			if msg.String() == "g" || msg.String() == "G" {
+				m.currentView = ViewGroups
+				m.gv = groupsViewState{}
+				m.err, m.notice = "", ""
+				return m, nil
+			}
 			if msg.String() == "n" || msg.String() == "N" {
 				m.currentView = ViewCreateSite
 				m.createDomain = ""
@@ -804,6 +833,9 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Handle action selection in details view
 			if m.ctMode != 0 {
 				return m.handleChangeTypeInput(msg)
+			}
+			if m.mg.mode != mgOff {
+				return m.handleMoveGroupInput(msg)
 			}
 			actions := m.detailActions()
 			if m.containerConfirmDelete {
@@ -833,6 +865,16 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.containerConfirmDelete = true
 					return m, nil
 				}
+				if actions[m.actionCursor] == "Move to group" {
+					m.mg = moveGroupState{mode: mgPick}
+					for i, ch := range m.moveChoices() {
+						if ch == "group:"+m.groupOf[m.selectedContainer.Name] {
+							m.mg.cursor = i
+						}
+					}
+					m.err = ""
+					return m, nil
+				}
 				if actions[m.actionCursor] == "Change site type" {
 					m.ctMode = 1
 					m.ctCursor = siteTypeIndex(siteTypeOf(*m.selectedContainer))
@@ -848,6 +890,8 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 				return m, m.executeContainerAction()
 			}
+		} else if m.currentView == ViewGroups {
+			return m.handleGroupsInput(msg)
 		} else if m.currentView == ViewCreateSite {
 			return m.handleCreateInput(msg)
 		}
@@ -1909,7 +1953,7 @@ func (m Model) detailActions() []string {
 	if m.selectedContainer != nil && siteTypeOf(*m.selectedContainer) != "" {
 		actions = append(actions, "Change site type")
 	}
-	return append(actions, "Delete")
+	return append(actions, "Move to group", "Delete")
 }
 
 func (m Model) ctPortValue() int {

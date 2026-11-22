@@ -19,8 +19,8 @@ func siteBox(typ string) *api.Container {
 func TestChangeSiteTypeOnlyOffersItForWebsites(t *testing.T) {
 	m := newTestModel()
 	m.selectedContainer = siteBox("static")
-	if got := m.detailActions(); got[len(got)-2] != "Change site type" || got[len(got)-1] != "Delete" {
-		t.Fatalf("a website should offer it just before Delete: %v", got)
+	if got := m.detailActions(); got[len(got)-3] != "Change site type" || got[len(got)-1] != "Delete" {
+		t.Fatalf("a website should offer it before Move to group and Delete: %v", got)
 	}
 	m.selectedContainer = &api.Container{Name: "db", Labels: map[string]string{"docklite.managed": "true", "docklite.type": "postgres"}}
 	for _, a := range m.detailActions() {
@@ -44,7 +44,7 @@ func TestChangeSiteTypeFlowSendsTheRequest(t *testing.T) {
 	m.client.SetBaseURL(srv.URL)
 	m.currentScreen, m.currentView = ScreenContainers, ViewDetails
 	m.selectedContainer = siteBox("static")
-	m.actionCursor = len(m.detailActions()) - 2 // Change site type
+	m.actionCursor = len(m.detailActions()) - 3 // Change site type
 
 	press := func(k tea.KeyMsg) tea.Cmd {
 		next, cmd := m.handleMainPanelInput(k)

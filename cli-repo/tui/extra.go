@@ -259,6 +259,20 @@ func (m Model) handleExtraMsg(msg tea.Msg) (Model, tea.Cmd, bool) {
 			m.x.netErrs = append(m.x.netErrs, "Checks: "+friendlyErr(msg.Err))
 		}
 		return m, nil, true
+	case groupDoneMsg:
+		m.mg.mode = mgOff
+		if msg.Err != nil {
+			m.err = friendlyErr(msg.Err)
+			if e, ok := msg.Err.(*api.APIError); ok {
+				m.err = apiMessage(e)
+			}
+			return m, nil, true
+		}
+		m.err, m.notice = "", msg.Notice
+		if m.currentView == ViewDetails {
+			m.currentView, m.selectedContainer = ViewList, nil
+		}
+		return m, fetchContainers(m.client), true
 	case overviewMsg:
 		if msg.O != nil {
 			m.x.overview = msg.O
