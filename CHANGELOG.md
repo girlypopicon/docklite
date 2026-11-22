@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.15.0 (2026-11-22)
+
 ### Added
 - **Terminal app: groups and readable names.** The Containers screen now lists every box (it used to show one box per group and lose the
   rest), with each group's boxes together under its name. Sites show their address (`shop.example.com`) instead of
