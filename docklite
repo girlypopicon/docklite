@@ -751,13 +751,18 @@ run_wizard() {
     # ── mode ──
     step "Installation mode"
     echo ""
-    echo -e "  ${GOLD}1)${NC} ${BOLD}Full Stack${NC}  — Web GUI + Agent ${DIM}(recommended)${NC}"
-    echo -e "  ${GOLD}2)${NC} ${BOLD}Headless${NC}    — Agent only, TUI/API access"
-    echo ""
-    echo -en "  ${BLUE}Choose${NC} ${YELLOW}[1]${NC}: "
-    read -r mode_choice
-    MODE="fullstack"
-    [[ "$mode_choice" == "2" ]] && MODE="headless"
+    if [[ "${DOCKLITE_MODE:-}" == "fullstack" || "${DOCKLITE_MODE:-}" == "headless" ]]; then
+        # The installer already asked (and built only what was chosen).
+        MODE="$DOCKLITE_MODE"
+    else
+        echo -e "  ${GOLD}1)${NC} ${BOLD}Web dashboard and terminal app${NC} ${DIM}(recommended)${NC}"
+        echo -e "  ${GOLD}2)${NC} ${BOLD}Terminal app only${NC}              ${DIM}(no web dashboard; manage with: docklite tui)${NC}"
+        echo ""
+        echo -en "  ${BLUE}Choose${NC} ${YELLOW}[1]${NC}: "
+        read -r mode_choice
+        MODE="fullstack"
+        [[ "$mode_choice" == "2" ]] && MODE="headless"
+    fi
     ok "Mode: ${BOLD}${MODE}${NC}"
 
     # ── tokens ──
@@ -1018,7 +1023,7 @@ run_reconfigure() {
     echo -e "  ${DIM}Current: Agent :${AGENT_PORT} | GUI :${GUI_PORT} | Mode: ${MODE}${NC}"
     echo ""
     echo -e "  ${GOLD}1)${NC} Change ports"
-    echo -e "  ${GOLD}2)${NC} Change mode (full stack / headless)"
+    echo -e "  ${GOLD}2)${NC} Change mode (dashboard + terminal app / terminal app only)"
     echo -e "  ${GOLD}3)${NC} Reconfigure nginx"
     echo -e "  ${GOLD}4)${NC} Regenerate token"
     echo -e "  ${GOLD}5)${NC} Full re-setup (run wizard again)"
@@ -1052,6 +1057,14 @@ run_reconfigure() {
                 echo -en "  ${BLUE}Switch to full stack mode?${NC} ${YELLOW}(Y/n)${NC}: "
                 read -r sw
                 [[ "${sw,,}" != "n" ]] && MODE="fullstack"
+            fi
+            if [[ "$MODE" == "fullstack" && ! -d "${SCRIPT_DIR}/webapp/.next" ]]; then
+                # Installed as "terminal app only": the dashboard was never built. Remember the choice and let the
+                # next install step build it, instead of starting a dashboard that isn't there.
+                save_config
+                ok "Dashboard turned on, but it still has to be built on this server."
+                echo -e "  ${DIM}Run:${NC} docklite update --force --yes ${DIM}(rebuilds everything, your sites keep running)${NC}"
+                return 0 2>/dev/null || true
             fi
             pm2_delete_all
             save_config; generate_ecosystem; pm2_start_all

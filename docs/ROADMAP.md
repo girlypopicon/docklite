@@ -239,9 +239,8 @@ Design notes:
 - Stacks plug in here: a stack exposes one or more services as routes under a domain.
 
 ### Terminal UI
-- The TUI source lives in a separate repository (`cli-repo` is a pointer to it, with no submodule mapping) and is not
-  built by the installer, so releases don't ship it. Bring it into this repo under `go-app/cmd/docklite-tui` so it builds
-  with `make build-all`, ships with releases and gets tested with everything else.
+- Done: the TUI source now lives in this repo (`cli-repo/`), the installer builds it, and it has its own Update screen.
+  Still to do: browsing tables in a database (needs the database login, which the TUI has), and the steps below.
 - Parity with the dashboard, screen by screen: sites (create, SSL, DNS), backups (picker, restore), users, server health,
   logs that stream. Lists must scroll inside the panel (fixed in the containers, databases and files screens), and every
   screen must survive a narrow terminal.

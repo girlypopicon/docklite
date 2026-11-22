@@ -47,8 +47,8 @@ Browser -> nginx (:80/:443) -> Go agent (:3000, API + reverse proxy) -> Docker
 - Runs as the unprivileged `docklite` user under PM2. Installed in `/opt/docklite`. Sites in
   `/var/www/sites/<user>/<domain>/`. Config in `/opt/docklite/.docklite.conf` (never print it).
 - Roles: `super_admin`, `admin`, `user`. Bearer tokens for API/CLI; cookie sessions for the GUI.
-- TUI: a standalone Bubble Tea client. Its source is NOT in this repo (only binaries / `cli-repo/`); don't
-  document its internals.
+- TUI: a Bubble Tea client (`cli-repo/`, its own Go module `docklite-tui`). `install.sh` builds it next to the agent, so
+  every install and update (from the dashboard, the TUI's Update screen or `docklite update`) refreshes it.
 
 Existing, accurate technical docs: `CLAUDE.md` (architecture + API cheat sheet), `go-app/cmd/docklite/docs/CLI.md`
 (the CLI guide; run `docklite docs`), `SSL.md`, `DATABASESPEC.md`. Verify any claim you reuse against the code.

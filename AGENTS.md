@@ -65,7 +65,7 @@ backups and server health, always supports `--json`, and refuses destructive act
 - **Key Dependencies**:
   - `github.com/charmbracelet/bubbletea` - TUI framework
   - `github.com/charmbracelet/lipgloss` - Styling
-- **Location**: `cli-repo/`
+- **Location**: `cli-repo/` (in this repo; tests: `cd cli-repo && go test ./...`)
 
 ## Project Structure
 

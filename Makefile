@@ -61,6 +61,7 @@ test: test-go test-web
 # Run Go tests
 test-go:
 	cd go-app && go test ./...
+	cd cli-repo && go test ./...
 
 # Run webapp tests
 test-web:
