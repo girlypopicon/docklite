@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.18.2 (2026-11-22)
+
 ### Fixed
 - **Switching a site to Node now just works.** Changing a plain-files site to Node used to crash (Node needs an `index.js`). DockLite now adds a
   small `index.js` that serves your existing files, then switches, all in the one step, in the dashboard, terminal app, CLI and API. It never
