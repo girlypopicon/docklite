@@ -5,6 +5,11 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Fixed
+- **Switching a site's type can no longer leave it crash-looping.** Changing a static site to Node (which needs an `index.js`) made the site restart
+  forever and go offline. DockLite now watches the new container for a few seconds; if it crashes, it puts the old kind back and tells you why
+  (for example "Cannot find module '/app/index.js'"). The dashboard, terminal app and CLI all show that message.
+
 ## 1.18.0 (2026-11-22)
 
 ### Added

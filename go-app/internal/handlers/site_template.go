@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ChangeSiteTemplate is POST /api/containers/{id}/template {template_type, port?}: run the same site as another kind
@@ -119,6 +121,17 @@ func (h *Handlers) ChangeSiteTemplate(w http.ResponseWriter, r *http.Request, co
 		writeError(w, http.StatusInternalServerError, restoreOld(fmt.Errorf("could not save the change: %w", err)).Error())
 		return
 	}
+	// A site that crashes as its new kind (a Node site with no index.js, say) would otherwise sit in a restart loop,
+	// offline. Give it a few seconds and, if it can't stay up, put the old kind back and say why.
+	if wasRunning {
+		if ok, why := h.siteStaysUp(ctx, newID); !ok {
+			_ = h.docker.RemoveContainer(ctx, newID)
+			rerr := restoreOld(fmt.Errorf("the site crashed as %s and was not switched. %s", newType, why))
+			h.audit(r, "site.template", site.Domain, map[string]any{"from": oldType, "to": newType, "ok": false, "reason": why})
+			writeError(w, http.StatusConflict, rerr.Error())
+			return
+		}
+	}
 	_ = h.store.UpdateSiteContainerID(site.ID, &newID)
 	h.repointNginx(ctx, site.Domain, newID, newPort, includeWww)
 	_ = WriteDKLManifest(sitePath, site.Domain, newType, username, newPort, includeWww, nil)
@@ -147,4 +160,72 @@ func missingEntryFile(sitePath, templateType string) string {
 		return ""
 	}
 	return fmt.Sprintf("The site now runs as %s, but its folder has no %s, so visitors will see an error until one is added.", templateType, need)
+}
+
+// siteStaysUp watches a freshly started site container for a few seconds. It is "up" once it has run for three seconds
+// without restarting; it has failed the moment it is restarting or has exited, and the reason is what its log ended with.
+func (h *Handlers) siteStaysUp(ctx context.Context, id string) (bool, string) {
+	start := time.Now()
+	for {
+		info, err := h.docker.InspectContainer(ctx, id)
+		if err != nil {
+			return false, "Couldn't look at the new container: " + err.Error()
+		}
+		running, restarting, restarts, status := false, false, 0, ""
+		if info.State != nil {
+			running, restarting, status = info.State.Running, info.State.Restarting, info.State.Status
+		}
+		restarts = info.RestartCount
+		switch judgeSiteState(running, restarting, restarts, status, time.Since(start)) {
+		case "up":
+			return true, ""
+		case "failed":
+			logs, _ := h.docker.ContainerLogs(ctx, id, "20")
+			return false, crashReason(logs)
+		}
+		select {
+		case <-ctx.Done():
+			return false, "Timed out waiting for the site to start."
+		case <-time.After(400 * time.Millisecond):
+		}
+	}
+}
+
+// judgeSiteState: "up", "failed" or "wait".
+func judgeSiteState(running, restarting bool, restarts int, status string, elapsed time.Duration) string {
+	if restarting || restarts > 0 || status == "exited" || status == "dead" {
+		return "failed"
+	}
+	if running && elapsed >= 3*time.Second {
+		return "up"
+	}
+	if !running && elapsed >= 3*time.Second {
+		return "failed"
+	}
+	return "wait"
+}
+
+// crashReason is the most telling line at the end of a container's log, in a sentence.
+func crashReason(logs string) string {
+	var last, errLine string
+	for _, l := range strings.Split(strings.ReplaceAll(logs, "\r", ""), "\n") {
+		l = strings.TrimSpace(strings.TrimLeft(l, "\x00\x01\x02\x03\x04\x05\x06\x07\x08"))
+		if l == "" {
+			continue
+		}
+		last = l
+		if strings.Contains(l, "Error") || strings.Contains(l, "error") {
+			errLine = l
+		}
+	}
+	if errLine == "" {
+		errLine = last
+	}
+	if errLine == "" {
+		return "It stopped as soon as it started."
+	}
+	if len(errLine) > 200 {
+		errLine = errLine[:200] + "..."
+	}
+	return "Its log says: " + errLine
 }
