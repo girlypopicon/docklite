@@ -43,7 +43,7 @@ const downPageTemplate = `<!DOCTYPE html>
     --pink: #FF6AD5; --coral: #FF9A8B; --gold: #FFD166; --mint: #B8F2A2; --sky: #9AD0FF; --lilac: #C7A4FF;
     --rainbow: linear-gradient(110deg, var(--pink), var(--coral), var(--gold), var(--mint), var(--sky), var(--lilac));
   }
-  * { container-sizing: border-container; }
+  * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
     display: flex; align-items: center; justify-content: center; padding: 24px;
@@ -57,7 +57,7 @@ const downPageTemplate = `<!DOCTYPE html>
   .card {
     width: 100%; max-width: 640px; padding: 40px 36px; border-radius: 22px; position: relative;
     background: rgba(22, 14, 34, .72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    container-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 40px rgba(199,164,255,.18);
+    box-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 40px rgba(199,164,255,.18);
   }
   .card::before {
     content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; background: var(--rainbow);
@@ -65,7 +65,7 @@ const downPageTemplate = `<!DOCTYPE html>
     mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: .7; pointer-events: none;
   }
   .state { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
-  .state i { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); container-shadow: 0 0 10px var(--gold); animation: pulse 2.4s ease-in-out infinite; }
+  .state i { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); animation: pulse 2.4s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .35; } }
   h1 {
     margin: 18px 0 14px; font-size: clamp(24px, 5.5vw, 38px); line-height: 1.2;

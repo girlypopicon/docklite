@@ -477,6 +477,64 @@ case "$cmd" in
         rm -f "$snip"
         echo "ok: stopped-box page written"
         ;;
+    maintenance-write) # maintenance-write   (the "back soon" page's HTML on stdin; installs the nginx snippet that serves it)
+        # Every site already includes docklite-down*.conf, so a second snippet with that prefix is picked up with no
+        # change to any site's file. It answers 503 for a site while a flag file named after it exists.
+        mkdir -p /var/lib/docklite/maintenance /etc/nginx/snippets; chmod 755 /var/lib/docklite /var/lib/docklite/maintenance
+        tmp="$(mktemp /var/lib/docklite/maintenance.html.XXXXXX)"
+        head -c 65537 > "$tmp"
+        size="$(stat -c %s "$tmp")"
+        if (( size < 1 || size > 65536 )); then rm -f "$tmp"; die "the page is empty or over 64 KB"; fi
+        chmod 644 "$tmp"; mv -f "$tmp" /var/lib/docklite/maintenance.html
+        snip="$(mktemp)"
+        cat > "$snip" <<'SNIP'
+# Written by DockLite. While a flag file named after a site (or ALL) exists in /var/lib/docklite/maintenance, visitors get
+# the "back soon" page as a 503. Turning it on or off only creates or removes a file, so nothing reloads.
+set $docklite_maint "";
+if (-f /var/lib/docklite/maintenance/ALL) { set $docklite_maint 1; }
+if (-f /var/lib/docklite/maintenance/$host) { set $docklite_maint 1; }
+if ($uri = /__docklite_maint) { set $docklite_maint ""; }
+if ($docklite_maint) { return 503; }
+error_page 503 /__docklite_maint;
+location = /__docklite_maint {
+    internal;
+    alias /var/lib/docklite/maintenance.html;
+    default_type text/html;
+    add_header Retry-After 3600 always;
+    add_header Cache-Control "no-store" always;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+}
+SNIP
+        target=/etc/nginx/snippets/docklite-down-maintenance.conf
+        if ! cmp -s "$snip" "$target"; then
+            prev=""
+            [[ -f "$target" ]] && { prev="$(mktemp)"; cp -p "$target" "$prev"; }
+            install -m 644 "$snip" "$target"
+            if nginx -t >/dev/null 2>&1; then
+                nginx -s reload
+            else
+                if [[ -n "$prev" ]]; then cp -p "$prev" "$target"; else rm -f "$target"; fi
+                rm -f "$snip" "$prev"
+                die "nginx rejected the back-soon snippet, so it was undone"
+            fi
+            [[ -n "$prev" ]] && rm -f "$prev"
+        fi
+        rm -f "$snip"
+        echo "ok: back-soon page written"
+        ;;
+    maintenance-set)  # maintenance-set DOMAIN|ALL on|off
+        name="${1:-}"; mode="${2:-}"
+        if [[ "$name" != "ALL" ]]; then check_domain "$name"; fi
+        mkdir -p /var/lib/docklite/maintenance
+        case "$mode" in
+            on)  : > "/var/lib/docklite/maintenance/$name"; chmod 644 "/var/lib/docklite/maintenance/$name" ;;
+            off) rm -f "/var/lib/docklite/maintenance/$name" ;;
+            *)   die "usage: maintenance-set DOMAIN|ALL on|off" ;;
+        esac
+        ;;
+    maintenance-list) # maintenance-list   (names with back-soon mode on, one per line)
+        ls -1 /var/lib/docklite/maintenance 2>/dev/null || true
+        ;;
     nginx-down-patch) # nginx-down-patch FILE DOMAIN   (adds the include to that site's server block(s))
         file="$(readlink -f "${1:-/nonexistent}" 2>/dev/null || true)"
         nginx_path_ok "$file" && [[ -f "$file" ]] || die "not an nginx config file: ${1:-}"
@@ -637,6 +695,6 @@ case "$cmd" in
         cat "${LE_LIVE}/$1/cert.pem"
         ;;
     *)
-        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|site-trash|site-purge|nginx-test|nginx-reload|nginx-restart|nginx-upstreams|nginx-fix-port|nginx-down-write|nginx-down-patch|cert-issue|cert-obtain|cert-exists|origin-cert-write|origin-cert-exists|cert-renewal-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
+        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|site-trash|site-purge|nginx-test|nginx-reload|nginx-restart|nginx-upstreams|nginx-fix-port|nginx-down-write|maintenance-write|maintenance-set|maintenance-list|nginx-down-patch|cert-issue|cert-obtain|cert-exists|origin-cert-write|origin-cert-exists|cert-renewal-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
         ;;
 esac

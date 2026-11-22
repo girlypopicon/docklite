@@ -31,6 +31,8 @@ interface SiteEditorState {
   success: boolean;
 }
 
+import MaintenanceCard from './MaintenanceCard';
+
 export default function NginxPanel() {
   const [sites, setSites] = useState<NginxSite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,6 +162,7 @@ export default function NginxPanel() {
 
   return (
     <div className="space-y-4">
+      <MaintenanceCard domains={sites.map((s) => s.domain)} />
       {/* Top actions bar */}
       <div className="card-vapor p-4 rounded-xl flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
