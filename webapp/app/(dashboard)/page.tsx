@@ -668,7 +668,7 @@ export default function DashboardPage() {
         </DndContext>
       )}
 
-      {details && <ContainerDetailsModal containerId={details.id} containerName={details.name} onClose={() => setDetails(null)} />}
+      {details && <ContainerDetailsModal containerId={details.id} containerName={details.name} onClose={() => setDetails(null)} onChanged={(message) => { toast.success(message); refresh(); }} />}
       {dbOpen && (
         <DatabaseBoxModal
           db={dbOpen.db}

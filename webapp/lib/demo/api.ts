@@ -258,6 +258,19 @@ on('POST', new RegExp(`^/api/containers/${ID}/(assign|transfer)$`), (r, m, s) =>
   if (!f?.site || !s.users.some((u) => u.id === uid)) return err(400, 'Choose a user');
   f.site.userId = uid; save(); return ok({ success: true, new_user: username(s, uid) });
 });
+// Run a site as another kind: the demo keeps the site, swaps its kind and gives it a fresh container id, as the agent does.
+on('POST', new RegExp(`^/api/containers/${ID}/template$`), (r, m, s) => {
+  const f = findContainer(s, m[1]);
+  const kind = String(r.body?.template_type || '');
+  if (!f?.site) return err(404, "this isn't one of DockLite's websites, so it has no type to change");
+  if (kind !== 'static' && kind !== 'php' && kind !== 'node') return err(400, 'template_type must be static, php or node');
+  const site = f.site;
+  site.template = kind;
+  site.internalPort = kind === 'node' ? Number(r.body?.port) || (site.internalPort > 80 ? site.internalPort : 3000) : 80;
+  site.containerId = fakeHex(64);
+  save();
+  return ok({ success: true, domain: site.domain, template_type: kind, port: site.internalPort, container_id: site.containerId });
+});
 on('POST', new RegExp(`^/api/containers/${ID}/(track|untrack|claim|write-manifest)$`), () => ok());
 on('POST', /^\/api\/containers\/(scan|onboard)$/, () => ok({ sites: [] }));
 // Colour and icon on a box's card: kept with the demo's own data, so it shows after a refresh like the real thing.

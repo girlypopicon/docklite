@@ -5,6 +5,15 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.18.0 (2026-11-22)
+
+### Added
+- **Change a website's type.** Switch a site between a static website, PHP and a Node.js app without rebuilding it: in the dashboard, open the
+  box's details and use **Site type** (Overview tab); in the terminal app, open the site and choose **Change site type**; from scripts,
+  `docklite sites type example.com node --port 3000 --yes` (or `POST /api/containers/{id}/template`). The files, address, owner and HTTPS
+  stay as they are; only the container is replaced (a few seconds offline) and the old one comes back if the new one can't start.
+  DockLite doesn't touch your files, so it tells you when the new kind is missing its `index.js` / `index.php` / `index.html`.
+
 ## 1.17.0 (2026-11-22)
 
 ### Added

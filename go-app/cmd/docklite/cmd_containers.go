@@ -376,6 +376,56 @@ func init() {
 		},
 	})
 	register(command{
+		Path: []string{"sites", "type"}, Summary: "Run a website as another kind (static, php or node); its files, address and HTTPS stay",
+		Usage: "sites type <domain> <static|php|node> [--port N] --yes", Destructive: true,
+		Examples: []string{"docklite sites type example.com node --port 3000 --yes", "docklite sites type example.com static --yes"},
+		Run: func(a *app, args []string) error {
+			var port int
+			pos, err := a.flags("sites type", args, func(fs *flag.FlagSet) {
+				fs.IntVar(&port, "port", 0, "")
+			})
+			if err != nil {
+				return err
+			}
+			if len(pos) != 2 || (pos[1] != "static" && pos[1] != "php" && pos[1] != "node") {
+				return usageError("usage: docklite sites type <domain> <static|php|node> [--port N]")
+			}
+			c, err := a.resolveContainer(pos[0])
+			if err != nil {
+				return err
+			}
+			if err := a.confirm(fmt.Sprintf("restart %s as a %s site (a few seconds offline; files are not touched)", pos[0], pos[1])); err != nil {
+				return err
+			}
+			payload := map[string]any{"template_type": pos[1]}
+			if port > 0 {
+				payload["port"] = port
+			}
+			data, err := a.post("/api/containers/"+c.ID+"/template", payload)
+			if err != nil {
+				return err
+			}
+			if a.opts.JSON {
+				a.emit(data)
+				return nil
+			}
+			var resp struct {
+				Warning string `json:"warning"`
+				Message string `json:"message"`
+			}
+			_ = json.Unmarshal(data, &resp)
+			if resp.Message != "" {
+				a.say("%s: %s", pos[0], resp.Message)
+				return nil
+			}
+			a.say("%s now runs as %s", pos[0], pos[1])
+			if resp.Warning != "" {
+				fmt.Fprintln(a.errOut, "warning: "+resp.Warning)
+			}
+			return nil
+		},
+	})
+	register(command{
 		Path: []string{"sites", "layout"}, Summary: "Check (and fix) that every site lives in /var/www/sites/<user>/<domain>",
 		Usage:       "sites layout [--apply] [--domain example.com] [--yes]",
 		Destructive: true,

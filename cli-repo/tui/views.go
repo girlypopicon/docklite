@@ -828,7 +828,10 @@ func (m Model) renderContainerDetails() string {
 	lines = append(lines, "")
 
 	// Action buttons
-	actions := []string{"Start", "Stop", "Restart", "View Logs", "View Stats", "Delete"}
+	if m.ctMode != 0 {
+		return m.renderChangeType()
+	}
+	actions := m.detailActions()
 	for i, action := range actions {
 		style := buttonStyle
 		if i == m.actionCursor {
@@ -1214,3 +1217,36 @@ func RenderSplash() string {
 }
 
 func accentHeading(text string) string { return statStyle.Render(text) }
+
+func (m Model) renderChangeType() string {
+	c := m.selectedContainer
+	lines := []string{titleStyle.Render("Change site type"), "",
+		fmt.Sprintf("%s %s", labelStyle.Render("Site:"), statStyle.Render(boxTitle(*c))),
+		fmt.Sprintf("%s %s", labelStyle.Render("Now: "), siteTypes[siteTypeIndex(siteTypeOf(*c))].label), ""}
+	for i, t := range siteTypes {
+		prefix, style := "  ", listItemStyle
+		if i == m.ctCursor {
+			prefix, style = "▶ ", listItemSelectedStyle
+		}
+		lines = append(lines, style.Render(fmt.Sprintf("%s%-16s %s", prefix, t.label, labelStyle.Render(t.hint))))
+	}
+	switch m.ctMode {
+	case 1:
+		lines = append(lines, "", dimTextStyle.Render("↑/↓ choose • Enter next • Esc cancel"))
+	case 2:
+		port := m.ctPort
+		if port == "" {
+			port = "3000 (default)"
+		}
+		lines = append(lines, "", labelStyle.Render("Which port does your app listen on?"), listItemStyle.Render("> "+port+"_"))
+	case 3:
+		lines = append(lines, "",
+			labelStyle.Render("Your files, address and HTTPS stay as they are. The site restarts as the new kind"),
+			labelStyle.Render("(a few seconds offline), and goes back to the old kind if that fails."),
+			errorStyle.Render("Press Enter to switch to "+siteTypes[m.ctCursor].label+" • Esc cancel"))
+	}
+	if m.err != "" {
+		lines = append(lines, "", errorStyle.Render("Error: "+m.err))
+	}
+	return strings.Join(lines, "\n")
+}

@@ -19,6 +19,7 @@ import {
 } from '@phosphor-icons/react';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import SiteHttpsCard from './SiteHttpsCard';
+import SiteTypeCard from './SiteTypeCard';
 import { containerDisplayName } from '@/lib/container-names';
 
 interface ContainerStats {
@@ -66,9 +67,11 @@ interface Props {
   containerId: string;
   containerName: string;
   onClose: () => void;
+  /** Called after something changed that replaces the container (a site's type), so the desktop can reload. */
+  onChanged?: (message: string) => void;
 }
 
-export default function ContainerDetailsModal({ containerId, containerName, onClose }: Props) {
+export default function ContainerDetailsModal({ containerId, containerName, onClose, onChanged }: Props) {
   useBodyScrollLock();
   const [details, setDetails] = useState<ContainerDetails | null>(null);
   const [stats, setStats] = useState<ContainerStats | null>(null);
@@ -293,6 +296,16 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <>
+              {details.labels?.['docklite.managed'] === 'true' && details.labels?.['docklite.domain'] && ['static', 'php', 'node'].includes(details.labels?.['docklite.type']) && (
+                <SiteTypeCard
+                  containerId={containerId}
+                  current={details.labels['docklite.type'] as 'static' | 'php' | 'node'}
+                  onChanged={(message) => {
+                    onChanged?.(message);
+                    onClose();
+                  }}
+                />
+              )}
               {/* Real-time Stats */}
               {isRunning && stats && stats.cpu !== undefined && (
                 <div className="card-vapor p-6 rounded-xl">

@@ -372,6 +372,8 @@ func (h *Handlers) Container(w http.ResponseWriter, r *http.Request) {
 		h.ClaimContainer(w, r, id)
 	case "transfer":
 		h.TransferSite(w, r, id)
+	case "template":
+		h.ChangeSiteTemplate(w, r, id)
 	case "terminal":
 		h.ContainerTerminal(w, r, id)
 	case "style":
