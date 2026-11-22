@@ -155,7 +155,7 @@ on('GET', /^\/api\/containers$/, (_r, _m, s) => {
   return ok({ folders: [folderOf(s, list)], totalContainers: list.length, boxes: list, groups: (s.groups ?? []).map(groupView) });
 });
 
-// groups: cards that hold boxes
+// groups: cards that hold containers
 const boxNameOf = (s: DemoState, id: string) => {
   const f = findContainer(s, id);
   return f?.site ? siteName(f.site.domain) : f?.db ? dbName(f.db.name) : null;
@@ -286,6 +286,9 @@ on('POST', new RegExp(`^/api/containers/${ID}/forward$`), (r, m, s) => {
   (demoForwards[m[1]] ??= []).push({ domain, mode });
   return ok({ success: true, domain, to: f.site.domain, mode, group: f.site.domain });
 });
+// Several servers: the public demo is one server, so there is nothing to connect to.
+on('GET', /^\/api\/servers$/, () => ok({ servers: [] }));
+on('POST', /^\/api\/servers$/, () => err(400, 'The demo is a single pretend server, so it has no other server to connect. Install DockLite on two servers to try this.'));
 // The dashboard's own domain and automatic certificate renewal (demo: in memory).
 let demoPanel = { domain: 'demo.docklite.net', enabled: true, https: true };
 let demoRenewAll = true;

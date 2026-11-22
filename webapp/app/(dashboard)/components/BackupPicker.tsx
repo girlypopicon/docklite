@@ -166,7 +166,7 @@ export default function BackupPicker({ value, onChange, disabled, forSchedule }:
     if (id === 'everything') onChange({ all_sites: true, all_databases: true });
     if (id === 'sites') onChange({ all_sites: true });
     if (id === 'databases') onChange({ all_databases: true });
-    // Choosing starts from nothing, so every box can be ticked or left alone.
+    // Choosing starts from nothing, so every container can be ticked or left alone.
     if (id === 'choose' && quickChoiceOf(value) !== 'choose') onChange({});
   };
 

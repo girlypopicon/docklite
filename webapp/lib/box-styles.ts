@@ -7,7 +7,7 @@ import {
 /**
  * How a container's card can look: its colour (the glow and the big icon behind it) and that icon. The ids are what the agent
  * stores (go-app/internal/handlers/box_style.go lists the same ones, and rejects anything else). "" is the default: a colour
- * by what the box is (sites pink, databases green, the rest cyan) and the box icon.
+ * by what the container is (sites pink, databases green, the rest cyan) and the container icon.
  */
 export type BoxColorId = '' | 'pink' | 'coral' | 'orange' | 'gold' | 'lime' | 'mint' | 'teal' | 'sky' | 'blue' | 'lilac' | 'rose' | 'slate';
 

@@ -142,6 +142,7 @@ func (h *Handlers) createForward(w http.ResponseWriter, r *http.Request, sourceI
 		IncludeWww *bool  `json:"include_www"`
 	}
 	if err := readJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	domain := strings.ToLower(strings.TrimSpace(req.Domain))

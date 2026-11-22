@@ -11,7 +11,7 @@ interface AssignBoxModalProps {
   onClose: () => void;
 }
 
-/** Admin only: give a box to another user. */
+/** Admin only: give a container to another user. */
 export default function AssignBoxModal({ boxName, users, userId, onUserId, error, busy, onSubmit, onClose }: AssignBoxModalProps) {
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000] p-4" onClick={onClose}>

@@ -115,6 +115,7 @@ func (h *Handlers) setPanelDomain(w http.ResponseWriter, r *http.Request) {
 		Enabled *bool   `json:"enabled"`
 	}
 	if err := readJSON(w, r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	before := h.panelDomainState()

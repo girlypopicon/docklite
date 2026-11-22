@@ -14,6 +14,9 @@ import NewBoxModal from './components/NewBoxModal';
 import DatabaseBoxModal from './components/DatabaseBoxModal';
 import ConfirmModal from './components/ConfirmModal';
 import { ContainersPageSkeleton } from './components/PageSkeletons';
+import ServerTabs, { type RemoteServer } from './components/ServerTabs';
+import AddServerModal from './components/AddServerModal';
+import RemoteServerView from './components/RemoteServerView';
 import ContainerFilterTabs, { type StatusFilter, type TypeFilter } from './components/ContainerFilterTabs';
 import { useToast } from '@/lib/hooks/useToast';
 import { containerKind, sortContainers } from '@/lib/container-sort';
@@ -37,7 +40,7 @@ const boxKey = (id: string) => `box:${id}`;
 const groupKey = (id: number) => `group:${id}`;
 
 /**
- * One card on the desktop. A box can be picked up and dropped on another box (they become a group) or on a group
+ * One card on the desktop. A container can be picked up and dropped on another container (they become a group) or on a group
  * (it goes in). Groups are only drop targets. A SQLite file card is neither: it lives inside a site.
  */
 function Tile({
@@ -71,6 +74,19 @@ type Me = { userId: number; username: string; isAdmin: boolean; role: string };
 
 export default function DashboardPage() {
   const [boxes, setBoxes] = useState<ContainerInfo[]>([]);
+  // Other DockLite servers shown in tabs next to this one (admins only; everyone else just gets an empty list).
+  const [servers, setServers] = useState<RemoteServer[]>([]);
+  const [serverTab, setServerTab] = useState<number | null>(null);
+  const [showAddServer, setShowAddServer] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    fetch('/api/servers')
+      .then(async (r) => {
+        setIsAdmin(r.ok);
+        if (r.ok) setServers((await r.json()).servers || []);
+      })
+      .catch(() => {});
+  }, []);
   const [groups, setGroups] = useState<BoxGroup[]>([]);
   const [databases, setDatabases] = useState<DatabaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +122,7 @@ export default function DashboardPage() {
   // dragging
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-  // Boxes the person has collapsed to a thin bar (kept in this browser, by box name).
+  // Containers the person has collapsed to a thin bar (kept in this browser, by container name).
   const [collapsed, setCollapsed] = useState<string[]>([]);
   useEffect(() => {
     try {
@@ -244,7 +260,7 @@ export default function DashboardPage() {
   const nothingMatches = !nothingAtAll && visibleGroups.length === 0 && looseBoxes.length === 0;
   const openGroup = groups.find((g) => g.id === openGroupId) || null;
 
-  // ---- actions on boxes -----------------------------------------------------------------------------------------
+  // ---- actions on containers -----------------------------------------------------------------------------------------
 
   const handleAction = async (id: string, action: 'start' | 'stop' | 'restart') => {
     try {
@@ -513,20 +529,53 @@ export default function DashboardPage() {
     );
   }
 
+  const serverTabsEl = (
+    <>
+      {servers.length > 0 && <ServerTabs servers={servers} active={serverTab} onSelect={setServerTab} onAdd={() => setShowAddServer(true)} />}
+      {showAddServer && (
+        <AddServerModal
+          onClose={() => setShowAddServer(false)}
+          onAdded={(srv) => {
+            setServers((cur) => [...cur, srv]);
+            setServerTab(srv.id);
+            setShowAddServer(false);
+            toast.success(`${srv.name} added. It has its own tab now.`);
+          }}
+        />
+      )}
+    </>
+  );
+  const activeServer = servers.find((x) => x.id === serverTab);
+  if (activeServer) {
+    return (
+      <div className="max-w-[1400px] mx-auto">
+        {serverTabsEl}
+        <RemoteServerView
+          server={activeServer}
+          onRemoved={() => {
+            setServers((cur) => cur.filter((x) => x.id !== activeServer.id));
+            setServerTab(null);
+          }}
+        />
+      </div>
+    );
+  }
+
   const gridClass = 'grid gap-3 sm:gap-4 p-2 sm:p-3 grid-cols-[repeat(auto-fill,minmax(min(100%,148px),1fr))] sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))]';
 
   return (
     <div className="max-w-[1400px] mx-auto">
+      {serverTabsEl}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
         <div>
           <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Package size={26} weight="regular" />
-            Boxes
+            Containers
           </h1>
           <div className="flex items-center gap-3">
             <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>System status: online</p>
             <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(var(--status-success-rgb), 0.2)', color: 'var(--text-green)', border: '1px solid var(--neon-green)' }}>
-              {allBoxes.length} {allBoxes.length === 1 ? 'box' : 'boxes'}
+              {allBoxes.length} {allBoxes.length === 1 ? 'container' : 'containers'}
               {groups.length > 0 ? ` · ${groups.length} ${groups.length === 1 ? 'group' : 'groups'}` : ''}
             </span>
           </div>
@@ -534,7 +583,7 @@ export default function DashboardPage() {
         <div className="flex flex-wrap gap-2 sm:gap-3">
           <button onClick={() => setShowNewBox(true)} className="btn-neon inline-flex items-center gap-2 whitespace-nowrap">
             <PlusCircle size={20} weight="regular" />
-            New box
+            New container
           </button>
           <button
             onClick={() => {
@@ -551,6 +600,12 @@ export default function DashboardPage() {
             <Package size={20} weight="regular" />
             All containers
           </button>
+          {isAdmin && servers.length === 0 && (
+            <button onClick={() => setShowAddServer(true)} className="btn-neon inline-flex items-center gap-2 whitespace-nowrap">
+              <PlusCircle size={20} weight="regular" />
+              Add server
+            </button>
+          )}
         </div>
       </div>
 
@@ -566,7 +621,7 @@ export default function DashboardPage() {
           <div className="flex gap-4 justify-center flex-wrap">
             <button onClick={() => setShowNewBox(true)} className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3">
               <PlusCircle size={22} weight="regular" />
-              New box
+              New container
             </button>
             <button onClick={() => setShowAll(true)} className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3">
               <Package size={22} weight="regular" />
@@ -638,7 +693,7 @@ export default function DashboardPage() {
               );
             })}
             {collapsedStacks.map((stack, i) => (
-              // Six collapsed boxes take the space of one open card.
+              // Six collapsed containers take the space of one open card.
               <div key={`stack-${i}`} className="grid gap-1" style={{ aspectRatio: '5 / 7', gridTemplateRows: 'repeat(6, minmax(0, 1fr))' }}>
                 {stack.map((b) => {
                   const isFile = b.id.startsWith('sqlite-');

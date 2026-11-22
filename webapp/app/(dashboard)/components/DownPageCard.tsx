@@ -65,10 +65,10 @@ export default function DownPageCard() {
       <div>
         <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
           <Warning size={22} weight="regular" />
-          Page for stopped boxes
+          Page for stopped containers
         </h2>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          When a site&apos;s box is stopped, visitors see this page instead of a plain &quot;502 Bad Gateway&quot;. Every site
+          When a site&apos;s container is stopped, visitors see this page instead of a plain &quot;502 Bad Gateway&quot;. Every site
           shares it. Add a name, an email address or a link so people know who to ask.
         </p>
       </div>

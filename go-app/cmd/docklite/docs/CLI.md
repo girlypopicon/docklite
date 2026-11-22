@@ -90,6 +90,8 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | See sites still waiting for their automatic certificate | `docklite ssl pending` |
 | Make a waiting or stopped certificate job try again now | `docklite ssl retry example.com` (or `--all`) |
 | Set or show the email Let's Encrypt uses for automatic certificates | `docklite ssl email me@example.com` |
+| Show this server in another DockLite's dashboard (run here, then paste the code there) | `docklite share` |
+| Show another server in this dashboard (one tab each) | `docklite servers add <code>` / `docklite servers list` / `docklite servers remove <name> --yes` |
 | Check/reload nginx | `docklite nginx test` then `docklite nginx reload` |
 | Why is the server slow? | `docklite server overview`, `docklite server services`, `docklite server logs system` |
 | Add a DockLite account | `docklite users create alice` (add `--admin`; use `--password-stdin` in scripts) |

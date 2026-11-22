@@ -28,9 +28,9 @@ interface ContainerCardProps {
   onRemoveFromGroup?: (containerId: string, containerName: string) => void;
   onToggleTracking?: (containerId: string, tracked: boolean) => void;
   isTracked?: boolean;
-  // Save the colour and icon this box was given (the card already shows them; this is for keeping them).
+  // Save the colour and icon this container was given (the card already shows them; this is for keeping them).
   onStyle?: (containerId: string, style: { color: string; icon: string }) => void;
-  // Collapsing: a collapsed box is a thin bar with just its name and the menu; six of them fit where one open card does.
+  // Collapsing: a collapsed container is a thin bar with just its name and the menu; six of them fit where one open card does.
   collapsed?: boolean;
   onToggleCollapse?: (containerId: string) => void;
 }

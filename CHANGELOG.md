@@ -6,6 +6,13 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 ## Unreleased
 
 ### Added
+- **One dashboard for several servers.** Install DockLite on another server first (the agent alone is enough; the dashboard and terminal app there
+  are optional). On it run `docklite share`, which prints a join code; paste the code into **Add server** on the dashboard (or run
+  `docklite servers add <code>`). Each server then gets a **tab**. A server's tab lists its containers (start, stop, restart) and has buttons that
+  open its **Server**, **Network**, **Databases** and **HTTPS** views in a window. The tab bar appears once a second server is connected. The hub
+  keeps the other server's token and passes requests on; the browser never sees it. The token is revocable on the other server (it is named
+  "hub: ..." in its token list), `docklite servers remove <name>` only stops showing a server, and the hub only passes on a short list of
+  reads plus start/stop/restart. Use a domain with HTTPS on the other server (Settings → Linked domain) unless the servers share a private network.
 - **Forwarded domains** (dashboard, terminal app, CLI, API). Open a website and choose **Forwarded domains**: enter a new domain and pick
   **redirect** (visitors are sent to the site's address) or **proxy** (visitors keep the new address). The new domain is set up like any new
   site (its own container, DNS record and its own HTTPS certificate) and both go into one linked group. Adding another forward runs the same

@@ -108,6 +108,9 @@ func (s *SQLiteStore) InitializeAgentTables() error {
 	if err := s.EnsureGroupSchema(); err != nil {
 		return err
 	}
+	if err := s.EnsureRemoteServerSchema(); err != nil {
+		return err
+	}
 	if err := s.EnsureBackupPackageSchema(); err != nil {
 		return err
 	}

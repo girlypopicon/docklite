@@ -16,7 +16,7 @@ interface MoveToGroupModalProps {
   onClose: () => void;
 }
 
-/** The phone-friendly way to put a box in a group (dragging is for people with a mouse). */
+/** The phone-friendly way to put a container in a group (dragging is for people with a mouse). */
 export default function MoveToGroupModal({ boxName, groups, currentGroupId, busy, error, onMove, onClose }: MoveToGroupModalProps) {
   useEscape(onClose);
   const [choice, setChoice] = useState<string>(currentGroupId === null ? 'none' : String(currentGroupId));

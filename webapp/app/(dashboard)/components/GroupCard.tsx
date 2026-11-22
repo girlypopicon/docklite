@@ -18,7 +18,7 @@ interface GroupCardProps {
   onStyle: (group: BoxGroup, style: { color: string; icon: string }) => void;
   onDelete: (group: BoxGroup) => void;
   onMenuOpenChange?: (open: boolean) => void;
-  // A box is being dragged over this card (it would go into the group).
+  // A container is being dragged over this card (it would go into the group).
   highlight?: boolean;
   showOwner?: boolean;
 }
@@ -265,12 +265,12 @@ export default function GroupCard({ group, boxes, onOpen, onRename, onToggleLink
             {group.name}
           </h3>
           <p className="text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>
-            {boxes.length} {boxes.length === 1 ? 'box' : 'boxes'}
+            {boxes.length} {boxes.length === 1 ? 'container' : 'containers'}
             {boxes.length > running ? ` · ${boxes.length - running} stopped` : ''}
             {showOwner && group.owner_username ? ` · ${group.owner_username}` : ''}
           </p>
 
-          {/* The boxes inside, one per row: a little neon icon in a rounded square, then the name. */}
+          {/* The containers inside, one per row: a little neon icon in a rounded square, then the name. */}
           <ul className="mt-3 space-y-1.5 min-w-0 overflow-hidden" aria-label={`Containers in ${group.name}`}>
             {listed.map((b) => {
               const tileRgb = (b.style?.color && BOX_COLOR_RGB[b.style.color]) || 'var(--c)';

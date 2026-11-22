@@ -11,13 +11,13 @@ import { useEscape } from '@/lib/hooks/useEscape';
 interface GroupModalProps {
   group: BoxGroup;
   boxes: ContainerInfo[]; // the group's boxes
-  addable: ContainerInfo[]; // boxes not in any group, which can be put in this one
+  addable: ContainerInfo[]; // containers not in any group, which can be put in this one
   renderBox: (box: ContainerInfo) => React.ReactNode;
   onAdd: (box: ContainerInfo) => void;
   onClose: () => void;
 }
 
-/** The window a group opens: its boxes as cards, plus a way to add another. */
+/** The window a group opens: its containers as cards, plus a way to add another. */
 export default function GroupModal({ group, boxes, addable, renderBox, onAdd, onClose }: GroupModalProps) {
   useEscape(onClose);
   const [pick, setPick] = useState('');
@@ -57,7 +57,7 @@ export default function GroupModal({ group, boxes, addable, renderBox, onAdd, on
 
         {boxes.length === 0 ? (
           <p className="py-10 text-center" style={{ color: 'var(--text-secondary)' }}>
-            Nothing in here yet. Add a box below, or drag one onto this group on the desktop.
+            Nothing in here yet. Add a container below, or drag one onto this group on the desktop.
           </p>
         ) : (
           <div className="grid gap-3 sm:gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,148px),1fr))] sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))]">
