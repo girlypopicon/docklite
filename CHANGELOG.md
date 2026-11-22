@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.21.0 (2026-11-22)
+
 ### Security
 First pass of the agent security review (details and what is still open: `docs/SECURITY_REVIEW.md`).
 - **Raw nginx editing is now super-admin only, checked and reversible.** Any admin could write raw nginx config, and nginx runs as root, so
