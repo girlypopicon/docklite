@@ -111,6 +111,9 @@ func (s *SQLiteStore) InitializeAgentTables() error {
 	if err := s.EnsureBackupPackageSchema(); err != nil {
 		return err
 	}
+	if err := s.EnsureSQLiteIgnoreSchema(); err != nil {
+		return err
+	}
 	return s.EnsureTwoFactorSchema()
 }
 

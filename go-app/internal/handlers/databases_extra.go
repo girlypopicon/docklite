@@ -23,6 +23,22 @@ var identifierPattern = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 const databaseRetentionCount = 7
 
+func sizeCategoryFor(size int64) string {
+	switch {
+	case size == 0:
+		return "empty"
+	case size < 1024*1024:
+		return "tiny"
+	case size < 10*1024*1024:
+		return "small"
+	case size < 100*1024*1024:
+		return "medium"
+	case size < 1024*1024*1024:
+		return "large"
+	}
+	return "huge"
+}
+
 func (h *Handlers) DatabaseStats(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -43,6 +59,11 @@ func (h *Handlers) DatabaseStats(w http.ResponseWriter, r *http.Request) {
 			}
 			_, _ = h.store.UpsertDatabase(db.Name, db.Type, db.ID, db.Port, "")
 		}
+	}
+
+	if isAdminRole(r) {
+		// SQLite files a site made by itself get a card too (at most one scan per 20 seconds).
+		_, _ = h.discoverSQLiteDatabases(ctx, false)
 	}
 
 	dbPath := h.store.Path
@@ -83,9 +104,13 @@ func (h *Handlers) DatabaseStats(w http.ResponseWriter, r *http.Request) {
 
 		if database.ContainerID != "" {
 			if database.Type == "sqlite" {
-				// TODO: Implement size check for SQLite file in container
-				size = 0
-				sizeCategory = "unknown"
+				dbRec := database
+				if n := h.sqliteHostSize(r.Context(), &dbRec); n >= 0 {
+					size = n
+					sizeCategory = sizeCategoryFor(n)
+				} else {
+					sizeCategory = "unknown"
+				}
 			} else {
 				query := fmt.Sprintf("SELECT pg_database_size('%s')", database.Name)
 				dockerCtx, dockerCancel := dockerContext(r.Context())
@@ -104,20 +129,7 @@ func (h *Handlers) DatabaseStats(w http.ResponseWriter, r *http.Request) {
 					if err == nil {
 						if parsed, parseErr := strconv.ParseInt(strings.TrimSpace(output), 10, 64); parseErr == nil {
 							size = parsed
-							switch {
-							case size == 0:
-								sizeCategory = "empty"
-							case size < 1024*1024:
-								sizeCategory = "tiny"
-							case size < 10*1024*1024:
-								sizeCategory = "small"
-							case size < 100*1024*1024:
-								sizeCategory = "medium"
-							case size < 1024*1024*1024:
-								sizeCategory = "large"
-							default:
-								sizeCategory = "huge"
-							}
+							sizeCategory = sizeCategoryFor(size)
 						}
 					}
 				}
@@ -252,7 +264,15 @@ func (h *Handlers) deleteDatabase(w http.ResponseWriter, r *http.Request, databa
 		return
 	}
 
-	if database.ContainerID != "" {
+	if database.Type == "sqlite" {
+		// A SQLite database is a file inside a site: its "container" is the SITE, which must never be removed, and the
+		// file stays where it is. Forgetting it also tells the scanner not to bring it back.
+		if database.ContainerID != "" && database.DBPath != "" {
+			if info, err := h.docker.InspectContainer(r.Context(), database.ContainerID); err == nil {
+				_ = h.store.IgnoreSQLiteFile(strings.TrimPrefix(info.Name, "/"), database.DBPath)
+			}
+		}
+	} else if database.ContainerID != "" {
 		dockerCtx, dockerCancel := dockerContext(r.Context())
 		if err := h.docker.RemoveDatabaseContainer(dockerCtx, database.ContainerID, database.Name); err != nil {
 			dockerCancel()
