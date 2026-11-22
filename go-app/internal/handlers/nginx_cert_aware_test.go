@@ -14,7 +14,7 @@ func TestSetupNginxUsesExistingCertificate(t *testing.T) {
 		var written string
 		rootHelperHook = func(stdin io.Reader, args ...string) ([]byte, error) {
 			switch args[0] {
-			case "cert-exists":
+			case "cert-exists", "origin-cert-exists":
 				if hasCert {
 					return nil, nil
 				}
