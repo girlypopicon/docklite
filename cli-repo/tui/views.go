@@ -158,7 +158,11 @@ func (m Model) renderSidebar() string {
 
 	lines = append(lines, m.centerLine(titleStyle.Render("D O C K L I T E")))
 	lines = append(lines, m.centerLine(m.renderRainbowBar()))
-	lines = append(lines, "")
+	if m.x.viewing != "" {
+		lines = append(lines, m.centerLine(statStyle.Render(truncate("» "+m.x.viewing, 18))))
+	} else {
+		lines = append(lines, "")
+	}
 
 	for i, e := range sidebarEntries {
 		prefix := "  "

@@ -13,6 +13,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
   keeps the other server's token and passes requests on; the browser never sees it. The token is revocable on the other server (it is named
   "hub: ..." in its token list), `docklite servers remove <name>` only stops showing a server, and the hub only passes on a short list of
   reads plus start/stop/restart. Use a domain with HTTPS on the other server (Settings → Linked domain) unless the servers share a private network.
+- **Terminal app: Servers.** Settings → Servers lists this server and the others connected to it; pick one and the whole terminal app shows
+  that server (the menu says which). Other servers are read-only here, apart from start, stop and restart; pick "This server" to go back.
 - **Forwarded domains** (dashboard, terminal app, CLI, API). Open a website and choose **Forwarded domains**: enter a new domain and pick
   **redirect** (visitors are sent to the site's address) or **proxy** (visitors keep the new address). The new domain is set up like any new
   site (its own container, DNS record and its own HTTPS certificate) and both go into one linked group. Adding another forward runs the same

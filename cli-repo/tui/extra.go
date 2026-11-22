@@ -119,12 +119,16 @@ type extraState struct {
 	netOffset   int
 	netLoaded   bool
 	// Settings
-	setCursor int
-	setView   int // 0 list, 1 update, 2 about, 3 connection, 4 linked domain
-	panel     *panelDomain
-	panelEdit bool   // typing a new domain
-	panelText string // what has been typed
-	panelErr  string
+	setCursor    int
+	setView      int // 0 list, 1 update, 2 about, 3 connection, 4 linked domain
+	panel        *panelDomain
+	servers      []serverRow
+	serversErr   string
+	serverCursor int
+	viewing      string // name of the other server being shown; "" is the one connected to
+	panelEdit    bool   // typing a new domain
+	panelText    string // what has been typed
+	panelErr     string
 	// Dashboard extras
 	overview *serverOverview
 	ssl      *sslSites
@@ -144,6 +148,7 @@ const (
 	setItemConnection
 	setItemAutoRenew
 	setItemDomain
+	setItemServers
 	setItemCount
 )
 
@@ -307,6 +312,9 @@ func (m Model) handleExtraMsg(msg tea.Msg) (Model, tea.Cmd, bool) {
 		if msg.S != nil {
 			m.x.ssl = msg.S
 		}
+		return m, nil, true
+	case serversMsg:
+		m.x.servers, m.x.serversErr = msg.Rows, msg.Err
 		return m, nil, true
 	case panelMsg:
 		if msg.P != nil {
@@ -643,6 +651,9 @@ func (m Model) handleSettingsInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.x.setView == 4 {
 		return m.handlePanelInput(msg)
 	}
+	if m.x.setView == 5 {
+		return m.handleServersInput(msg)
+	}
 	if m.x.setView != 0 {
 		if msg.Type == tea.KeyEsc || msg.Type == tea.KeyEnter {
 			m.x.setView = 0
@@ -671,6 +682,9 @@ func (m Model) handleSettingsInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.x.setView = 3
 		case setItemAutoRenew:
 			return m, toggleAutoRenewCmd(m.client, !(m.x.ssl != nil && m.x.ssl.Meta.AutoRenewAll))
+		case setItemServers:
+			m.x.setView, m.x.serverCursor = 5, 0
+			return m, fetchServersCmd(m.client)
 		case setItemDomain:
 			m.x.setView = 4
 			m.x.panelEdit, m.x.panelErr = false, ""
@@ -690,6 +704,8 @@ func (m Model) renderSettings() string {
 		return m.renderConnection()
 	case 4:
 		return m.renderPanel()
+	case 5:
+		return m.renderServers()
 	}
 	lines := []string{titleStyle.Render("Settings"), ""}
 	items := []struct{ name, hint string }{
@@ -698,6 +714,7 @@ func (m Model) renderSettings() string {
 		{"Connection", "which DockLite this terminal app talks to"},
 		{"SSL auto-renew", m.autoRenewHint()},
 		{"Linked domain", m.panelHint()},
+		{"Servers", m.serversHint()},
 	}
 	for i, it := range items {
 		prefix, style := "  ", listItemStyle

@@ -13,7 +13,10 @@ import (
 )
 
 type Client struct {
-	BaseURL    string
+	BaseURL string
+	// Via, when set, sends API calls through the hub to another server ("/api/servers/3/proxy"): /api/containers becomes
+	// /api/servers/3/proxy/containers. The hub only passes on reads and start/stop/restart, so that view is nearly read-only.
+	Via        string
 	Token      string
 	HTTPClient *http.Client
 }
@@ -179,6 +182,14 @@ func NewClient() *Client {
 	}
 }
 
+// url is where an API path goes: this server, or the server selected with Via (the hub's own /api/servers calls never go via).
+func (c *Client) url(path string) string {
+	if c.Via != "" && strings.HasPrefix(path, "/api/") && !strings.HasPrefix(path, "/api/servers") {
+		return c.BaseURL + c.Via + strings.TrimPrefix(path, "/api")
+	}
+	return c.BaseURL + path
+}
+
 func (c *Client) SetBaseURL(baseURL string) {
 	c.BaseURL = strings.TrimRight(baseURL, "/")
 }
@@ -188,7 +199,7 @@ func (c *Client) SetToken(token string) {
 }
 
 func (c *Client) doRequest(method string, path string, body io.Reader, contentType string) (*http.Response, error) {
-	req, err := http.NewRequest(method, c.BaseURL+path, body)
+	req, err := http.NewRequest(method, c.url(path), body)
 	if err != nil {
 		return nil, err
 	}
@@ -661,7 +672,7 @@ func (c *Client) slow() *http.Client {
 }
 
 func (c *Client) jsonCall(method, path string, into any) error {
-	req, err := http.NewRequest(method, c.BaseURL+path, nil)
+	req, err := http.NewRequest(method, c.url(path), nil)
 	if err != nil {
 		return err
 	}
@@ -700,7 +711,7 @@ func (c *Client) ChangeSiteType(containerID, templateType string, port int) (str
 	if err != nil {
 		return "", err
 	}
-	resp, err := c.slow().Do(mustRequest(http.MethodPost, c.BaseURL+"/api/containers/"+containerID+"/template", bytes.NewReader(body), c.Token))
+	resp, err := c.slow().Do(mustRequest(http.MethodPost, c.url("/api/containers/"+containerID+"/template"), bytes.NewReader(body), c.Token))
 	if err != nil {
 		return "", err
 	}
