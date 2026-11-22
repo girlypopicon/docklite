@@ -5,6 +5,23 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.15.0 (2026-11-22)
+
+### Added
+- **Terminal app: groups and readable names.** The Containers screen now lists every box (it used to show one box per group and lose the
+  rest), with each group's boxes together under its name. Sites show their address (`shop.example.com`) instead of
+  `docklite-sit… node:20-alpine`, with a KIND column (node, static, PostgreSQL DB…). Search also finds boxes by group and address.
+- **Terminal app: databases.** The Databases screen shows every kind (PostgreSQL, MySQL, MariaDB, MongoDB, Redis), shows each one's own
+  connection address, and **n** lets you pick the kind when creating one.
+- **Terminal app: Update.** A new Update screen checks for a newer DockLite and installs it, with live progress. It is the same update
+  as the dashboard's button: the agent, the web dashboard (if installed) and the terminal app are all updated, whichever way you start it.
+- **Choose what to install.** The installer asks whether you want the web dashboard and terminal app together, or the terminal app only
+  (`--terminal-only` / `--dashboard` skip the question). Terminal-only skips building the dashboard; updates keep your choice.
+
+### Fixed
+- **The terminal app is rebuilt on every install and update.** It was never rebuilt, so servers kept an old terminal app (which could not
+  see groups) after updating. Its source now lives in this repository.
+
 ## 1.14.0 (2026-11-17)
 
 ### Added

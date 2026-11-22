@@ -211,7 +211,9 @@ detect_deps() {
     fi
 
     # Webapp
-    if [[ -d "${REPO_DIR}/webapp/.next" ]]; then
+    if [[ "$INSTALL_MODE" == "headless" ]]; then
+        info "Web dashboard skipped (terminal app only)"
+    elif [[ -d "${REPO_DIR}/webapp/.next" ]]; then
         ok "Webapp is built"
     else
         info "Webapp will be built"
@@ -320,7 +322,62 @@ build_agent() {
     spin $! "Compiling Go agent and command line..." && ok "Agent and CLI built ($(du -h "${REPO_DIR}/bin/docklite-agent" | cut -f1))" || { fail "Agent build failed"; return 1; }
 }
 
+# The terminal app (docklite tui). Small and quick; a failed build keeps the previous binary, because the terminal app
+# must never be able to stop an agent update.
+build_tui() {
+    step_header "Building terminal app"
+    local go_bin; go_bin=$(find_go)
+    mkdir -p "${REPO_DIR}/bin"
+    if [[ ! -f "${REPO_DIR}/cli-repo/go.mod" ]]; then
+        warn "Terminal app source not found; skipping"
+        return 0
+    fi
+    (cd "${REPO_DIR}/cli-repo" && "$go_bin" build -o ../bin/docklite-tui . 2>&1) &
+    if spin $! "Compiling terminal app..."; then
+        ok "Terminal app built"
+    else
+        warn "Terminal app build failed; keeping the previous one (the agent and dashboard are fine)"
+    fi
+    return 0
+}
+
+# What this server runs besides the agent: "fullstack" (web dashboard and terminal app) or "headless" (terminal app
+# only). An existing install keeps its choice; a new one is asked (or told by --terminal-only / --dashboard).
+choose_components() {
+    local conf="${INSTALL_DIR}/.docklite.conf" existing=""
+    if [[ -f "$conf" ]]; then
+        existing="$(grep -E '^MODE=' "$conf" | tail -1 | cut -d= -f2 | tr -d "\"' ")"
+    fi
+    if [[ -n "$existing" ]]; then
+        INSTALL_MODE="$existing"
+        return 0
+    fi
+    if [[ -z "$INSTALL_MODE" ]]; then
+        if [[ "$ASSUME_YES" -eq 1 ]]; then
+            INSTALL_MODE="fullstack"
+        else
+            echo -e "  ${BOLD}What would you like to install?${NC}"
+            echo ""
+            echo -e "  ${GOLD}1)${NC} ${BOLD}Web dashboard and terminal app${NC} ${DIM}(recommended)${NC}"
+            echo -e "  ${GOLD}2)${NC} ${BOLD}Terminal app only${NC}              ${DIM}(no web dashboard: lighter, manage from the terminal)${NC}"
+            echo ""
+            echo -e "  ${DIM}The agent that runs your sites is installed either way, and you can add the dashboard later.${NC}"
+            echo -en "  ${BLUE}Choose${NC} ${YELLOW}[1]${NC}: "
+            local choice; read -r choice
+            INSTALL_MODE="fullstack"
+            [[ "$choice" == "2" ]] && INSTALL_MODE="headless"
+        fi
+    fi
+    ok "Installing: $([[ "$INSTALL_MODE" == "headless" ]] && echo "agent and terminal app" || echo "agent, web dashboard and terminal app")"
+    echo ""
+}
+
 build_webapp() {
+    if [[ "$INSTALL_MODE" == "headless" ]]; then
+        step_header "Web dashboard"
+        ok "Skipped (terminal app only)"
+        return 0
+    fi
     step_header "Building web app"
 
     if [[ ! -d "${REPO_DIR}/webapp/node_modules" ]]; then
@@ -340,6 +397,7 @@ build_webapp() {
 # ══════════════════════════════════════════════════════════════════════════════
 
 DRY_RUN=0
+INSTALL_MODE=""   # fullstack | headless; see choose_components
 OLD_INSTALL=0
 OLD_UNITS=()   # older DockLite systemd services (docklite-agent.service, ...)
 
@@ -645,8 +703,12 @@ main() {
         case "$arg" in
             --dry-run) DRY_RUN=1 ;;
             -y|--yes) ASSUME_YES=1 ;;
+            --terminal-only) INSTALL_MODE="headless" ;;
+            --dashboard) INSTALL_MODE="fullstack" ;;
             -h|--help)
-                echo "Usage: sudo bash install.sh [--dry-run] [--yes]"
+                echo "Usage: sudo bash install.sh [--dry-run] [--yes] [--terminal-only | --dashboard]"
+                echo "  --terminal-only  install the agent and the terminal app, without the web dashboard"
+                echo "  --dashboard      install the agent, the web dashboard and the terminal app (the default)"
                 echo "  --yes       don't ask questions; take the default answers (used for unattended upgrades)"
                 echo "  --dry-run   look at this server and say what would happen; changes nothing"
                 exit 0 ;;
@@ -681,6 +743,9 @@ main() {
         echo ""
     fi
 
+    # ── what to install ──
+    choose_components
+
     # ── detect ──
     detect_deps
     preflight
@@ -703,7 +768,7 @@ main() {
     [[ " ${need_install[*]} " == *" pm2 "* ]] && total=$((total + 1))
     [[ " ${need_install[*]} " == *" nginx "* ]] && total=$((total + 1))
     # Always: system packages, user+dirs, build agent, build webapp, install to opt, sudoers, symlink, handoff
-    total=$((total + 8))
+    total=$((total + 9))
     set_total_steps $total
 
     # ── install deps ──
@@ -724,6 +789,7 @@ main() {
 
     # ── build ──
     build_agent
+    build_tui
     build_webapp
 
     # ── install to /opt/docklite ──
@@ -758,9 +824,9 @@ main() {
         exit 0
     fi
     if [[ "$target_user" != "root" ]]; then
-        exec sudo -u "$target_user" "${INSTALL_DIR}/docklite" "$action"
+        exec sudo -u "$target_user" env DOCKLITE_MODE="$INSTALL_MODE" "${INSTALL_DIR}/docklite" "$action"
     else
-        exec "${INSTALL_DIR}/docklite" "$action"
+        DOCKLITE_MODE="$INSTALL_MODE" exec "${INSTALL_DIR}/docklite" "$action"
     fi
 }
 
