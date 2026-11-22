@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.16.0 (2026-11-22)
+
 ### Added
 - **SQLite databases a site makes by itself now get a card automatically.** DockLite looks inside each site's folders for real SQLite files
   (`.db`, `.sqlite`, `.sqlite3`), names them after the file, links them to the site (so backups include them) and shows their size. It only
