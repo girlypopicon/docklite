@@ -374,6 +374,8 @@ func (h *Handlers) Container(w http.ResponseWriter, r *http.Request) {
 		h.TransferSite(w, r, id)
 	case "template":
 		h.ChangeSiteTemplate(w, r, id)
+	case "forward":
+		h.Forward(w, r, id)
 	case "terminal":
 		h.ContainerTerminal(w, r, id)
 	case "style":

@@ -9,7 +9,7 @@ import { DB_ENGINES, dbLabel, formatBytes, type DatabaseRecord } from '@/lib/dat
 
 interface DatabaseBoxModalProps {
   db: DatabaseRecord;
-  container?: ContainerInfo; // the database's box (a SQLite file has none)
+  container?: ContainerInfo; // the database's container (a SQLite file has none)
   onClose: () => void;
   onChanged: () => void;
   onOpenContainer?: (container: ContainerInfo) => void;
@@ -185,7 +185,7 @@ export default function DatabaseBoxModal({ db, container, onClose, onChanged, on
                   </div>
                   {host && inner && (
                     <div>
-                      <div style={{ color: 'var(--text-cyan)' }}>From one of your websites (another box on this server)</div>
+                      <div style={{ color: 'var(--text-cyan)' }}>From one of your websites (another container on this server)</div>
                       <div className="select-all" style={{ color: 'var(--text-primary)' }}>{host}:{inner}</div>
                     </div>
                   )}
@@ -199,7 +199,7 @@ export default function DatabaseBoxModal({ db, container, onClose, onChanged, on
                 </>
               )}
               {container && onOpenContainer && (
-                <button type="button" className="cyber-button-sm" onClick={() => onOpenContainer(container)}>Logs, stats and the box itself</button>
+                <button type="button" className="cyber-button-sm" onClick={() => onOpenContainer(container)}>Logs, stats and the container itself</button>
               )}
             </div>
           )}

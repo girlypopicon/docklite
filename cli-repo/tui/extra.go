@@ -88,7 +88,15 @@ type sslSites struct {
 		HasSSL          bool   `json:"hasSSL"`
 		DaysUntilExpiry *int   `json:"daysUntilExpiry"`
 		Status          string `json:"status"`
+		AutoRenew       bool   `json:"autoRenew"`
+		Renewal         *struct {
+			OK    bool   `json:"ok"`
+			Error string `json:"error"`
+		} `json:"renewal"`
 	} `json:"sites"`
+	Meta struct {
+		AutoRenewAll bool `json:"autoRenewAll"`
+	} `json:"meta"`
 }
 
 // extraState is everything the new screens remember.
@@ -111,8 +119,16 @@ type extraState struct {
 	netOffset   int
 	netLoaded   bool
 	// Settings
-	setCursor int
-	setView   int // 0 list, 1 update, 2 about, 3 connection
+	setCursor    int
+	setView      int // 0 list, 1 update, 2 about, 3 connection, 4 linked domain
+	panel        *panelDomain
+	servers      []serverRow
+	serversErr   string
+	serverCursor int
+	viewing      string // name of the other server being shown; "" is the one connected to
+	panelEdit    bool   // typing a new domain
+	panelText    string // what has been typed
+	panelErr     string
 	// Dashboard extras
 	overview *serverOverview
 	ssl      *sslSites
@@ -130,6 +146,9 @@ const (
 	setItemUpdate = iota
 	setItemAbout
 	setItemConnection
+	setItemAutoRenew
+	setItemDomain
+	setItemServers
 	setItemCount
 )
 
@@ -228,6 +247,17 @@ func friendlyErr(err error) string {
 
 // handleExtraMsg folds the new messages into the model; ok is false for any other message.
 func (m Model) handleExtraMsg(msg tea.Msg) (Model, tea.Cmd, bool) {
+	if scan, ok := msg.(dbScanMsg); ok {
+		switch {
+		case scan.err != nil:
+			m.notice, m.err = "", scan.err.Error()
+		case len(scan.added) > 0:
+			m.notice = fmt.Sprintf("Found %d new: %s", len(scan.added), strings.Join(scan.added, ", "))
+		default:
+			m.notice = fmt.Sprintf("Scan done. Nothing new; %d already listed.", scan.existing)
+		}
+		return m, fetchDatabaseCatalog(m.client), true
+	}
 	switch msg := msg.(type) {
 	case logsMsg:
 		m.x.logLoading = false
@@ -281,6 +311,16 @@ func (m Model) handleExtraMsg(msg tea.Msg) (Model, tea.Cmd, bool) {
 	case sslMsg:
 		if msg.S != nil {
 			m.x.ssl = msg.S
+		}
+		return m, nil, true
+	case serversMsg:
+		m.x.servers, m.x.serversErr = msg.Rows, msg.Err
+		return m, nil, true
+	case panelMsg:
+		if msg.P != nil {
+			m.x.panel, m.x.panelErr = msg.P, ""
+		} else {
+			m.x.panelErr = msg.Err
 		}
 		return m, nil, true
 	}
@@ -422,7 +462,7 @@ func (m Model) netLines() []string {
 			kv("Goes out through", fmt.Sprintf("%s on %s", ov.DefaultGateway, ov.DefaultDevice))
 		}
 		for _, in := range ov.Interfaces {
-			// Docker's own plumbing (one veth per box, bridges) isn't something to read through.
+			// Docker's own plumbing (one veth per container, bridges) isn't something to read through.
 			if in.Name == "lo" || strings.HasPrefix(in.Name, "veth") || strings.HasPrefix(in.Name, "br-") || strings.HasPrefix(in.Name, "docker") {
 				continue
 			}
@@ -472,7 +512,7 @@ func (m Model) netLines() []string {
 			}
 		}
 		if len(exposed) > 0 {
-			out = append(out, errorStyle.Render("Boxes reachable from the internet directly (not through nginx):"))
+			out = append(out, errorStyle.Render("Containers reachable from the internet directly (not through nginx):"))
 			for _, e := range exposed {
 				out = append(out, "  "+e)
 			}
@@ -492,7 +532,18 @@ func (m Model) netLines() []string {
 			out = append(out, labelStyle.Render("No sites yet."))
 		}
 		for _, s := range m.x.ssl.Sites {
-			out = append(out, "  "+sslWords(s.Domain, s.HasSSL, s.DaysUntilExpiry))
+			line := "  " + sslWords(s.Domain, s.HasSSL, s.DaysUntilExpiry)
+			if s.HasSSL {
+				if s.AutoRenew {
+					line += labelStyle.Render(" · auto-renew on")
+				} else {
+					line += labelStyle.Render(" · auto-renew off")
+				}
+			}
+			out = append(out, line)
+			if s.Renewal != nil && !s.Renewal.OK {
+				out = append(out, "    "+errorStyle.Render("last renewal failed: "+truncate(s.Renewal.Error, 60)))
+			}
 		}
 	}
 	h("Connection checks")
@@ -597,6 +648,12 @@ func (m Model) handleSettingsInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m.handleUpdateInput(msg)
 	}
+	if m.x.setView == 4 {
+		return m.handlePanelInput(msg)
+	}
+	if m.x.setView == 5 {
+		return m.handleServersInput(msg)
+	}
 	if m.x.setView != 0 {
 		if msg.Type == tea.KeyEsc || msg.Type == tea.KeyEnter {
 			m.x.setView = 0
@@ -623,6 +680,15 @@ func (m Model) handleSettingsInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, fetchOverviewCmd(m.client)
 		case setItemConnection:
 			m.x.setView = 3
+		case setItemAutoRenew:
+			return m, toggleAutoRenewCmd(m.client, !(m.x.ssl != nil && m.x.ssl.Meta.AutoRenewAll))
+		case setItemServers:
+			m.x.setView, m.x.serverCursor = 5, 0
+			return m, fetchServersCmd(m.client)
+		case setItemDomain:
+			m.x.setView = 4
+			m.x.panelEdit, m.x.panelErr = false, ""
+			return m, fetchPanelCmd(m.client)
 		}
 	}
 	return m, nil
@@ -636,12 +702,19 @@ func (m Model) renderSettings() string {
 		return m.renderAbout()
 	case 3:
 		return m.renderConnection()
+	case 4:
+		return m.renderPanel()
+	case 5:
+		return m.renderServers()
 	}
 	lines := []string{titleStyle.Render("Settings"), ""}
 	items := []struct{ name, hint string }{
 		{"Update DockLite", m.updateHint()},
 		{"About this server", "version, system, uptime"},
 		{"Connection", "which DockLite this terminal app talks to"},
+		{"SSL auto-renew", m.autoRenewHint()},
+		{"Linked domain", m.panelHint()},
+		{"Servers", m.serversHint()},
 	}
 	for i, it := range items {
 		prefix, style := "  ", listItemStyle
@@ -731,6 +804,13 @@ func (m Model) dashboardExtras() []string {
 	if m.x.ssl != nil {
 		soon, none := 0, 0
 		for _, s := range m.x.ssl.Sites {
+			if s.Renewal != nil && !s.Renewal.OK {
+				left := "an unknown number of"
+				if s.DaysUntilExpiry != nil {
+					left = fmt.Sprintf("%d", *s.DaysUntilExpiry)
+				}
+				attention = append(attention, fmt.Sprintf("Renewal failed for %s, expires in %s days.", s.Domain, left))
+			}
 			switch {
 			case !s.HasSSL || s.DaysUntilExpiry == nil:
 				none++
@@ -752,7 +832,7 @@ func (m Model) dashboardExtras() []string {
 		}
 	}
 	if stopped > 0 {
-		attention = append(attention, fmt.Sprintf("%d box(es) are stopped.", stopped))
+		attention = append(attention, fmt.Sprintf("%d container(s) are stopped.", stopped))
 	}
 	out = append(out, "", titleStyle.Render("Needs attention"))
 	if len(attention) == 0 {
@@ -773,7 +853,7 @@ func (m Model) dashboardExtras() []string {
 			dbs++
 		}
 	}
-	out = append(out, "", titleStyle.Render("Your boxes"))
+	out = append(out, "", titleStyle.Render("Your containers"))
 	out = append(out, fmt.Sprintf("  %s %s   %s %s   %s %s",
 		labelStyle.Render("Sites:"), statStyle.Render(fmt.Sprint(sites)),
 		labelStyle.Render("Databases:"), statStyle.Render(fmt.Sprint(dbs)),

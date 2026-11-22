@@ -11,13 +11,13 @@ import { useEscape } from '@/lib/hooks/useEscape';
 interface GroupModalProps {
   group: BoxGroup;
   boxes: ContainerInfo[]; // the group's boxes
-  addable: ContainerInfo[]; // boxes not in any group, which can be put in this one
+  addable: ContainerInfo[]; // containers not in any group, which can be put in this one
   renderBox: (box: ContainerInfo) => React.ReactNode;
   onAdd: (box: ContainerInfo) => void;
   onClose: () => void;
 }
 
-/** The window a group opens: its boxes as cards, plus a way to add another. */
+/** The window a group opens: its containers as cards, plus a way to add another. */
 export default function GroupModal({ group, boxes, addable, renderBox, onAdd, onClose }: GroupModalProps) {
   useEscape(onClose);
   const [pick, setPick] = useState('');
@@ -50,14 +50,14 @@ export default function GroupModal({ group, boxes, addable, renderBox, onAdd, on
           </h2>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
             {group.linked
-              ? 'Linked groups are for boxes that belong together, like a website and its database.'
-              : 'A group keeps related boxes together on your desktop.'}
+              ? 'Linked groups are for containers that belong together, like a website and its database.'
+              : 'A group keeps related containers together on your desktop.'}
           </p>
         </div>
 
         {boxes.length === 0 ? (
           <p className="py-10 text-center" style={{ color: 'var(--text-secondary)' }}>
-            Nothing in here yet. Add a box below, or drag one onto this group on the desktop.
+            Nothing in here yet. Add a container below, or drag one onto this group on the desktop.
           </p>
         ) : (
           <div className="grid gap-3 sm:gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,148px),1fr))] sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))]">
@@ -80,9 +80,9 @@ export default function GroupModal({ group, boxes, addable, renderBox, onAdd, on
             }}
           >
             <label className="block flex-1 min-w-[14rem]">
-              <span className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Add a box to this group</span>
+              <span className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Add a container to this group</span>
               <select value={pick} onChange={(e) => setPick(e.target.value)} className="input-vapor w-full">
-                <option value="">Choose a box…</option>
+                <option value="">Choose a container…</option>
                 {addable.map((b) => (
                   <option key={b.id} value={b.id}>
                     {containerDisplayName(b)}

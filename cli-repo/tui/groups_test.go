@@ -118,7 +118,7 @@ func TestGroupsViewLinksUnlinksRenamesAndDeletes(t *testing.T) {
 	m, calls := groupModel(t)
 	m.currentView = ViewGroups
 	out := m.renderGroupsView()
-	if !strings.Contains(out, "Client work") || !strings.Contains(out, "yes: its boxes can talk") {
+	if !strings.Contains(out, "Client work") || !strings.Contains(out, "yes: its containers can talk") {
 		t.Fatalf("view: %s", out)
 	}
 	// Enter on a group toggles it

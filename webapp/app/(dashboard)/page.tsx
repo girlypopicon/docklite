@@ -14,6 +14,9 @@ import NewBoxModal from './components/NewBoxModal';
 import DatabaseBoxModal from './components/DatabaseBoxModal';
 import ConfirmModal from './components/ConfirmModal';
 import { ContainersPageSkeleton } from './components/PageSkeletons';
+import ServerTabs, { type RemoteServer } from './components/ServerTabs';
+import AddServerModal from './components/AddServerModal';
+import RemoteServerView from './components/RemoteServerView';
 import ContainerFilterTabs, { type StatusFilter, type TypeFilter } from './components/ContainerFilterTabs';
 import { useToast } from '@/lib/hooks/useToast';
 import { containerKind, sortContainers } from '@/lib/container-sort';
@@ -37,7 +40,7 @@ const boxKey = (id: string) => `box:${id}`;
 const groupKey = (id: number) => `group:${id}`;
 
 /**
- * One card on the desktop. A box can be picked up and dropped on another box (they become a group) or on a group
+ * One card on the desktop. A container can be picked up and dropped on another container (they become a group) or on a group
  * (it goes in). Groups are only drop targets. A SQLite file card is neither: it lives inside a site.
  */
 function Tile({
@@ -71,6 +74,19 @@ type Me = { userId: number; username: string; isAdmin: boolean; role: string };
 
 export default function DashboardPage() {
   const [boxes, setBoxes] = useState<ContainerInfo[]>([]);
+  // Other DockLite servers shown in tabs next to this one (admins only; everyone else just gets an empty list).
+  const [servers, setServers] = useState<RemoteServer[]>([]);
+  const [serverTab, setServerTab] = useState<number | null>(null);
+  const [showAddServer, setShowAddServer] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    fetch('/api/servers')
+      .then(async (r) => {
+        setIsAdmin(r.ok);
+        if (r.ok) setServers((await r.json()).servers || []);
+      })
+      .catch(() => {});
+  }, []);
   const [groups, setGroups] = useState<BoxGroup[]>([]);
   const [databases, setDatabases] = useState<DatabaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +122,7 @@ export default function DashboardPage() {
   // dragging
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-  // Boxes the person has collapsed to a thin bar (kept in this browser, by box name).
+  // Containers the person has collapsed to a thin bar (kept in this browser, by container name).
   const [collapsed, setCollapsed] = useState<string[]>([]);
   useEffect(() => {
     try {
@@ -141,7 +157,7 @@ export default function DashboardPage() {
       setGroups(data.groups || []);
       setError('');
     } catch {
-      setError('Failed to load your boxes');
+      setError('Failed to load your containers');
     } finally {
       setLoading(false);
     }
@@ -244,13 +260,13 @@ export default function DashboardPage() {
   const nothingMatches = !nothingAtAll && visibleGroups.length === 0 && looseBoxes.length === 0;
   const openGroup = groups.find((g) => g.id === openGroupId) || null;
 
-  // ---- actions on boxes -----------------------------------------------------------------------------------------
+  // ---- actions on containers -----------------------------------------------------------------------------------------
 
   const handleAction = async (id: string, action: 'start' | 'stop' | 'restart') => {
     try {
       const res = await fetch(`/api/containers/${id}/${action}`, { method: 'POST' });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Could not ${action} the box`);
-      toast.success(`Box ${action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted'}`);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Could not ${action} the container`);
+      toast.success(`Container ${action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted'}`);
       fetchData();
     } catch (err: any) {
       toast.error(`Error: ${err.message || err}`);
@@ -261,7 +277,7 @@ export default function DashboardPage() {
     if (!confirm(`Delete "${name}"? This stops and removes the box.`)) return;
     try {
       const res = await fetch(`/api/containers/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not delete the box');
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not delete the container');
       toast.success(`Deleted ${name}`);
       refresh();
     } catch (err: any) {
@@ -273,7 +289,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`/api/containers/${id}/${tracked ? 'untrack' : 'track'}`, { method: 'POST' });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not change tracking');
-      toast.success(tracked ? 'Box untracked' : 'Box tracked');
+      toast.success(tracked ? 'Container untracked' : 'Container tracked');
       fetchData();
     } catch (err: any) {
       toast.error(`Error: ${err.message || err}`);
@@ -316,13 +332,13 @@ export default function DashboardPage() {
         body: JSON.stringify({ user_id: Number(assignUserId) }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Could not assign the box');
+      if (!res.ok) throw new Error(data.error || 'Could not assign the container');
       if (data.warning) toast.warning(`Assigned ${assignTarget.name}, but: ${data.warning}`, 12000);
       else toast.success(data.old_folder_moved_to ? `Assigned ${assignTarget.name}; the old folder is in the trash` : `Assigned ${assignTarget.name}`);
       setAssignTarget(null);
       refresh();
     } catch (err: any) {
-      setAssignError(err.message || 'Could not assign the box');
+      setAssignError(err.message || 'Could not assign the container');
     } finally {
       setAssignBusy(false);
     }
@@ -391,7 +407,7 @@ export default function DashboardPage() {
     if (!deleteGroupTarget) return;
     try {
       await api(`/api/groups/${deleteGroupTarget.id}`, 'DELETE');
-      toast.success(`Group "${deleteGroupTarget.name}" deleted. Its boxes are back on the desktop`);
+      toast.success(`Group "${deleteGroupTarget.name}" deleted. Its containers are back on the desktop`);
       if (openGroupId === deleteGroupTarget.id) setOpenGroupId(null);
     } catch (err: any) {
       toast.error(`Error: ${err.message}`);
@@ -513,20 +529,53 @@ export default function DashboardPage() {
     );
   }
 
+  const serverTabsEl = (
+    <>
+      {servers.length > 0 && <ServerTabs servers={servers} active={serverTab} onSelect={setServerTab} onAdd={() => setShowAddServer(true)} />}
+      {showAddServer && (
+        <AddServerModal
+          onClose={() => setShowAddServer(false)}
+          onAdded={(srv) => {
+            setServers((cur) => [...cur, srv]);
+            setServerTab(srv.id);
+            setShowAddServer(false);
+            toast.success(`${srv.name} added. It has its own tab now.`);
+          }}
+        />
+      )}
+    </>
+  );
+  const activeServer = servers.find((x) => x.id === serverTab);
+  if (activeServer) {
+    return (
+      <div className="max-w-[1400px] mx-auto">
+        {serverTabsEl}
+        <RemoteServerView
+          server={activeServer}
+          onRemoved={() => {
+            setServers((cur) => cur.filter((x) => x.id !== activeServer.id));
+            setServerTab(null);
+          }}
+        />
+      </div>
+    );
+  }
+
   const gridClass = 'grid gap-3 sm:gap-4 p-2 sm:p-3 grid-cols-[repeat(auto-fill,minmax(min(100%,148px),1fr))] sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))]';
 
   return (
     <div className="max-w-[1400px] mx-auto">
+      {serverTabsEl}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
         <div>
           <h1 className="docklite-containers-title text-3xl lg:text-4xl font-bold neon-text mb-2 flex items-center gap-2" style={{ color: 'var(--text-cyan)' }}>
             <Package size={26} weight="regular" />
-            Boxes
+            Containers
           </h1>
           <div className="flex items-center gap-3">
             <p className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>System status: online</p>
             <span className="text-xs font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(var(--status-success-rgb), 0.2)', color: 'var(--text-green)', border: '1px solid var(--neon-green)' }}>
-              {allBoxes.length} {allBoxes.length === 1 ? 'box' : 'boxes'}
+              {allBoxes.length} {allBoxes.length === 1 ? 'container' : 'containers'}
               {groups.length > 0 ? ` · ${groups.length} ${groups.length === 1 ? 'group' : 'groups'}` : ''}
             </span>
           </div>
@@ -534,7 +583,7 @@ export default function DashboardPage() {
         <div className="flex flex-wrap gap-2 sm:gap-3">
           <button onClick={() => setShowNewBox(true)} className="btn-neon inline-flex items-center gap-2 whitespace-nowrap">
             <PlusCircle size={20} weight="regular" />
-            New box
+            New container
           </button>
           <button
             onClick={() => {
@@ -551,6 +600,12 @@ export default function DashboardPage() {
             <Package size={20} weight="regular" />
             All containers
           </button>
+          {isAdmin && servers.length === 0 && (
+            <button onClick={() => setShowAddServer(true)} className="btn-neon inline-flex items-center gap-2 whitespace-nowrap">
+              <PlusCircle size={20} weight="regular" />
+              Add server
+            </button>
+          )}
         </div>
       </div>
 
@@ -562,11 +617,11 @@ export default function DashboardPage() {
             <Package size={80} weight="regular" style={{ color: 'var(--text-cyan)', filter: 'drop-shadow(0 0 20px var(--neon-cyan))' }} />
           </div>
           <h2 className="text-3xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>Welcome to DockLite!</h2>
-          <p className="text-lg mb-8" style={{ color: 'var(--text-secondary)' }}>No boxes yet. Make a website or a database to get started.</p>
+          <p className="text-lg mb-8" style={{ color: 'var(--text-secondary)' }}>No containers yet. Make a website or a database to get started.</p>
           <div className="flex gap-4 justify-center flex-wrap">
             <button onClick={() => setShowNewBox(true)} className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3">
               <PlusCircle size={22} weight="regular" />
-              New box
+              New container
             </button>
             <button onClick={() => setShowAll(true)} className="btn-neon inline-flex items-center gap-2 text-base px-6 py-3">
               <Package size={22} weight="regular" />
@@ -579,7 +634,7 @@ export default function DashboardPage() {
           <div className="flex justify-center mb-4 opacity-50">
             <WarningCircle size={64} weight="regular" style={{ color: 'var(--text-yellow)' }} />
           </div>
-          <p className="text-xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>No boxes match this filter</p>
+          <p className="text-xl font-bold neon-text mb-3" style={{ color: 'var(--text-pink)' }}>No containers match this filter</p>
           <button
             onClick={() => {
               setFilterType('all');
@@ -638,7 +693,7 @@ export default function DashboardPage() {
               );
             })}
             {collapsedStacks.map((stack, i) => (
-              // Six collapsed boxes take the space of one open card.
+              // Six collapsed containers take the space of one open card.
               <div key={`stack-${i}`} className="grid gap-1" style={{ aspectRatio: '5 / 7', gridTemplateRows: 'repeat(6, minmax(0, 1fr))' }}>
                 {stack.map((b) => {
                   const isFile = b.id.startsWith('sqlite-');
@@ -704,7 +759,7 @@ export default function DashboardPage() {
       {nameDialog && (
         <GroupNameModal
           title={nameDialog.kind === 'rename' ? 'Rename group' : nameDialog.kind === 'make' ? 'Make a group' : 'New group'}
-          intro={nameDialog.kind === 'make' ? `${nameDialog.names.join(' and ')} will go in it. Linked groups are for boxes that belong together.` : undefined}
+          intro={nameDialog.kind === 'make' ? `${nameDialog.names.join(' and ')} will go in it. Linked groups are for containers that belong together.` : undefined}
           initial={nameDialog.kind === 'rename' ? nameDialog.group.name : ''}
           confirmLabel={nameDialog.kind === 'rename' ? 'Rename' : 'Make group'}
           busy={nameBusy}
@@ -729,7 +784,7 @@ export default function DashboardPage() {
       {deleteGroupTarget && (
         <ConfirmModal
           title="Delete group"
-          message={`Delete the group "${deleteGroupTarget.name}"? Its ${deleteGroupTarget.members.length} ${deleteGroupTarget.members.length === 1 ? 'box goes' : 'boxes go'} back on the desktop. Nothing is stopped or deleted.`}
+          message={`Delete the group "${deleteGroupTarget.name}"? Its ${deleteGroupTarget.members.length} ${deleteGroupTarget.members.length === 1 ? 'container goes' : 'containers go'} back on the desktop. Nothing is stopped or deleted.`}
           confirmText="Delete group"
           onConfirm={deleteGroup}
           onCancel={() => setDeleteGroupTarget(null)}

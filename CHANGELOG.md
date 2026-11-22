@@ -5,6 +5,46 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.20.0 (2026-11-22)
+
+### Added
+- **One dashboard for several servers.** Install DockLite on another server first (the agent alone is enough; the dashboard and terminal app there
+  are optional). On it run `docklite share`, which prints a join code; paste the code into **Add server** on the dashboard (or run
+  `docklite servers add <code>`). Each server then gets a **tab**. A server's tab lists its containers (start, stop, restart) and has buttons that
+  open its **Server**, **Network**, **Databases** and **HTTPS** views in a window. The tab bar appears once a second server is connected. The hub
+  keeps the other server's token and passes requests on; the browser never sees it. The token is revocable on the other server (it is named
+  "hub: ..." in its token list), `docklite servers remove <name>` only stops showing a server, and the hub only passes on a short list of
+  reads plus start/stop/restart. Use a domain with HTTPS on the other server (Settings → Linked domain) unless the servers share a private network.
+- **Terminal app: Servers.** Settings → Servers lists this server and the others connected to it; pick one and the whole terminal app shows
+  that server (the menu says which). Other servers are read-only here, apart from start, stop and restart; pick "This server" to go back.
+- **Forwarded domains** (dashboard, terminal app, CLI, API). Open a website and choose **Forwarded domains**: enter a new domain and pick
+  **redirect** (visitors are sent to the site's address) or **proxy** (visitors keep the new address). The new domain is set up like any new
+  site (its own container, DNS record and its own HTTPS certificate) and both go into one linked group. Adding another forward runs the same
+  steps and joins the same group. CLI: `docklite sites forward new-name.com --to example.com [--mode proxy]`, `docklite sites forwards example.com`.
+- **Automatic HTTPS certificate renewal.** Once a day DockLite renews every certificate with less than 30 days left. Settings → System has an
+  **All domains / None** switch; with "All", each site's HTTPS card has its own switch, and turning one domain off doesn't touch the others.
+  A failed renewal is never silent: the site's card says "Renewal failed, expires in N days", and the terminal app's "Needs attention" list and
+  Network → HTTPS view show it too. CLI: `docklite ssl auto-renew [all|none|run|<domain> on|off]`.
+- **Linked domain** (Settings → System, and Settings → Linked domain in the terminal app): set the domain the dashboard is reached at (like
+  `smoll.docklite.net`), see whether it's on and has HTTPS, turn it on or off, or change it. When it's off, DockLite shows the address that works
+  without it (the server's IP and port). CLI: `docklite panel show|set|enable|disable`.
+- **A guide for Claude in your sites folder.** DockLite writes `CLAUDE.md` and `AGENTS.md` into `/var/www/sites`, so an assistant opened in a
+  site's folder learns to use the `docklite` command for databases, sites, HTTPS and forwards instead of plain docker, which would leave things
+  DockLite can't see (like orphaned databases). A file you wrote yourself is never replaced.
+- **Terminal app, Databases:** it now lists SQLite files sites made themselves and shows which site uses each database ("Used by"). Press **s**
+  to scan the sites' folders for databases DockLite doesn't list yet.
+- **Terminal app, Groups in the menu.** Groups has its own entry in the left menu. In the Containers list you can fold and open groups
+  (left/right, or Enter on a group's heading).
+- **Terminal app: the arrow follows you.** The menu's ▶ is shown only while the menu has focus; when you press Enter and move into a window it
+  becomes a dot on the page you're in, and Esc brings the arrow back to where it was.
+
+### Changed
+- **"Box" is now "container"** everywhere you read it: the dashboard, terminal app, command-line text and the page visitors see when a site is stopped.
+
+### Fixed
+- **Terminal app, Files:** sizes showed 0 and opening a folder gave a 400 error. Folders now open, sizes show as KB/MB, and the type column says "folder".
+- **Terminal app, Databases:** SQLite databases appear (see above).
+
 ## 1.19.0 (2026-11-22)
 
 ### Added

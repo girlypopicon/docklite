@@ -11,13 +11,13 @@ interface AssignBoxModalProps {
   onClose: () => void;
 }
 
-/** Admin only: give a box to another user. */
+/** Admin only: give a container to another user. */
 export default function AssignBoxModal({ boxName, users, userId, onUserId, error, busy, onSubmit, onClose }: AssignBoxModalProps) {
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000] p-4" onClick={onClose}>
       <div className="cyber-card max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold neon-text-pink">Assign box</h2>
+          <h2 className="text-2xl font-bold neon-text-pink">Assign container</h2>
           <button onClick={onClose} className="transition-colors" style={{ color: 'var(--text-secondary)' }} aria-label="Close">✕</button>
         </div>
         <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>

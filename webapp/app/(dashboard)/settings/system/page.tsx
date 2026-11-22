@@ -6,6 +6,8 @@ import UpdateCard from '../../components/UpdateCard';
 import SiteFoldersPanel from '../../components/SiteFoldersPanel';
 import DownPageCard from '../../components/DownPageCard';
 import DbViewer from '../../components/DbViewer';
+import SslAutoRenewCard from '../../components/SslAutoRenewCard';
+import PanelDomainCard from '../../components/PanelDomainCard';
 
 export default function SystemSettingsPage() {
   return (
@@ -71,13 +73,17 @@ export default function SystemSettingsPage() {
         </div>
       </div>
 
+      {/* The dashboard's own domain, and whether HTTPS certificates renew by themselves */}
+      <PanelDomainCard />
+      <SslAutoRenewCard />
+
       {/* DockLite Updates */}
       <UpdateCard />
 
       {/* DockLite's own database: look inside it, or clean it up */}
       <DbViewer />
 
-      {/* What visitors see when a site's box is stopped */}
+      {/* What visitors see when a site's container is stopped */}
       <DownPageCard />
 
       {/* Site folders: strays, adoption, trash */}

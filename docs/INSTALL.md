@@ -86,3 +86,15 @@ On a server with existing sites the installer:
 - does not move or re-own anything in `/var/www/sites`, and does not stop, restart or recreate containers.
 
 Afterwards, `docklite sites layout` shows whether sites follow the `/var/www/sites/<user>/<domain>/` layout.
+
+## Several servers in one dashboard
+
+Install DockLite on each server first. The agent alone is enough (`--terminal-only` skips the dashboard); the web dashboard and terminal app on the
+other servers are optional. Pick one server as the hub (the one whose dashboard you open), then:
+
+1. On the other server: `docklite share`. It prints a join code with that server's address and a token made for the hub.
+2. On the hub: **Add server** in the dashboard (paste the code), or `docklite servers add <code>`.
+
+The other server needs to be reachable from the hub. Give it a domain with HTTPS first (`docklite panel set smoll.docklite.net --enable`, then
+`docklite ssl issue smoll.docklite.net`) so the token isn't sent in plain text; on a private network `http://<ip>:3000` is fine. To cut a hub off, revoke the
+token named `hub: ...` on the other server.

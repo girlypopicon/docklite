@@ -5,7 +5,7 @@ import { Warning } from '@phosphor-icons/react';
 import { useToast } from '@/lib/hooks/useToast';
 
 /**
- * Settings → System: the contact line on the page visitors see when a site's box is stopped. The page itself is one
+ * Settings → System: the contact line on the page visitors see when a site's container is stopped. The page itself is one
  * file every site shares, so one line here changes it everywhere. Shows the page as it will look.
  */
 export default function DownPageCard() {
@@ -52,7 +52,7 @@ export default function DownPageCard() {
       setContact(data.contact || '');
       setSaved(data.contact || '');
       setHtml(data.html || '');
-      toast.success('Saved. Every site now shows this contact when its box is stopped');
+      toast.success('Saved. Every site now shows this contact when its container is stopped');
     } catch (err: any) {
       toast.error(err.message || 'Could not save');
     } finally {
@@ -65,10 +65,10 @@ export default function DownPageCard() {
       <div>
         <h2 className="text-2xl font-bold neon-text flex items-center gap-2" style={{ color: 'var(--text-pink)' }}>
           <Warning size={22} weight="regular" />
-          Page for stopped boxes
+          Page for stopped containers
         </h2>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          When a site&apos;s box is stopped, visitors see this page instead of a plain &quot;502 Bad Gateway&quot;. Every site
+          When a site&apos;s container is stopped, visitors see this page instead of a plain &quot;502 Bad Gateway&quot;. Every site
           shares it. Add a name, an email address or a link so people know who to ask.
         </p>
       </div>
@@ -100,7 +100,7 @@ export default function DownPageCard() {
           {/* The real page at twice the size, shown at half: what a visitor sees, in a frame that fits a phone too */}
           <div className="relative w-full max-w-xl overflow-hidden rounded-lg border border-neon-purple/30 aspect-[4/5] sm:aspect-[16/10]" style={{ background: '#0b0b16' }}>
             <iframe
-              title="Preview of the page shown for a stopped box"
+              title="Preview of the page shown for a stopped container"
               srcDoc={html}
               sandbox=""
               tabIndex={-1}

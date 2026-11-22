@@ -2,7 +2,7 @@ import type { Icon } from '@phosphor-icons/react';
 import { Database, Lightning, FileText, Leaf, Stack } from '@phosphor-icons/react';
 
 /**
- * The kinds of database a box can be. The ids are the agent's (go-app/internal/docker/engines.go); SQLite is not a server
+ * The kinds of database a container can be. The ids are the agent's (go-app/internal/docker/engines.go); SQLite is not a server
  * but a file inside one of your sites, so it has no container of its own and needs a site to live in.
  */
 export type DbType = 'postgres' | 'mysql' | 'mariadb' | 'mongodb' | 'redis' | 'sqlite';
@@ -27,7 +27,7 @@ export const DB_ENGINES: DbEngine[] = [
 
 export const dbLabel = (t?: string) => DB_ENGINES.find((e) => e.id === (t || 'postgres'))?.label ?? 'Database';
 
-/** The box types that are databases (the container's docklite.type label). SQLite has no container, so it is not here. */
+/** The container types that are databases (the container's docklite.type label). SQLite has no container, so it is not here. */
 export const DB_CONTAINER_TYPES = ['postgres', 'mysql', 'mariadb', 'mongodb', 'redis'];
 
 export interface DatabaseRecord {

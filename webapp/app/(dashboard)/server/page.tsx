@@ -318,7 +318,7 @@ export default function ServerPage() {
     fetchSecurity();
   }, [fetchOverview, fetchUpdates, fetchServices, fetchStorage, fetchSecurity]);
 
-  // Show logs on arrival instead of empty boxes until Refresh is clicked.
+  // Show logs on arrival instead of empty containers until Refresh is clicked.
   useEffect(() => {
     handleSystemLogs();
     handleDockliteLogs();

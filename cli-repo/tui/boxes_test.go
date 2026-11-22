@@ -26,24 +26,24 @@ func testBoxes() ([]api.Container, []api.Group) {
 }
 
 func TestBoxTitleUsesTheSiteAddress(t *testing.T) {
-	boxes, _ := testBoxes()
-	if got := boxTitle(boxes[0]); got != "solo.example.com" {
+	containers, _ := testBoxes()
+	if got := boxTitle(containers[0]); got != "solo.example.com" {
 		t.Fatalf("got %q", got)
 	}
-	if got := boxTitle(boxes[3]); got != "shop" {
-		t.Fatalf("db box: got %q", got)
+	if got := boxTitle(containers[3]); got != "shop" {
+		t.Fatalf("db container: got %q", got)
 	}
-	if got := boxKind(boxes[3]); got != "PostgreSQL DB" {
+	if got := boxKind(containers[3]); got != "PostgreSQL DB" {
 		t.Fatalf("kind: got %q", got)
 	}
 }
 
 func TestGroupedBoxesAllShowTogether(t *testing.T) {
-	boxes, groups := testBoxes()
-	m := Model{containers: boxes, groups: groups, width: 120, height: 40, currentScreen: ScreenContainers}
+	containers, groups := testBoxes()
+	m := Model{containers: containers, groups: groups, width: 120, height: 40, currentScreen: ScreenContainers}
 	m.updateFilteredContainers()
 	if len(m.filteredContainers) != 4 {
-		t.Fatalf("got %d boxes, want all 4", len(m.filteredContainers))
+		t.Fatalf("got %d containers, want all 4", len(m.filteredContainers))
 	}
 	order := []string{}
 	for _, c := range m.filteredContainers {
@@ -64,8 +64,8 @@ func TestGroupedBoxesAllShowTogether(t *testing.T) {
 }
 
 func TestSearchFindsByGroupAndAddress(t *testing.T) {
-	boxes, groups := testBoxes()
-	m := Model{containers: boxes, groups: groups}
+	containers, groups := testBoxes()
+	m := Model{containers: containers, groups: groups}
 	m.searchQuery = "client work"
 	m.updateFilteredContainers()
 	if len(m.filteredContainers) != 3 {

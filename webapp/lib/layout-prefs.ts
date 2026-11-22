@@ -27,7 +27,7 @@ export interface TopBarItemDef {
 }
 
 export const TOP_BAR_ITEMS: TopBarItemDef[] = [
-  { id: 'containers', label: 'Boxes', description: 'Your websites and databases, and the groups they are in' },
+  { id: 'containers', label: 'Containers', description: 'Your websites and databases, and the groups they are in' },
   { id: 'backups', label: 'Backups', description: 'Back up and restore sites and databases' },
   { id: 'network', label: 'Network', description: 'Ports, nginx, DNS and SSL' },
   { id: 'server', label: 'Server', description: 'Host health, services, logs and updates' },

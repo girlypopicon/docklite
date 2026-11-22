@@ -154,21 +154,28 @@ func (m Model) View() string {
 }
 
 func (m Model) renderSidebar() string {
-	items := []string{"Dashboard", "Containers", "Databases", "Files", "Logs", "Network", "Settings", "Quit"}
 	var lines []string
 
 	lines = append(lines, m.centerLine(titleStyle.Render("D O C K L I T E")))
 	lines = append(lines, m.centerLine(m.renderRainbowBar()))
-	lines = append(lines, "")
+	if m.x.viewing != "" {
+		lines = append(lines, m.centerLine(statStyle.Render(truncate("» "+m.x.viewing, 18))))
+	} else {
+		lines = append(lines, "")
+	}
 
-	for i, item := range items {
+	for i, e := range sidebarEntries {
 		prefix := "  "
 		style := sidebarItemStyle
 		if i == m.sidebarSelected {
-			prefix = "▶ "
 			style = sidebarItemSelectedStyle
+			if m.focusArea == FocusSidebar {
+				prefix = "▶ " // the arrow lives where the focus is
+			} else {
+				prefix = "• " // focus moved into the window: mark the page it belongs to, drop the arrow
+			}
 		}
-		lines = append(lines, style.Render(prefix+item))
+		lines = append(lines, style.Render(prefix+e.label))
 	}
 
 	return strings.Join(lines, "\n")
@@ -287,8 +294,8 @@ func (m Model) renderContainers() string {
 		lines = append(lines, "")
 	}
 
-	// Columns share the panel's width: the box's name, what it is, and its status. Names come first and get the room,
-	// because the point is to tell the boxes apart; the container ID and image are in the details.
+	// Columns share the panel's width: the container's name, what it is, and its status. Names come first and get the room,
+	// because the point is to tell the containers apart; the container ID and image are in the details.
 	avail := m.innerWidth() - 4 // list items are indented by the cursor and the style's padding
 	kindW, statusW := 14, 14
 	nameW := avail - kindW - statusW - 2
@@ -314,50 +321,40 @@ func (m Model) renderContainers() string {
 		}
 	} else {
 		// Only as many rows as fit, keeping the cursor in view. Fixed lines: title and its margin, the blank after it,
-		// the header and rule, then the blank, toggle, blank and total at the bottom; plus two for a notice. Group
-		// headings take a line each, so leave room for them.
-		fixed := 9 + len(m.groups) + 1
+		// the header and rule, then the blank, toggle, blank and total at the bottom; plus two for a notice.
+		fixed := 9
 		if m.notice != "" {
 			fixed += 2
 		}
-		start, end, above, below := listWindow(len(m.filteredContainers), m.containersCursor, m.innerHeight()-fixed)
+		start, end, above, below := listWindow(len(m.rows), m.containersCursor, m.innerHeight()-fixed)
 		if above > 0 {
 			lines = append(lines, labelStyle.Render(fmt.Sprintf("  ↑ %d more", above)))
 		}
-		count := map[string]int{}
-		for _, c := range m.filteredContainers {
-			count[m.groupOf[c.Name]]++
-		}
-		prevGroup := "\x00"
-		if start > 0 {
-			prevGroup = m.groupOf[m.filteredContainers[start-1].Name]
-		}
 		for i := start; i < end; i++ {
-			container := m.filteredContainers[i]
-			g := m.groupOf[container.Name]
-			if g != prevGroup {
-				if g != "" {
-					lines = append(lines, accentHeading(fmt.Sprintf("▾ %s (%d)", g, count[g])))
-				} else if len(m.groups) > 0 {
-					lines = append(lines, accentHeading(fmt.Sprintf("▾ Not in a group (%d)", count[""])))
-				}
-				prevGroup = g
-			}
-			title := boxTitle(container)
-			indent := ""
-			if g != "" {
-				indent = "  "
-			}
-			line := row(indent+title, boxKind(container), container.Status)
-
+			r := m.rows[i]
 			style := listItemStyle
 			prefix := "  "
 			if i == m.containersCursor && m.focusArea == FocusMain {
 				style = listItemSelectedStyle
 				prefix = "▶ "
 			}
-
-			lines = append(lines, style.Render(prefix+line))
+			if r.header {
+				name, arrow := r.group, "▾"
+				if name == "" {
+					name = "Not in a group"
+				}
+				if m.collapsed[r.group] && m.searchQuery == "" {
+					arrow = "▸"
+				}
+				lines = append(lines, style.Render(prefix+accentHeading(fmt.Sprintf("%s %s (%d)", arrow, name, r.count))))
+				continue
+			}
+			container := m.filteredContainers[r.ci]
+			indent := ""
+			if len(m.groups) > 0 {
+				indent = "  "
+			}
+			lines = append(lines, style.Render(prefix+row(indent+boxTitle(container), boxKind(container), container.Status)))
 		}
 		if below > 0 {
 			lines = append(lines, labelStyle.Render(fmt.Sprintf("  ↓ %d more", below)))
@@ -370,7 +367,7 @@ func (m Model) renderContainers() string {
 	}
 	toggleStyle := listItemStyle
 	togglePrefix := "  "
-	if m.containersCursor == len(m.filteredContainers) && m.focusArea == FocusMain {
+	if m.containersCursor >= len(m.rows) && m.focusArea == FocusMain {
 		toggleStyle = listItemSelectedStyle
 		togglePrefix = "▶ "
 	}
@@ -412,7 +409,7 @@ func (m Model) renderDatabases() string {
 		return strings.Join(lines, "\n")
 	}
 
-	header := fmt.Sprintf("%-20s %-11s %-6s %-12s %s", "NAME", "KIND", "PORT", "USER", "STATUS")
+	header := fmt.Sprintf("%-20s %-11s %-6s %-22s %s", "NAME", "KIND", "PORT", "USED BY", "STATUS")
 	lines = append(lines, labelStyle.Render(header))
 	lines = append(lines, labelStyle.Render(strings.Repeat("─", len(header))))
 
@@ -427,11 +424,17 @@ func (m Model) renderDatabases() string {
 	for i := start; i < end; i++ {
 		db := m.filteredDatabases[i]
 		name := truncate(db.Name, 20)
-		user := truncate(db.Username, 12)
+		usedBy := db.UsedBy
+		if usedBy == "" {
+			usedBy = "-"
+		}
 		port := fmt.Sprintf("%d", db.Port)
+		if db.IsFile || db.Port == 0 {
+			port = "file"
+		}
 		status := truncate(db.Status, 20)
 
-		line := fmt.Sprintf("%-20s %-11s %-6s %-12s %s", name, databaseLabel(db.Type), port, user, status)
+		line := fmt.Sprintf("%-20s %-11s %-6s %-22s %s", name, databaseLabel(db.Type), port, truncate(usedBy, 22), status)
 		style := listItemStyle
 		prefix := "  "
 		if i == m.databasesCursor && m.focusArea == FocusMain {
@@ -446,6 +449,7 @@ func (m Model) renderDatabases() string {
 
 	lines = append(lines, "")
 	lines = append(lines, labelStyle.Render(fmt.Sprintf("Total: %d databases", len(m.filteredDatabases))))
+	lines = append(lines, dimTextStyle.Render("s scan the sites' folders for databases DockLite doesn't list yet"))
 	return strings.Join(lines, "\n")
 }
 
@@ -493,9 +497,9 @@ func (m Model) renderFiles() string {
 			name = truncate(name, 30)
 			entryType := "file"
 			if entry.IsDir {
-				entryType = "dir"
+				entryType = "folder"
 			}
-			size := fmt.Sprintf("%d", entry.Size)
+			size := humanSize(entry.Size)
 			if entry.IsDir {
 				size = "-"
 			}
@@ -601,6 +605,21 @@ func (m Model) renderDatabaseDetails() string {
 	lines = append(lines, "")
 	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Name:    "), statStyle.Render(db.Name)))
 	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Kind:    "), statStyle.Render(databaseLabel(db.Type))))
+	if db.IsFile {
+		lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("File:    "), statStyle.Render(db.DBPath)))
+		lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Size:    "), statStyle.Render(humanSize(db.Size))))
+	}
+	usedBy := db.UsedBy
+	if usedBy == "" {
+		usedBy = "nothing linked"
+	}
+	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Used by: "), statStyle.Render(usedBy)))
+	if db.IsFile {
+		lines = append(lines, "")
+		lines = append(lines, dimTextStyle.Render("A SQLite database is a file inside its site, so it has no server to start or stop."))
+		lines = append(lines, dimTextStyle.Render("Back up or move it with the site's files. Esc to go back."))
+		return strings.Join(lines, "\n")
+	}
 	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Port:    "), statStyle.Render(fmt.Sprintf("%d", db.Port))))
 	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("User:    "), statStyle.Render(db.Username)))
 	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Password:"), statStyle.Render(db.Password)))
@@ -820,7 +839,7 @@ func (m Model) renderContainerDetails() string {
 	if c.Ports != "" {
 		lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Ports:  "), c.Ports))
 	}
-	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Box:    "), c.Name))
+	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Name:   "), c.Name))
 	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("ID:     "), truncate(c.ID, 12)))
 	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Image:  "), c.Image))
 	lines = append(lines, fmt.Sprintf("%s %s", labelStyle.Render("Status: "), c.Status))
@@ -831,6 +850,9 @@ func (m Model) renderContainerDetails() string {
 	lines = append(lines, "")
 
 	// Action buttons
+	if m.fw.mode != fwOff {
+		return m.renderForward()
+	}
 	if m.ctMode != 0 {
 		return m.renderChangeType()
 	}
@@ -987,7 +1009,7 @@ func (m Model) renderFooter() string {
 
 	help := focusIndicator + "↑/↓ move • Enter select • Tab focus • Esc back"
 	if m.currentScreen == ScreenContainers && m.currentView == ViewList && !m.searchMode {
-		help += " • / search • n new site • g groups"
+		help += " • / search • n new site • ←/→ fold group"
 	}
 	if m.currentScreen == ScreenContainers && m.currentView == ViewCreateSite {
 		help = focusIndicator + "Type input • ↑/↓ choose • Space toggle • Enter next/create • Esc cancel"
@@ -1261,4 +1283,18 @@ func (m Model) renderChangeType() string {
 		lines = append(lines, "", errorStyle.Render("Error: "+m.err))
 	}
 	return strings.Join(lines, "\n")
+}
+
+// humanSize shows a byte count the way people read it: 0 B, 1.5 KB, 3.2 MB.
+func humanSize(n int64) string {
+	const unit = 1024
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
+	}
+	div, exp := int64(unit), 0
+	for v := n / unit; v >= unit && exp < 3; v /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGT"[exp])
 }

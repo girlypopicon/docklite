@@ -13,7 +13,7 @@ import (
 	"docklite-agent/internal/demo"
 )
 
-// The page visitors see when a site's box is stopped. nginx answers a closed port with a plain "502 Bad Gateway"; every
+// The page visitors see when a site's container is stopped. nginx answers a closed port with a plain "502 Bad Gateway"; every
 // site's nginx config includes a snippet that swaps that for this page (sent as a 503 "back soon"). One shared file
 // serves every site, so a contact line set once in Settings shows on all of them.
 //
@@ -43,7 +43,7 @@ const downPageTemplate = `<!DOCTYPE html>
     --pink: #FF6AD5; --coral: #FF9A8B; --gold: #FFD166; --mint: #B8F2A2; --sky: #9AD0FF; --lilac: #C7A4FF;
     --rainbow: linear-gradient(110deg, var(--pink), var(--coral), var(--gold), var(--mint), var(--sky), var(--lilac));
   }
-  * { box-sizing: border-box; }
+  * { container-sizing: border-container; }
   html, body { height: 100%; margin: 0; }
   body {
     display: flex; align-items: center; justify-content: center; padding: 24px;
@@ -57,7 +57,7 @@ const downPageTemplate = `<!DOCTYPE html>
   .card {
     width: 100%; max-width: 640px; padding: 40px 36px; border-radius: 22px; position: relative;
     background: rgba(22, 14, 34, .72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 40px rgba(199,164,255,.18);
+    container-shadow: 0 20px 60px rgba(0,0,0,.55), 0 0 40px rgba(199,164,255,.18);
   }
   .card::before {
     content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; background: var(--rainbow);
@@ -65,7 +65,7 @@ const downPageTemplate = `<!DOCTYPE html>
     mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: .7; pointer-events: none;
   }
   .state { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
-  .state i { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); animation: pulse 2.4s ease-in-out infinite; }
+  .state i { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); container-shadow: 0 0 10px var(--gold); animation: pulse 2.4s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .35; } }
   h1 {
     margin: 18px 0 14px; font-size: clamp(24px, 5.5vw, 38px); line-height: 1.2;
@@ -84,8 +84,8 @@ const downPageTemplate = `<!DOCTYPE html>
 <body>
 <main class="card">
   <span class="state"><i></i> Not running</span>
-  <h1>This website's box isn't running right now</h1>
-  <p>This site is hosted with DockLite, but the box it runs in is stopped. Nothing is wrong with your connection, and this page checks again every minute.</p>
+  <h1>This website's container isn't running right now</h1>
+  <p>This site is hosted with DockLite, but the container it runs in is stopped. Nothing is wrong with your connection, and this page checks again every minute.</p>
   <p class="contact">{{CONTACT}}</p>
   <footer><span>Error 503</span><span>Hosted with <a href="https://docklite.net" rel="noopener">DockLite</a></span></footer>
 </main>
@@ -111,15 +111,15 @@ func downPageHTML(contact string) string {
 	var line string
 	switch {
 	case contact == "":
-		line = "If this is your site, start its box from your DockLite dashboard. Otherwise, please contact whoever runs this server."
+		line = "If this is your site, start its container from your DockLite dashboard. Otherwise, please contact whoever runs this server."
 	case simpleEmail.MatchString(contact):
 		e := html.EscapeString(contact)
-		line = `If this is your site, start its box from your DockLite dashboard. Otherwise, contact the administrator: <a href="mailto:` + e + `">` + e + `</a>`
+		line = `If this is your site, start its container from your DockLite dashboard. Otherwise, contact the administrator: <a href="mailto:` + e + `">` + e + `</a>`
 	case strings.HasPrefix(contact, "https://") || strings.HasPrefix(contact, "http://"):
 		e := html.EscapeString(contact)
-		line = `If this is your site, start its box from your DockLite dashboard. Otherwise, contact the administrator: <a href="` + e + `" rel="noopener">` + e + `</a>`
+		line = `If this is your site, start its container from your DockLite dashboard. Otherwise, contact the administrator: <a href="` + e + `" rel="noopener">` + e + `</a>`
 	default:
-		line = "If this is your site, start its box from your DockLite dashboard. Otherwise, contact the administrator: " + html.EscapeString(contact)
+		line = "If this is your site, start its container from your DockLite dashboard. Otherwise, contact the administrator: " + html.EscapeString(contact)
 	}
 	return strings.Replace(downPageTemplate, "{{CONTACT}}", line, 1)
 }
@@ -158,7 +158,7 @@ type downPageError struct{ msg string }
 
 func (e *downPageError) Error() string {
 	if e.msg == "" {
-		return "could not write the stopped-box page"
+		return "could not write the stopped-container page"
 	}
 	return e.msg
 }
@@ -171,7 +171,7 @@ func (h *Handlers) SyncDownPage(ctx context.Context) {
 		return
 	}
 	if err := h.EnsureDownPage(false); err != nil {
-		log.Printf("stopped-box page: %v", err)
+		log.Printf("stopped-container page: %v", err)
 		return
 	}
 	sites, err := h.store.ListSites()
@@ -191,9 +191,9 @@ func (h *Handlers) SyncDownPage(ctx context.Context) {
 		detail := map[string]any{"file": p.File, "ok": perr == nil}
 		if perr != nil {
 			detail["error"] = strings.TrimSpace(string(msg))
-			log.Printf("stopped-box page: could not add it for %s in %s: %s", p.Domain, p.File, strings.TrimSpace(string(msg)))
+			log.Printf("stopped-container page: could not add it for %s in %s: %s", p.Domain, p.File, strings.TrimSpace(string(msg)))
 		} else {
-			log.Printf("stopped-box page: added for %s", p.Domain)
+			log.Printf("stopped-container page: added for %s", p.Domain)
 		}
 		auditSystem("nginx.down-page", p.Domain, detail)
 	}

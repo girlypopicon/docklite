@@ -20,6 +20,7 @@ import {
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import SiteHttpsCard from './SiteHttpsCard';
 import SiteTypeCard from './SiteTypeCard';
+import ForwardCard from './ForwardCard';
 import { containerDisplayName } from '@/lib/container-names';
 
 interface ContainerStats {
@@ -304,6 +305,13 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                     onChanged?.(message);
                     onClose();
                   }}
+                />
+              )}
+              {details.labels?.['docklite.managed'] === 'true' && details.labels?.['docklite.domain'] && ['static', 'php', 'node'].includes(details.labels?.['docklite.type']) && (
+                <ForwardCard
+                  containerId={containerId}
+                  domain={details.labels['docklite.domain']}
+                  onForwarded={(message) => onChanged?.(message)}
                 />
               )}
               {/* Real-time Stats */}

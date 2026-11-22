@@ -18,7 +18,7 @@ interface NewBoxModalProps {
 type Step = { kind: 'choose' } | { kind: 'website' } | { kind: 'database'; type: DbType };
 
 /**
- * "New box": asks what kind first. A website (static files, PHP or Node) or a database (PostgreSQL, MySQL, MariaDB, MongoDB,
+ * "New container": asks what kind first. A website (static files, PHP or Node) or a database (PostgreSQL, MySQL, MariaDB, MongoDB,
  * Redis, SQLite). More kinds of server will join this list later.
  */
 export default function NewBoxModal({ sites, onClose, onCreated }: NewBoxModalProps) {
@@ -53,10 +53,10 @@ export default function NewBoxModal({ sites, onClose, onCreated }: NewBoxModalPr
         style={{ background: 'linear-gradient(135deg, var(--modal-bg-1) 0%, var(--modal-bg-2) 100%)', border: '2px solid var(--modal-border)', boxShadow: '0 0 30px var(--modal-shadow)' }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="New box"
+        aria-label="New container"
       >
         <CloseButton onClick={onClose} className="absolute top-3 right-3" />
-        <h2 className="text-2xl font-bold pr-10" style={{ color: 'var(--text-primary)' }}>New box</h2>
+        <h2 className="text-2xl font-bold pr-10" style={{ color: 'var(--text-primary)' }}>New container</h2>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>What kind of box do you want to make?</p>
 
         <h3 className="mt-5 mb-2 text-xs uppercase tracking-[0.2em]" style={{ color: 'var(--text-purple)' }}>Website</h3>

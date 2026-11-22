@@ -97,8 +97,28 @@ func (h *Handlers) DatabaseStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Which site each database belongs to (shown as "used by"): the link, else the site whose container holds a SQLite file.
+	siteDomains := map[int64]string{}
+	siteByContainer := map[string]string{}
+	if sites, err := h.store.ListSites(); err == nil {
+		for _, st := range sites {
+			siteDomains[st.ID] = st.Domain
+			if st.ContainerID != nil {
+				siteByContainer[*st.ContainerID] = st.Domain
+			}
+		}
+	}
+	siteLinks, _ := h.store.DatabaseSiteLinks()
+
 	withSize := make([]map[string]any, 0, len(records))
 	for _, database := range records {
+		usedBy := ""
+		if sid, ok := siteLinks[database.ID]; ok {
+			usedBy = siteDomains[sid]
+		}
+		if usedBy == "" && database.Type == "sqlite" {
+			usedBy = siteByContainer[database.ContainerID]
+		}
 		size := int64(0)
 		sizeCategory := "empty"
 
@@ -149,6 +169,8 @@ func (h *Handlers) DatabaseStats(w http.ResponseWriter, r *http.Request) {
 			"size":           size,
 			"sizeCategory":   sizeCategory,
 			"username":       dockerUsers[database.ContainerID],
+			"used_by":        usedBy,
+			"db_path":        database.DBPath,
 		})
 	}
 

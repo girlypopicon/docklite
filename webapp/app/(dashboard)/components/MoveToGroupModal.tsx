@@ -16,7 +16,7 @@ interface MoveToGroupModalProps {
   onClose: () => void;
 }
 
-/** The phone-friendly way to put a box in a group (dragging is for people with a mouse). */
+/** The phone-friendly way to put a container in a group (dragging is for people with a mouse). */
 export default function MoveToGroupModal({ boxName, groups, currentGroupId, busy, error, onMove, onClose }: MoveToGroupModalProps) {
   useEscape(onClose);
   const [choice, setChoice] = useState<string>(currentGroupId === null ? 'none' : String(currentGroupId));
@@ -51,7 +51,7 @@ export default function MoveToGroupModal({ boxName, groups, currentGroupId, busy
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Where should <b style={{ color: 'var(--text-cyan)' }}>{boxName}</b> go?</p>
         <div className="mt-4 space-y-2">
           {option('none', 'On the desktop', 'Not in any group')}
-          {groups.map((g) => option(String(g.id), g.name, `${g.members.length} ${g.members.length === 1 ? 'box' : 'boxes'}${g.linked ? ' · linked' : ''}`))}
+          {groups.map((g) => option(String(g.id), g.name, `${g.members.length} ${g.members.length === 1 ? 'container' : 'containers'}${g.linked ? ' · linked' : ''}`))}
           {option('new', 'A new group…')}
           {choice === 'new' && (
             <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={50} autoFocus placeholder="Name the group" className="input-vapor w-full" />

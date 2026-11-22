@@ -9,7 +9,7 @@ function Bone({ className = '' }: { className?: string }) {
 }
 
 function ContainerCardSkeleton() {
-  // The same shape as a real box card (a playing card, 5:7), with the same rows: status and menu, name, type, uptime, port.
+  // The same shape as a real container card (a playing card, 5:7), with the same rows: status and menu, name, type, uptime, port.
   return (
     <div
       className="w-full aspect-[5/7] p-3 rounded-xl flex flex-col relative"

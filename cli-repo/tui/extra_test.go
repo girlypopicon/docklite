@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -65,12 +66,11 @@ func TestNetworkScreenSaysThingsPlainly(t *testing.T) {
 		Public  bool   `json:"public"`
 	}{"tcp", 443, "nginx", true})
 	m.x.netFw = fw
-	m.x.ssl = &sslSites{Sites: []struct {
-		Domain          string `json:"domain"`
-		HasSSL          bool   `json:"hasSSL"`
-		DaysUntilExpiry *int   `json:"daysUntilExpiry"`
-		Status          string `json:"status"`
-	}{{Domain: "a.example.com", HasSSL: true, DaysUntilExpiry: &days}, {Domain: "b.example.com"}}}
+	m.x.ssl = &sslSites{}
+	if err := json.Unmarshal([]byte(`{"sites":[{"domain":"a.example.com","hasSSL":true,"daysUntilExpiry":5,"autoRenew":true},{"domain":"b.example.com"}]}`), m.x.ssl); err != nil {
+		t.Fatal(err)
+	}
+	_ = days
 	out := m.renderNetworkScreen()
 	for _, want := range []string{"smoll", "443 (secure websites)", "active (ufw)", "expires in 5 days", "no HTTPS", "Press d"} {
 		if !strings.Contains(out, want) {
@@ -114,7 +114,7 @@ func TestDashboardShowsWhatNeedsAttention(t *testing.T) {
 	o.Disk.Total, o.Disk.Used = 100<<30, 40<<30
 	m.x.overview = o
 	out := m.renderDashboard()
-	for _, want := range []string{"1.16.0 is available", "1 box(es) are stopped", "Sites: 1", "Databases: 1", "Memory", "Disk", "1 days"} {
+	for _, want := range []string{"1.16.0 is available", "1 container(s) are stopped", "Sites: 1", "Databases: 1", "Memory", "Disk", "1 days"} {
 		if !strings.Contains(strings.ReplaceAll(out, "\x1b", ""), want) && !strings.Contains(stripANSI(out), want) {
 			t.Errorf("dashboard missing %q:\n%s", want, out)
 		}
