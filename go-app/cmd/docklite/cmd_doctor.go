@@ -1,6 +1,7 @@
 package main
 
 import (
+	"docklite-agent/internal/docker"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -200,6 +201,25 @@ func runDoctor(a *app, args []string) error {
 		}
 	}
 
+	if data, err := a.get("/api/ssl/checks"); err == nil {
+		var r struct {
+			Problems []struct {
+				Domain, Kind, Detail, Fix string
+			} `json:"problems"`
+		}
+		_ = json.Unmarshal(data, &r)
+		for _, p := range r.Problems {
+			status := "warn"
+			if p.Kind == "missing_cert_files" {
+				status = "fail"
+			}
+			add("https "+p.Domain, status, p.Detail, p.Fix)
+		}
+		if len(r.Problems) == 0 {
+			add("https setup", "ok", "every certificate matches its nginx file and can renew", "")
+		}
+	}
+
 	if data, err := a.get("/api/server/overview"); err != nil {
 		add("disk", "fail", err.Error(), "")
 	} else {
@@ -239,6 +259,15 @@ func runDoctor(a *app, args []string) error {
 
 	// 3. Only meaningful on the server itself.
 	if _, err := os.Stat("/opt/docklite"); err == nil {
+		sock := os.Getenv("DOCKER_SOCKET_PATH")
+		if sock == "" {
+			sock = "unix:///var/run/docker.sock"
+		}
+		if problems := docker.CheckSocket(sock); len(problems) > 0 {
+			add("docker socket", "warn", strings.Join(problems, "; "), "sudo chmod 660 /var/run/docker.sock && sudo chgrp docker /var/run/docker.sock")
+		} else {
+			add("docker socket", "ok", "present and not world-writable", "")
+		}
 		if _, err := os.Stat("/usr/local/sbin/docklite-helper"); err != nil {
 			add("root helper", "fail", "/usr/local/sbin/docklite-helper is missing", "sudo bash install.sh   (re-run the installer)")
 		} else {

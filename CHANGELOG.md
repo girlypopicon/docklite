@@ -16,6 +16,20 @@ First pass of the agent security review (details and what is still open: `docs/S
 - **Changing a password ends the account's older sessions** (they used to last up to 24 hours).
 - **Tokens issued at login now expire after 90 days** unless you set another date (they never expired before).
 
+### Fixed
+- **A site that already has a certificate keeps HTTPS when its nginx file is rebuilt** (transfers, restores, re-created containers). The file is
+  now written with the HTTPS block from the existing certificate instead of the plain HTTP template.
+- **The root helper keeps the previous version of a site's nginx file** (newest 5 per site, in `sites-available/.docklite-backups`) before
+  it writes a new one.
+
+### Added
+- **`docklite doctor` checks HTTPS setup**: a certificate that exists but whose nginx file has no HTTPS block, a Let's Encrypt certificate with
+  no renewal config (it would quietly expire), and nginx files naming certificate files that aren't there. It also checks the Docker socket.
+- **The agent checks Docker when it starts**: it warns in its log if the socket is missing, isn't a socket, is writable by everyone, or Docker doesn't answer.
+
+### Changed
+- **Debug is off by default for real**: the `/api/debug` route doesn't exist unless `ENABLE_DEBUG_PAGES=true`.
+
 ## 1.20.0 (2026-11-22)
 
 ### Added

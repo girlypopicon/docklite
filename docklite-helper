@@ -361,6 +361,14 @@ case "$cmd" in
         tmp=$(mktemp "${SITES_AVAILABLE}/.docklite.XXXXXX")
         cat > "$tmp"
         chmod 644 "$tmp"
+        # Keep the previous version (the newest 5 per site) so a bad write can be undone by hand. The backups live in
+        # a folder nginx never includes.
+        if [[ -f "${SITES_AVAILABLE}/$1" ]]; then
+            bdir="${SITES_AVAILABLE}/.docklite-backups"
+            mkdir -p "$bdir"
+            cp -p "${SITES_AVAILABLE}/$1" "${bdir}/$1.$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+            ls -1t "${bdir}/$1".* 2>/dev/null | tail -n +6 | xargs -r rm -f
+        fi
         mv -f "$tmp" "${SITES_AVAILABLE}/$1"
         ;;
     site-enable)      # site-enable NAME
@@ -592,6 +600,10 @@ case "$cmd" in
         check_domain "${1:-}"
         [[ -f "${LE_LIVE}/$1/fullchain.pem" ]]
         ;;
+    cert-renewal-exists)  # cert-renewal-exists NAME   (exit 0 if certbot can renew this certificate)
+        check_name "${1:-}"
+        [[ -f "/etc/letsencrypt/renewal/$1.conf" ]]
+        ;;
     cert-renew)       # cert-renew DOMAIN
         check_domain "${1:-}"
         certbot renew --cert-name "$1" --force-renewal
@@ -608,6 +620,6 @@ case "$cmd" in
         cat "${LE_LIVE}/$1/cert.pem"
         ;;
     *)
-        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|site-trash|site-purge|nginx-test|nginx-reload|nginx-restart|nginx-upstreams|nginx-fix-port|nginx-down-write|nginx-down-patch|cert-issue|cert-obtain|cert-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
+        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|site-trash|site-purge|nginx-test|nginx-reload|nginx-restart|nginx-upstreams|nginx-fix-port|nginx-down-write|nginx-down-patch|cert-issue|cert-obtain|cert-exists|cert-renewal-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
         ;;
 esac

@@ -7,7 +7,7 @@
   - Add integrity check (hash/signature allowlist) for update script.
   - Add structured security/audit logging for update runs.
 
-- [ ] Keep debug features disabled by default.
+- [x] Keep debug features disabled by default.
   - Ensure startup scripts do not force debug flags.
   - Consider route-registration-level gating for debug routes in `go-app/internal/api/router.go`.
 
@@ -30,7 +30,7 @@
   - Keep insecure-cookie bypass test-only.
   - Verify secure behavior behind reverse proxies.
 
-- [ ] Add Docker socket startup validation.
+- [x] Add Docker socket startup validation.
   - Verify socket path exists and is a socket.
   - Warn on world-writable socket permissions.
 

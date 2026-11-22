@@ -3,6 +3,7 @@ package api
 import (
 	"docklite-agent/internal/demo"
 	"net/http"
+	"os"
 	"strings"
 
 	hnd "docklite-agent/internal/handlers"
@@ -95,6 +96,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/nginx/reload", handlers.Auth(hnd.CSRFMiddleware(handlers.NginxActions)))
 	mux.HandleFunc("/api/ssl", handlers.Auth(handlers.SSLBasic))
 	mux.HandleFunc("/api/ssl/status", handlers.Auth(handlers.SSLStatus))
+	mux.HandleFunc("/api/ssl/checks", handlers.Auth(handlers.SSLChecks))
 	mux.HandleFunc("/api/ssl/auto", handlers.Auth(hnd.CSRFMiddleware(handlers.AutoCerts)))
 	mux.HandleFunc("/api/ssl/issue", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLIssue)))
 	mux.HandleFunc("/api/ssl/renew", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLRenew)))
@@ -115,7 +117,10 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/system/update/run", handlers.Auth(hnd.CSRFMiddleware(handlers.SystemUpdateRun)))
 	mux.HandleFunc("/api/db/cleanup", handlers.Auth(hnd.CSRFMiddleware(handlers.DBCleanup)))
 	mux.HandleFunc("/api/db", handlers.Auth(hnd.CSRFMiddleware(handlers.DBDebug)))
-	mux.HandleFunc("/api/debug", handlers.Auth(handlers.Debug))
+	// Debug is off unless ENABLE_DEBUG_PAGES=true: the route does not even exist otherwise.
+	if os.Getenv("ENABLE_DEBUG_PAGES") == "true" {
+		mux.HandleFunc("/api/debug", handlers.Auth(handlers.Debug))
+	}
 	mux.HandleFunc("/api/tokens", handlers.Auth(hnd.CSRFMiddleware(handlers.Tokens)))
 	mux.HandleFunc("/api/tokens/revoke", handlers.Auth(hnd.CSRFMiddleware(handlers.TokenRevoke)))
 	mux.HandleFunc("/api/auth/login", handlers.AuthLogin)
