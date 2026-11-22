@@ -412,6 +412,7 @@ func init() {
 			var resp struct {
 				Warning string `json:"warning"`
 				Message string `json:"message"`
+				Note    string `json:"note"`
 			}
 			_ = json.Unmarshal(data, &resp)
 			if resp.Message != "" {
@@ -419,6 +420,9 @@ func init() {
 				return nil
 			}
 			a.say("%s now runs as %s", pos[0], pos[1])
+			if resp.Note != "" {
+				a.say("%s", resp.Note)
+			}
 			if resp.Warning != "" {
 				fmt.Fprintln(a.errOut, "warning: "+resp.Warning)
 			}

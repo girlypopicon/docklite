@@ -687,8 +687,12 @@ func (c *Client) ChangeSiteType(containerID, templateType string, port int) (str
 	}
 	var out struct {
 		Warning string `json:"warning"`
+		Note    string `json:"note"`
 	}
 	_ = json.NewDecoder(resp.Body).Decode(&out)
+	if out.Note != "" {
+		return out.Note, nil
+	}
 	return out.Warning, nil
 }
 

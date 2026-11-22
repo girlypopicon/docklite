@@ -1879,7 +1879,7 @@ func databaseLabel(t string) string {
 var siteTypes = []struct{ id, label, hint string }{
 	{"static", "Static website", "plain HTML, CSS and JavaScript files (index.html)"},
 	{"php", "PHP", "PHP pages (index.php)"},
-	{"node", "Node.js app", "a JavaScript server that runs index.js"},
+	{"node", "Node.js app", "a JavaScript server that runs index.js (added for you if your site is plain files)"},
 }
 
 func siteTypeIndex(t string) int {

@@ -265,11 +265,12 @@ on('POST', new RegExp(`^/api/containers/${ID}/template$`), (r, m, s) => {
   if (!f?.site) return err(404, "this isn't one of DockLite's websites, so it has no type to change");
   if (kind !== 'static' && kind !== 'php' && kind !== 'node') return err(400, 'template_type must be static, php or node');
   const site = f.site;
+  const was = site.template;
   site.template = kind;
   site.internalPort = kind === 'node' ? Number(r.body?.port) || (site.internalPort > 80 ? site.internalPort : 3000) : 80;
   site.containerId = fakeHex(64);
   save();
-  return ok({ success: true, domain: site.domain, template_type: kind, port: site.internalPort, container_id: site.containerId });
+  return ok({ success: true, domain: site.domain, template_type: kind, port: site.internalPort, container_id: site.containerId, ...(kind === 'node' && was !== 'node' ? { note: "Added index.js and package.json to the site's folder: a small server that serves your existing files. Replace it with your own whenever you like." } : {}) });
 });
 on('POST', new RegExp(`^/api/containers/${ID}/(track|untrack|claim|write-manifest)$`), () => ok());
 on('POST', /^\/api\/containers\/(scan|onboard)$/, () => ok({ sites: [] }));
