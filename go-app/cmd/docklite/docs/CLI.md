@@ -75,6 +75,7 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | See what's running | `docklite containers list` (add `--kind site`, `--running`) |
 | Restart a site | `docklite containers restart example.com` |
 | Read a site's logs | `docklite containers logs example.com --tail 200` |
+| Run a website as another kind (keeps files, address, HTTPS) | `docklite sites type example.com node --port 3000 --yes` (static, php or node) |
 | Create a website | `docklite sites create example.com` (`--type php` or `--type node --port 3000`) |
 | Get HTTPS for a site | `docklite ssl issue example.com --www --email me@example.com` (DNS must point here first) |
 | See certificates and expiry | `docklite ssl status` |

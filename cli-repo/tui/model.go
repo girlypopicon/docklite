@@ -2,6 +2,7 @@ package tui
 
 import (
 	"docklite-tui/api"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -82,13 +83,18 @@ type Model struct {
 	currentView     View
 
 	// Containers screen
-	containers             []api.Container
-	containersCursor       int
-	selectedContainer      *api.Container
-	searchMode             bool
-	searchQuery            string
-	filteredContainers     []api.Container
-	actionCursor           int // For selecting actions in details view
+	containers         []api.Container
+	containersCursor   int
+	selectedContainer  *api.Container
+	searchMode         bool
+	searchQuery        string
+	filteredContainers []api.Container
+	actionCursor       int // For selecting actions in details view
+
+	// Change site type (details of a website)
+	ctMode                 int // 0 off, 1 choosing the kind, 2 typing the port, 3 confirming
+	ctCursor               int
+	ctPort                 string
 	containerLogs          string
 	showingLogs            bool
 	containerStats         *api.ContainerStats
@@ -182,6 +188,11 @@ type updateStatusMsg struct {
 }
 type updateStartedMsg struct{ Err error }
 type updatePollMsg struct{}
+type siteTypeDoneMsg struct {
+	Notice  string
+	Warning string
+	Err     error
+}
 type containerActionSuccessMsg struct {
 	Notice       string
 	ReturnToList bool
@@ -390,6 +401,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.creatingDatabase = false
 		return m, nil
 
+	case siteTypeDoneMsg:
+		m.ctMode = 0
+		if msg.Err != nil {
+			m.err = friendlyErr(msg.Err)
+			if e, ok := msg.Err.(*api.APIError); ok {
+				m.err = apiMessage(e)
+			}
+			return m, nil
+		}
+		m.err = ""
+		m.notice = msg.Notice
+		if msg.Warning != "" {
+			m.notice += " " + msg.Warning
+		}
+		m.currentView = ViewList
+		m.selectedContainer = nil
+		return m, fetchContainers(m.client)
+
 	case containerActionSuccessMsg:
 		if msg.Notice != "" {
 			m.notice = msg.Notice
@@ -577,6 +606,10 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.currentView = ViewList
 			m.selectedDatabase = nil
 			m.dbActionCursor = 0
+			return m, nil
+		}
+		if m.currentView == ViewDetails && m.ctMode != 0 {
+			m.ctMode = 0
 			return m, nil
 		}
 		if m.currentView == ViewDetails {
@@ -769,6 +802,10 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		} else if m.currentView == ViewDetails {
 			// Handle action selection in details view
+			if m.ctMode != 0 {
+				return m.handleChangeTypeInput(msg)
+			}
+			actions := m.detailActions()
 			if m.containerConfirmDelete {
 				if msg.Type == tea.KeyEnter {
 					return m, m.executeContainerAction()
@@ -784,17 +821,26 @@ func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 				m.containerConfirmDelete = false
 			case tea.KeyDown:
-				// 6 actions: Start, Stop, Restart, Logs, Stats, Delete
-				if m.actionCursor < 5 {
+				if m.actionCursor < len(actions)-1 {
 					m.actionCursor++
 				}
 				m.containerConfirmDelete = false
 			case tea.KeyEnter:
-				if m.actionCursor == 5 {
+				if m.actionCursor >= len(actions) {
+					return m, nil
+				}
+				if actions[m.actionCursor] == "Delete" {
 					m.containerConfirmDelete = true
 					return m, nil
 				}
-				if m.actionCursor == 4 && m.selectedContainer != nil {
+				if actions[m.actionCursor] == "Change site type" {
+					m.ctMode = 1
+					m.ctCursor = siteTypeIndex(siteTypeOf(*m.selectedContainer))
+					m.ctPort = ""
+					m.err = ""
+					return m, nil
+				}
+				if actions[m.actionCursor] == "View Stats" && m.selectedContainer != nil {
 					m.statsContainerID = m.selectedContainer.ID
 					m.statsHistoryCPU = nil
 					m.statsHistoryMem = nil
@@ -1556,34 +1602,39 @@ func (m Model) executeContainerAction() tea.Cmd {
 	if m.selectedContainer == nil {
 		return nil
 	}
+	actions := m.detailActions()
+	if m.actionCursor >= len(actions) {
+		return nil
+	}
+	action := actions[m.actionCursor]
 
 	return func() tea.Msg {
 		var err error
 		notice := ""
 		returnToList := false
-		switch m.actionCursor {
-		case 0: // Start
+		switch action {
+		case "Start":
 			err = m.client.StartContainer(m.selectedContainer.ID)
 			notice = "Container started: " + m.selectedContainer.Name
-		case 1: // Stop
+		case "Stop":
 			err = m.client.StopContainer(m.selectedContainer.ID)
 			notice = "Container stopped: " + m.selectedContainer.Name
-		case 2: // Restart
+		case "Restart":
 			err = m.client.RestartContainer(m.selectedContainer.ID)
 			notice = "Container restarted: " + m.selectedContainer.Name
-		case 3: // Logs
+		case "View Logs":
 			logs, logsErr := m.client.GetContainerLogs(m.selectedContainer.ID)
 			if logsErr != nil {
 				return errMsg(logsErr)
 			}
 			return containerLogsMsg(logs)
-		case 4: // Stats
+		case "View Stats":
 			stats, statsErr := m.client.GetContainerStats(m.selectedContainer.ID)
 			if statsErr != nil {
 				return errMsg(statsErr)
 			}
 			return containerStatsMsg(stats)
-		case 5: // Delete
+		case "Delete":
 			err = m.client.DeleteContainer(m.selectedContainer.ID)
 			notice = "Container deleted: " + m.selectedContainer.Name
 			returnToList = true
@@ -1823,4 +1874,131 @@ func databaseLabel(t string) string {
 		return "PostgreSQL"
 	}
 	return t
+}
+
+var siteTypes = []struct{ id, label, hint string }{
+	{"static", "Static website", "plain HTML, CSS and JavaScript files (index.html)"},
+	{"php", "PHP", "PHP pages (index.php)"},
+	{"node", "Node.js app", "a JavaScript server that runs index.js"},
+}
+
+func siteTypeIndex(t string) int {
+	for i, s := range siteTypes {
+		if s.id == t {
+			return i
+		}
+	}
+	return 0
+}
+
+// siteTypeOf is the kind of website a box is, or "" if it isn't one of DockLite's websites.
+func siteTypeOf(c api.Container) string {
+	if c.Labels["docklite.domain"] == "" || c.Labels["docklite.managed"] != "true" {
+		return ""
+	}
+	t := c.Labels["docklite.type"]
+	if t == "static" || t == "php" || t == "node" {
+		return t
+	}
+	return ""
+}
+
+// detailActions are the buttons on a box's details; websites also get "Change site type".
+func (m Model) detailActions() []string {
+	actions := []string{"Start", "Stop", "Restart", "View Logs", "View Stats"}
+	if m.selectedContainer != nil && siteTypeOf(*m.selectedContainer) != "" {
+		actions = append(actions, "Change site type")
+	}
+	return append(actions, "Delete")
+}
+
+func (m Model) ctPortValue() int {
+	n := 0
+	for _, r := range m.ctPort {
+		n = n*10 + int(r-'0')
+		if n > 65535 {
+			return 65536
+		}
+	}
+	return n
+}
+
+func (m Model) handleChangeTypeInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	c := m.selectedContainer
+	if c == nil {
+		m.ctMode = 0
+		return m, nil
+	}
+	switch m.ctMode {
+	case 1:
+		switch msg.Type {
+		case tea.KeyUp:
+			if m.ctCursor > 0 {
+				m.ctCursor--
+			}
+		case tea.KeyDown:
+			if m.ctCursor < len(siteTypes)-1 {
+				m.ctCursor++
+			}
+		case tea.KeyEnter:
+			chosen := siteTypes[m.ctCursor].id
+			if chosen == siteTypeOf(*c) && chosen != "node" {
+				m.ctMode = 0
+				m.notice = "It already runs as " + siteTypes[m.ctCursor].label + "."
+				return m, nil
+			}
+			if chosen == "node" {
+				m.ctMode = 2
+				return m, nil
+			}
+			m.ctMode = 3
+		}
+	case 2:
+		switch {
+		case msg.Type == tea.KeyEnter:
+			if p := m.ctPortValue(); m.ctPort != "" && (p < 1 || p > 65535) {
+				m.err = "Port must be between 1 and 65535"
+				return m, nil
+			}
+			m.err = ""
+			m.ctMode = 3
+		case msg.Type == tea.KeyBackspace:
+			if len(m.ctPort) > 0 {
+				m.ctPort = m.ctPort[:len(m.ctPort)-1]
+			}
+		case msg.Type == tea.KeyRunes:
+			for _, r := range msg.Runes {
+				if r >= '0' && r <= '9' && len(m.ctPort) < 5 {
+					m.ctPort += string(r)
+				}
+			}
+		}
+	case 3:
+		if msg.Type == tea.KeyEnter {
+			id, chosen, port := c.ID, siteTypes[m.ctCursor], m.ctPortValue()
+			label := boxTitle(*c)
+			client := m.client
+			m.ctMode = 0
+			m.notice = "Restarting " + label + " as " + chosen.label + "..."
+			return m, func() tea.Msg {
+				warn, err := client.ChangeSiteType(id, chosen.id, port)
+				return siteTypeDoneMsg{Notice: label + " now runs as " + chosen.label + ".", Warning: warn, Err: err}
+			}
+		}
+		if msg.Type == tea.KeyUp || msg.Type == tea.KeyDown {
+			m.ctMode = 1
+		}
+	}
+	return m, nil
+}
+
+// apiMessage pulls the readable sentence out of an agent error body like {"error":"..."}.
+func apiMessage(e *api.APIError) string {
+	var b struct {
+		Error string `json:"error"`
+	}
+	if json.Unmarshal([]byte(e.Body), &b) == nil && b.Error != "" {
+		return b.Error
+	}
+	return e.Error()
 }

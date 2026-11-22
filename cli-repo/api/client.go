@@ -664,3 +664,39 @@ func (c *Client) GetJSON(path string, into any) error { return c.jsonCall(http.M
 func (c *Client) PostJSON(path string, into any) error {
 	return c.jsonCall(http.MethodPost, path, into)
 }
+
+// ChangeSiteType runs a website as another kind (static, php or node). The container is replaced, so the site's id changes;
+// the returned warning, if any, says what the site's folder still needs.
+func (c *Client) ChangeSiteType(containerID, templateType string, port int) (string, error) {
+	payload := map[string]any{"template_type": templateType}
+	if port > 0 {
+		payload["port"] = port
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.slow().Do(mustRequest(http.MethodPost, c.BaseURL+"/api/containers/"+containerID+"/template", bytes.NewReader(body), c.Token))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return "", &APIError{Status: resp.StatusCode, Body: string(b)}
+	}
+	var out struct {
+		Warning string `json:"warning"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return out.Warning, nil
+}
+
+func mustRequest(method, url string, body io.Reader, token string) *http.Request {
+	req, _ := http.NewRequest(method, url, body)
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	return req
+}

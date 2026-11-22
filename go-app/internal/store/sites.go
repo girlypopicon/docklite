@@ -144,6 +144,12 @@ func (s *SQLiteStore) UpdateSiteStatus(id int64, status string) error {
 	return err
 }
 
+// UpdateSiteTemplate records that a site now runs as another kind (static, php or node).
+func (s *SQLiteStore) UpdateSiteTemplate(id int64, templateType string) error {
+	_, err := s.DB.Exec(`UPDATE sites SET template_type = ? WHERE id = ?`, templateType, id)
+	return err
+}
+
 func (s *SQLiteStore) TransferSite(id int64, newUserID int64, newCodePath string) error {
 	_, err := s.DB.Exec(`UPDATE sites SET user_id = ?, code_path = ? WHERE id = ?`, newUserID, newCodePath, id)
 	return err
