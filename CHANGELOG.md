@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.19.0 (2026-11-22)
+
 ### Added
 - **Terminal app: move a box to a group.** Open any box and choose **Move to group**: pick one of your groups, make a new one (and say
   whether it's linked) or take the box out of its group.
