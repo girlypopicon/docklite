@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Lock, LockOpen, WarningCircle } from '@phosphor-icons/react';
 import ZoneSslControls from '../network/ZoneSslControls';
 import { useToast } from '@/lib/hooks/useToast';
+import { refreshSslStatus } from '@/lib/ssl-status';
 
 interface CertInfo {
   domain: string;
@@ -159,6 +160,7 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
       if (!cancelled) setLoading(false);
     })();
     return () => {
+      refreshSslStatus(); // the padlocks on the cards pick up whatever changed here
       cancelled = true;
       clearInterval(poll);
     };
