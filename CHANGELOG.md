@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.18.0 (2026-11-22)
+
 ### Added
 - **Change a website's type.** Switch a site between a static website, PHP and a Node.js app without rebuilding it: in the dashboard, open the
   box's details and use **Site type** (Overview tab); in the terminal app, open the site and choose **Change site type**; from scripts,
