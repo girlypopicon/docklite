@@ -21,7 +21,7 @@ const (
 	ScreenFiles
 	ScreenLogs
 	ScreenNetwork
-	ScreenUpdate
+	ScreenSettings
 )
 
 type FocusArea int
@@ -100,6 +100,9 @@ type Model struct {
 	showAllContainers      bool
 	groups                 []api.Group
 	groupOf                map[string]string // container name -> the group it sits in
+
+	// Logs, Network, Settings and the dashboard extras (extra.go)
+	x extraState
 
 	// Update screen
 	updStatus  *api.UpdateStatus
@@ -242,11 +245,15 @@ func (m Model) Init() tea.Cmd {
 		fetchContainers(m.client),
 		fetchDatabases(m.client),
 		fetchFiles(m.client, m.filePath),
+		m.refreshExtras(),
 		tickCmd(),
 	)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if nm, cmd, ok := m.handleExtraMsg(msg); ok {
+		return nm, cmd
+	}
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// Don't process keys during splash
@@ -281,6 +288,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.showingStats && m.selectedContainer != nil {
 			cmds = append(cmds, fetchContainerStats(m.client, m.selectedContainer.ID))
+		}
+		if m.currentScreen == ScreenDashboard {
+			cmds = append(cmds, fetchOverviewCmd(m.client), fetchSSLCmd(m.client))
+		}
+		if m.currentScreen == ScreenLogs && m.x.logFollow {
+			cmds = append(cmds, fetchLogsCmd(m.client, m.x.logTarget))
 		}
 		if m.currentScreen == ScreenFiles && m.currentView == ViewList && m.filePromptMode == FilePromptNone {
 			cmds = append(cmds, fetchFiles(m.client, m.filePath))
@@ -502,6 +515,9 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle Esc - back navigation
+	if msg.Type == tea.KeyEsc && m.currentScreen == ScreenSettings && m.focusArea == FocusMain && m.x.setView != 0 {
+		return m.handleSettingsInput(msg)
+	}
 	if msg.Type == tea.KeyEsc {
 		if m.showingLogs {
 			m.showingLogs = false
@@ -648,45 +664,65 @@ func (m Model) handleSidebarInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.fileListCursor = 0
 			return m, fetchFiles(m.client, m.filePath)
 		}
-		if m.currentScreen == ScreenUpdate {
-			m.updConfirm = false
-			m.updErr = ""
+		switch m.currentScreen {
+		case ScreenLogs:
 			m.focusArea = FocusMain
-			return m, fetchUpdateStatus(m.client, true)
+			m.x.logLoaded, m.x.logLoading, m.x.logErr = false, true, ""
+			return m, fetchLogsCmd(m.client, m.x.logTarget)
+		case ScreenNetwork:
+			m.focusArea = FocusMain
+			m.x.netOffset = 0
+			return m, tea.Batch(fetchNetworkCmd(m.client), fetchSSLCmd(m.client))
+		case ScreenSettings:
+			m.focusArea = FocusMain
+			m.x.setView, m.x.setCursor = 0, 0
+			return m, fetchUpdateStatus(m.client, false)
+		case ScreenDashboard:
+			return m, m.refreshExtras()
 		}
 	}
 	return m, nil
 }
 
-func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.currentScreen == ScreenUpdate {
-		if m.updRunning {
-			return m, nil
-		}
-		switch {
-		case msg.Type == tea.KeyEnter:
-			if m.updStatus == nil || !m.updStatus.UpdateAvailable {
-				m.updConfirm = false
-				return m, fetchUpdateStatus(m.client, true)
-			}
-			if !m.updConfirm {
-				m.updConfirm = true
-				return m, nil
-			}
-			m.updConfirm = false
-			m.updRunning = true
-			m.updNote = "Starting the update..."
-			m.updErr = ""
-			return m, runUpdateCmd(m.client)
-		case msg.String() == "r" || msg.String() == "R":
-			m.updConfirm = false
-			m.updNote = ""
-			return m, fetchUpdateStatus(m.client, true)
-		default:
-			m.updConfirm = false
-		}
+func (m Model) handleUpdateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.updRunning {
 		return m, nil
 	}
+	switch {
+	case msg.Type == tea.KeyEnter:
+		if m.updStatus == nil || !m.updStatus.UpdateAvailable {
+			m.updConfirm = false
+			return m, fetchUpdateStatus(m.client, true)
+		}
+		if !m.updConfirm {
+			m.updConfirm = true
+			return m, nil
+		}
+		m.updConfirm = false
+		m.updRunning = true
+		m.updNote = "Starting the update..."
+		m.updErr = ""
+		return m, runUpdateCmd(m.client)
+	case msg.String() == "r" || msg.String() == "R":
+		m.updConfirm = false
+		m.updNote = ""
+		return m, fetchUpdateStatus(m.client, true)
+	default:
+		m.updConfirm = false
+	}
+	return m, nil
+}
+
+func (m Model) handleMainPanelInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch m.currentScreen {
+	case ScreenSettings:
+		return m.handleSettingsInput(msg)
+	case ScreenLogs:
+		return m.handleLogsInput(msg)
+	case ScreenNetwork:
+		return m.handleNetworkInput(msg)
+	}
+
 	// Only containers screen has interactive main panel for now
 	if m.currentScreen == ScreenContainers {
 		if m.showingLogs {

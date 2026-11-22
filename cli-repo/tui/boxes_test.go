@@ -92,7 +92,7 @@ func TestDatabaseConnectURLPerEngine(t *testing.T) {
 }
 
 func TestUpdateScreenShowsStateAndAsksTwice(t *testing.T) {
-	m := Model{width: 120, height: 40, currentScreen: ScreenUpdate, focusArea: FocusMain,
+	m := Model{width: 120, height: 40, currentScreen: ScreenSettings, focusArea: FocusMain, x: extraState{setView: 1},
 		updStatus: &api.UpdateStatus{Version: "1.14.0", LatestVersion: "1.15.0", UpdateAvailable: true}}
 	if out := m.renderUpdate(); !strings.Contains(out, "1.15.0") || !strings.Contains(out, "web dashboard") {
 		t.Fatalf("update screen: %s", out)

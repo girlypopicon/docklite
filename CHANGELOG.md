@@ -5,6 +5,19 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.17.0 (2026-11-22)
+
+### Added
+- **Terminal app: Logs.** Read the DockLite, system, web proxy, Traefik and legacy logs: ←/→ picks the log, ↑/↓ and PgUp/PgDn scroll, **f**
+  follows it live, **r** refreshes. Errors are highlighted.
+- **Terminal app: Network.** In plain words: the server's address and the one the internet sees, whether the firewall is on, which ports are
+  open to the internet (and boxes reachable without nginx), the web proxy, each site's HTTPS expiry, and **d** to test the server's internet
+  connection.
+- **Terminal app: Settings.** A settings page with **Update DockLite** (the same update the dashboard runs), **About this server** and
+  **Connection**. It replaces the separate Update item.
+- **Terminal app: a fuller Dashboard.** A "Needs attention" list (a newer DockLite, HTTPS expiring or missing, stopped boxes), your site,
+  database and group counts, and memory, disk, load and uptime for the server.
+
 ## 1.16.0 (2026-11-22)
 
 ### Added

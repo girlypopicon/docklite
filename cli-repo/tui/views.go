@@ -154,7 +154,7 @@ func (m Model) View() string {
 }
 
 func (m Model) renderSidebar() string {
-	items := []string{"Dashboard", "Containers", "Databases", "Files", "Logs", "Network", "Update", "Quit"}
+	items := []string{"Dashboard", "Containers", "Databases", "Files", "Logs", "Network", "Settings", "Quit"}
 	var lines []string
 
 	lines = append(lines, m.centerLine(titleStyle.Render("D O C K L I T E")))
@@ -223,11 +223,11 @@ func (m Model) renderMainPanel() string {
 		}
 		return m.renderFiles()
 	case ScreenLogs:
-		return m.renderLogs()
+		return m.renderLogsScreen()
 	case ScreenNetwork:
-		return m.renderNetwork()
-	case ScreenUpdate:
-		return m.renderUpdate()
+		return m.renderNetworkScreen()
+	case ScreenSettings:
+		return m.renderSettings()
 	default:
 		return "Unknown screen"
 	}
@@ -258,6 +258,7 @@ func (m Model) renderDashboard() string {
 	} else {
 		lines = append(lines, labelStyle.Render("Loading summary..."))
 	}
+	lines = append(lines, m.dashboardExtras()...)
 
 	return strings.Join(lines, "\n")
 }
@@ -910,26 +911,6 @@ func (m Model) renderContainerStats() string {
 	return strings.Join(lines, "\n")
 }
 
-func (m Model) renderLogs() string {
-	var lines []string
-	lines = append(lines, titleStyle.Render("Logs"))
-	lines = append(lines, "")
-	lines = append(lines, labelStyle.Render("Logs viewer coming soon..."))
-	lines = append(lines, "")
-	lines = append(lines, dimTextStyle.Render("This screen will display container logs"))
-	return strings.Join(lines, "\n")
-}
-
-func (m Model) renderNetwork() string {
-	var lines []string
-	lines = append(lines, titleStyle.Render("Network"))
-	lines = append(lines, "")
-	lines = append(lines, labelStyle.Render("Network management coming soon..."))
-	lines = append(lines, "")
-	lines = append(lines, dimTextStyle.Render("This screen will display network information"))
-	return strings.Join(lines, "\n")
-}
-
 func (m Model) renderUpdate() string {
 	var lines []string
 	lines = append(lines, titleStyle.Render("Update DockLite"))
@@ -1024,8 +1005,16 @@ func (m Model) renderFooter() string {
 			help = focusIndicator + "Enter confirms delete • Esc cancel"
 		}
 	}
-	if m.currentScreen == ScreenUpdate {
-		help = focusIndicator + "Enter install • r recheck"
+	switch m.currentScreen {
+	case ScreenSettings:
+		help = focusIndicator + "↑/↓ move • Enter open • Esc back"
+		if m.x.setView == 1 {
+			help = focusIndicator + "Enter install • r recheck • Esc back"
+		}
+	case ScreenLogs:
+		help = focusIndicator + "←/→ which log • ↑/↓ PgUp/PgDn scroll • f follow • r refresh • Esc back"
+	case ScreenNetwork:
+		help = focusIndicator + "↑/↓ scroll • d test the connection • r refresh • Esc back"
 	}
 	if m.currentScreen == ScreenFiles && m.currentView == ViewList {
 		if m.filePromptMode != FilePromptNone {

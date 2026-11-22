@@ -625,3 +625,42 @@ func (c *Client) RenamePath(path string, newName string) error {
 	}
 	return nil
 }
+
+// slow is for the endpoints that run commands on the server (network details, connection tests): they can take a
+// while, and an impatient client would report a healthy server as broken.
+func (c *Client) slow() *http.Client {
+	hc := *c.HTTPClient
+	if hc.Timeout < 45*time.Second {
+		hc.Timeout = 45 * time.Second
+	}
+	return &hc
+}
+
+func (c *Client) jsonCall(method, path string, into any) error {
+	req, err := http.NewRequest(method, c.BaseURL+path, nil)
+	if err != nil {
+		return err
+	}
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+	resp, err := c.slow().Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return &APIError{Status: resp.StatusCode, Body: string(body)}
+	}
+	return json.NewDecoder(resp.Body).Decode(into)
+}
+
+// GetJSON reads any agent endpoint into a struct. It is how the Logs, Network, Settings and Dashboard screens read the
+// server's own details, so a new field is a new struct field, not new client code.
+func (c *Client) GetJSON(path string, into any) error { return c.jsonCall(http.MethodGet, path, into) }
+
+// PostJSON is GetJSON for the few "run this now" endpoints that answer with data.
+func (c *Client) PostJSON(path string, into any) error {
+	return c.jsonCall(http.MethodPost, path, into)
+}
