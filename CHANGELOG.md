@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.17.0 (2026-11-22)
+
 ### Added
 - **Terminal app: Logs.** Read the DockLite, system, web proxy, Traefik and legacy logs: ←/→ picks the log, ↑/↓ and PgUp/PgDn scroll, **f**
   follows it live, **r** refreshes. Errors are highlighted.
