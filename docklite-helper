@@ -600,6 +600,23 @@ case "$cmd" in
         check_domain "${1:-}"
         [[ -f "${LE_LIVE}/$1/fullchain.pem" ]]
         ;;
+    origin-cert-write)  # origin-cert-write DOMAIN   (certificate PEM, then private key PEM, on stdin)
+        check_domain "${1:-}"
+        d="/etc/ssl/cloudflare/$1"
+        pem=$(cat)
+        cert=$(printf '%s\n' "$pem" | awk '/-----BEGIN CERTIFICATE-----/{p=1} p{print} /-----END CERTIFICATE-----/{p=0}')
+        key=$(printf '%s\n' "$pem" | awk '/-----BEGIN [A-Z ]*PRIVATE KEY-----/{p=1} p{print} /-----END [A-Z ]*PRIVATE KEY-----/{p=0}')
+        [[ -n "$cert" && -n "$key" ]] || die "need a certificate and a private key on stdin"
+        mkdir -p "$d"; chmod 755 /etc/ssl/cloudflare "$d"
+        umask 077
+        printf '%s\n' "$key" > "$d/privkey.pem.new"; chmod 600 "$d/privkey.pem.new"
+        printf '%s\n' "$cert" > "$d/fullchain.pem.new"; chmod 644 "$d/fullchain.pem.new"
+        mv -f "$d/privkey.pem.new" "$d/privkey.pem"; mv -f "$d/fullchain.pem.new" "$d/fullchain.pem"
+        ;;
+    origin-cert-exists)  # origin-cert-exists DOMAIN   (exit 0 if a Cloudflare origin certificate is installed)
+        check_domain "${1:-}"
+        [[ -f "/etc/ssl/cloudflare/$1/fullchain.pem" && -f "/etc/ssl/cloudflare/$1/privkey.pem" ]]
+        ;;
     cert-renewal-exists)  # cert-renewal-exists NAME   (exit 0 if certbot can renew this certificate)
         check_name "${1:-}"
         [[ -f "/etc/letsencrypt/renewal/$1.conf" ]]
@@ -620,6 +637,6 @@ case "$cmd" in
         cat "${LE_LIVE}/$1/cert.pem"
         ;;
     *)
-        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|site-trash|site-purge|nginx-test|nginx-reload|nginx-restart|nginx-upstreams|nginx-fix-port|nginx-down-write|nginx-down-patch|cert-issue|cert-obtain|cert-exists|cert-renewal-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
+        die "usage: docklite-helper {site-write|site-enable|site-disable|site-remove|site-trash|site-purge|nginx-test|nginx-reload|nginx-restart|nginx-upstreams|nginx-fix-port|nginx-down-write|nginx-down-patch|cert-issue|cert-obtain|cert-exists|origin-cert-write|origin-cert-exists|cert-renewal-exists|cert-renew|cert-delete|cert-list|cert-read} ..."
         ;;
 esac

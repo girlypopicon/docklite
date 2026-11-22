@@ -273,3 +273,25 @@ func (c *Client) request(method string, endpoint string, payload any) (json.RawM
 
 	return response.Result, response.ResultInfo, nil
 }
+
+// CreateOriginCertificate asks Cloudflare to sign a certificate request for hostnames. The certificate is only trusted by
+// Cloudflare (so it works only for proxied sites, with the zone's SSL mode on Full (strict)), and lasts validityDays.
+// Needs the token permission Zone → SSL and Certificates → Edit.
+func (c *Client) CreateOriginCertificate(hostnames []string, csrPEM string, validityDays int) (string, error) {
+	body, _, err := c.request("POST", "/certificates", map[string]any{
+		"hostnames":          hostnames,
+		"requested_validity": validityDays,
+		"request_type":       "origin-rsa",
+		"csr":                csrPEM,
+	})
+	if err != nil {
+		return "", err
+	}
+	var res struct {
+		Certificate string `json:"certificate"`
+	}
+	if err := json.Unmarshal(body, &res); err != nil || res.Certificate == "" {
+		return "", fmt.Errorf("Cloudflare API error: no certificate came back")
+	}
+	return res.Certificate, nil
+}

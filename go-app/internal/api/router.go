@@ -97,6 +97,8 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 	mux.HandleFunc("/api/ssl", handlers.Auth(handlers.SSLBasic))
 	mux.HandleFunc("/api/ssl/status", handlers.Auth(handlers.SSLStatus))
 	mux.HandleFunc("/api/ssl/checks", handlers.Auth(handlers.SSLChecks))
+	mux.HandleFunc("/api/ssl/preflight", handlers.Auth(handlers.SSLPreflight))
+	mux.HandleFunc("/api/ssl/origin", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLOrigin)))
 	mux.HandleFunc("/api/ssl/auto", handlers.Auth(hnd.CSRFMiddleware(handlers.AutoCerts)))
 	mux.HandleFunc("/api/ssl/issue", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLIssue)))
 	mux.HandleFunc("/api/ssl/renew", handlers.Auth(hnd.CSRFMiddleware(handlers.SSLRenew)))
@@ -162,7 +164,7 @@ func NewRouter(handlers *hnd.Handlers, nextjsURL string) http.Handler {
 var demoBlockedPrefixes = []string{
 	"/api/server/overview", "/api/server/ports", "/api/server/updates", "/api/server/services",
 	"/api/server/storage", "/api/server/security", "/api/server/logs", "/api/server/diagnostics",
-	"/api/network/", "/api/system/shell-access", "/api/system/update/run", "/api/debug",
+	"/api/network/", "/api/system/shell-access", "/api/system/update/run", "/api/debug", "/api/ssl/preflight", "/api/ssl/origin", "/api/ssl/checks",
 }
 
 func demoBlocked(path string) bool {

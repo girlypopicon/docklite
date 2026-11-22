@@ -241,6 +241,10 @@ func (h *Handlers) createForward(w http.ResponseWriter, r *http.Request, sourceI
 	if https, ok := created["https"]; ok {
 		resp["https"] = https
 	}
+	// What happened to the new domain's DNS in Cloudflare (created, already right, a conflict, or not connected).
+	if dns, ok := created["dns"]; ok {
+		resp["dns"] = dns
+	}
 	writeJSON(w, http.StatusOK, resp)
 }
 

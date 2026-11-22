@@ -225,13 +225,38 @@ func init() {
 				var res struct {
 					Group   string `json:"group"`
 					Warning string `json:"warning"`
+					DNS     *struct {
+						Status  string `json:"status"`
+						Zone    string `json:"zone"`
+						Message string `json:"message"`
+						Records []struct {
+							Name, Type, Content, Action, Existing string
+						} `json:"records"`
+					} `json:"dns"`
 				}
 				_ = json.Unmarshal(data, &res)
 				a.say("%s now %ss to %s.", pos[0], mode, to)
 				if res.Group != "" {
 					a.say("Both are in the linked group %q.", res.Group)
 				}
-				a.say("Point %s's DNS at this server; its own HTTPS certificate is requested once DNS is ready.", pos[0])
+				if res.DNS != nil && (res.DNS.Status == "done" || res.DNS.Status == "conflict") {
+					for _, r := range res.DNS.Records {
+						switch r.Action {
+						case "created", "updated":
+							a.say("Cloudflare: %s %s -> %s %s.", r.Type, r.Name, r.Content, r.Action)
+						case "exists":
+							a.say("Cloudflare: %s %s already points at this server.", r.Type, r.Name)
+						case "conflict":
+							a.say("Cloudflare: %s already has %s (left alone). Change it in the DNS tab if it should point here.", r.Name, r.Existing)
+						}
+					}
+					a.say("Its own HTTPS certificate is requested once DNS is ready.")
+				} else {
+					if res.DNS != nil && res.DNS.Message != "" {
+						a.say("Cloudflare: %s", res.DNS.Message)
+					}
+					a.say("Point %s's DNS at this server; its own HTTPS certificate is requested once DNS is ready.", pos[0])
+				}
 				if res.Warning != "" {
 					a.say("Note: %s", res.Warning)
 				}

@@ -216,6 +216,8 @@ func setupNginxForDomain(domain string, includeWww bool, hostPort int) error {
 	if !nginxConfigHasSSL(config) {
 		if _, err := runRootHelper(nil, "cert-exists", domain); err == nil {
 			config = nginxVhostConfigTLS(domain, includeWww, hostPort, "/etc/letsencrypt/live/"+domain)
+		} else if _, err := runRootHelper(nil, "origin-cert-exists", domain); err == nil {
+			config = nginxVhostConfigTLS(domain, includeWww, hostPort, originCertRoot+"/"+domain)
 		}
 	}
 	if err := writeNginxSiteConfig(domain, config); err != nil {

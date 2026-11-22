@@ -46,8 +46,14 @@ export default function ForwardCard({ containerId, domain, onForwarded }: { cont
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not forward the domain');
+      const dnsDone = data.dns && (data.dns.status === 'done' || data.dns.status === 'conflict');
+      const dnsNote = dnsDone
+        ? data.dns.status === 'conflict'
+          ? ' Cloudflare already has a record for it pointing elsewhere, so I left it alone; fix it in the DNS tab.'
+          : ' Its DNS in Cloudflare is set.'
+        : `${data.dns?.message ? ' ' + data.dns.message : ''} Point its DNS at this server.`;
       onForwarded(
-        `${data.domain} now ${data.mode}s to ${domain}.${data.group ? ` Both are in the linked group “${data.group}”.` : ''} Point its DNS at this server.${data.warning ? ' ' + data.warning : ''}`,
+        `${data.domain} now ${data.mode}s to ${domain}.${data.group ? ` Both are in the linked group “${data.group}”.` : ''}${dnsNote}${data.warning ? ' ' + data.warning : ''}`,
       );
       setNewDomain('');
       await load();
