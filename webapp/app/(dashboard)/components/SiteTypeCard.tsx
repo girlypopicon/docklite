@@ -6,7 +6,7 @@ import { Swap } from '@phosphor-icons/react';
 const KINDS = [
   { id: 'static', label: 'Static website', hint: 'Plain HTML, CSS and JavaScript files (index.html).' },
   { id: 'php', label: 'PHP', hint: 'PHP pages (index.php).' },
-  { id: 'node', label: 'Node.js app', hint: 'A JavaScript server that runs index.js.' },
+  { id: 'node', label: 'Node.js app', hint: 'A JavaScript server that runs index.js. If your site is plain files, DockLite adds a small server for them.' },
 ] as const;
 
 type Kind = (typeof KINDS)[number]['id'];
@@ -45,7 +45,7 @@ export default function SiteTypeCard({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Could not change the site type');
-      onChanged(`Now running as ${label}.${data.warning ? ' ' + data.warning : ''}`);
+      onChanged(`Now running as ${label}.${data.note ? ' ' + data.note : ''}${data.warning ? ' ' + data.warning : ''}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not change the site type');
       setConfirming(false);

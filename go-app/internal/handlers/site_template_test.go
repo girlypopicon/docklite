@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -24,6 +28,11 @@ func TestMissingEntryFile(t *testing.T) {
 	}
 	if w := missingEntryFile(dir, "php"); !strings.Contains(w, "index.php") {
 		t.Fatalf("php: %q", w)
+	}
+	// plain html pages run fine under PHP and static, so they count as an entry file for both
+	testhelpers.AssertNoError(t, os.WriteFile(filepath.Join(dir, "index.html"), []byte("x"), 0o644))
+	if w := missingEntryFile(dir, "php"); w != "" {
+		t.Fatalf("php with index.html: %q", w)
 	}
 }
 
@@ -84,5 +93,50 @@ func TestCrashReasonQuotesTheError(t *testing.T) {
 	}
 	if got := crashReason(""); !strings.Contains(got, "stopped as soon as it started") {
 		t.Fatalf("empty log: %q", got)
+	}
+}
+
+func TestNodeStarterServesTheSiteAndHidesTheRest(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node isn't installed here")
+	}
+	dir := t.TempDir()
+	for name, body := range map[string]string{"index.html": "<h1>hi</h1>", "style.css": "body{}", ".dkl": `{"username":"secret"}`, "package.json": "{}"} {
+		testhelpers.AssertNoError(t, os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644))
+	}
+	testhelpers.AssertNoError(t, ensureFile(filepath.Join(dir, "index.js"), nodeStarterIndexJS))
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	testhelpers.AssertNoError(t, err)
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+	cmd := exec.Command("node", "index.js")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PORT="+strconv.Itoa(port))
+	testhelpers.AssertNoError(t, cmd.Start())
+	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
+
+	get := func(path string) (int, string) {
+		for i := 0; i < 40; i++ {
+			resp, err := http.Get("http://127.0.0.1:" + strconv.Itoa(port) + path)
+			if err == nil {
+				defer resp.Body.Close()
+				b, _ := io.ReadAll(resp.Body)
+				return resp.StatusCode, string(b)
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		t.Fatal("the starter server never answered")
+		return 0, ""
+	}
+	if c, b := get("/"); c != 200 || !strings.Contains(b, "hi") {
+		t.Fatalf("/: %d %q", c, b)
+	}
+	if c, _ := get("/style.css"); c != 200 {
+		t.Fatalf("/style.css: %d", c)
+	}
+	for _, hidden := range []string{"/.dkl", "/index.js", "/package.json", "/%2e%2e/etc/passwd", "/../../etc/passwd"} {
+		if c, b := get(hidden); c == 200 || strings.Contains(b, "secret") || strings.Contains(b, "root:") {
+			t.Errorf("%s was served: %d", hidden, c)
+		}
 	}
 }

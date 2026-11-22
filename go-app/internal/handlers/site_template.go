@@ -96,6 +96,27 @@ func (h *Handlers) ChangeSiteTemplate(w http.ResponseWriter, r *http.Request, co
 	wasRunning := old.State != nil && old.State.Running
 	oldType := site.TemplateType
 
+	// Check before touching anything: a site that can't run as the new kind would only crash. Switching plain files to
+	// Node is the common case, so DockLite adds a small index.js that serves them first (never replacing a file), and
+	// the switch carries on from there.
+	var added []string
+	if need := missingEntryFile(sitePath, newType); need != "" {
+		if !(newType == "node" && hasAnyFile(sitePath, "index.html", "index.htm")) {
+			writeJSON(w, http.StatusConflict, map[string]any{"error": need, "code": "missing_entry", "needs": entryFileFor(newType)})
+			return
+		}
+		if err := ensureFile(filepath.Join(sitePath, "index.js"), nodeStarterIndexJS); err != nil {
+			writeError(w, http.StatusInternalServerError, "couldn't add index.js: "+err.Error())
+			return
+		}
+		added = append(added, "index.js")
+		if _, err := os.Stat(filepath.Join(sitePath, "package.json")); os.IsNotExist(err) {
+			if ensureFile(filepath.Join(sitePath, "package.json"), nodePackageJSON(site.Domain)) == nil {
+				added = append(added, "package.json")
+			}
+		}
+	}
+
 	restoreOld := func(reason error) error {
 		if backID, backErr := h.docker.CreateSiteContainer(ctx, site.Domain, oldType, includeWww, sitePath, oldPort, site.ID, site.UserID, site.FolderID); backErr == nil {
 			_ = h.store.UpdateSiteContainerID(site.ID, &backID)
@@ -144,22 +165,43 @@ func (h *Handlers) ChangeSiteTemplate(w http.ResponseWriter, r *http.Request, co
 	h.audit(r, "site.template", site.Domain, map[string]any{"from": oldType, "to": newType, "ok": true})
 
 	resp := map[string]any{"success": true, "domain": site.Domain, "template_type": newType, "port": newPort, "container_id": newID}
-	if w := missingEntryFile(sitePath, newType); w != "" {
-		resp["warning"] = w
+	if len(added) > 0 {
+		resp["added_files"] = added
+		resp["note"] = "Added " + strings.Join(added, " and ") + " to the site's folder: a small server that serves your existing files. Replace it with your own whenever you like."
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// entryFiles are the files a site of each kind can start from (any one is enough).
+var entryFiles = map[string][]string{
+	"node":   {"index.js"},
+	"php":    {"index.php", "index.html"},
+	"static": {"index.html", "index.htm"},
+}
+
+func entryFileFor(templateType string) string {
+	if f := entryFiles[templateType]; len(f) > 0 {
+		return f[0]
+	}
+	return ""
+}
+
+func hasAnyFile(dir string, names ...string) bool {
+	for _, n := range names {
+		if st, err := os.Stat(filepath.Join(dir, n)); err == nil && st.Mode().IsRegular() {
+			return true
+		}
+	}
+	return false
+}
+
 // missingEntryFile says what a site of this kind needs that its folder doesn't have, or "".
 func missingEntryFile(sitePath, templateType string) string {
-	need := map[string]string{"node": "index.js", "php": "index.php", "static": "index.html"}[templateType]
-	if need == "" {
+	files := entryFiles[templateType]
+	if len(files) == 0 || hasAnyFile(sitePath, files...) {
 		return ""
 	}
-	if _, err := os.Stat(filepath.Join(sitePath, need)); err == nil {
-		return ""
-	}
-	return fmt.Sprintf("The site now runs as %s, but its folder has no %s, so visitors will see an error until one is added.", templateType, need)
+	return fmt.Sprintf("A %s site needs %s in its folder, and this one has none.", map[string]string{"node": "Node.js", "php": "PHP", "static": "static"}[templateType], strings.Join(files, " or "))
 }
 
 // siteStaysUp watches a freshly started site container for a few seconds. It is "up" once it has run for three seconds
