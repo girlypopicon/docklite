@@ -108,7 +108,7 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Register a SQLite file by hand | `docklite databases create board --type sqlite --site example.com --path /app/data/board.db` |
 | Create a database (postgres, mysql, mariadb, mongodb or redis) | `docklite databases create wordpress --type mariadb` (shows the connection details once) |
 | Delete a database and its data (for a SQLite one: forget it; the file stays in the site) | `docklite databases delete wordpress --yes` |
-| See all backups | `docklite backups list` |
+| See all backups, whether each worked and where it went | `docklite backups list` |
 | See the backup files on the server | `docklite backups files` |
 | Back up a site now (everything goes into one `.litpkg` kept on the server) | `docklite backups create example.com` |
 | Back up a site plus its databases | `docklite backups create example.com --with-databases` |
@@ -119,6 +119,15 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Restore one site out of a package that holds several | `docklite backups restore packages/everything-20261011-030000.litpkg --from example.com --yes` |
 | Back up automatically every night, keeping the last 7 | `docklite backups schedule --all --daily-at 03:00 --keep 7` (takes the same choices as `create`; or `--weekly sun@04:00`) |
 | See / remove automatic backups | `docklite backups schedules` / `docklite backups unschedule <id> --yes` |
+| Back up a dashboard group (every container in it, now and later) or just some containers | `docklite backups create --group "Client A"` / `docklite backups create --container web-a,db-a` (a site brings its databases) |
+| Back up a group every night to another place | `docklite backups schedule --group "Client A" --daily-at 02:00 --keep 14 --to "Second server"` |
+| See where backups can go | `docklite backups destinations` |
+| Send backups to a bucket (Cloudflare R2, Backblaze B2, Amazon S3, Wasabi, MinIO) | `docklite backups destination add "R2" --type s3 --endpoint https://<account>.r2.cloudflarestorage.com --region auto --bucket my-backups --access-key AKIA… --secret-key - --encrypt` (`-` reads the secret from standard input, so it stays out of shell history) |
+| Send backups to another server over SSH, or to a connected DockLite server | `docklite backups destination add "Second" --type sftp --host 203.0.113.9 --user backup --private-key-file ~/.ssh/id_ed25519 --dir /srv/backups` / `--type server --server smoll` |
+| Check a destination works (connect, write a tiny file, delete it) | `docklite backups destination test "R2"` |
+| Lock backups so the storage provider only holds scrambled data | add `--encrypt` to `destination add`: it makes a key and shows the private half once. Save it in a password manager; DockLite keeps only the public half and cannot open the backups itself |
+| Open a backup that is on another destination or locked | `docklite backups fetch <id> --key-file mykey.txt`, then `docklite backups inspect/restore` with the file it prints |
+| Open a locked backup without DockLite | `age -d -i mykey.txt -o backup.litpkg backup.litpkg.age` (age is a small standard tool: https://age-encryption.org) |
 | Check sites follow `/var/www/sites/<user>/<domain>` | `docklite sites layout` (report only) |
 | Move sites into that layout | `docklite sites layout --apply --yes` (copies, switches the container over, old folder goes to the trash) |
 | See folders under `/var/www/sites` DockLite doesn't know about, and the trash | `docklite sites folders` |

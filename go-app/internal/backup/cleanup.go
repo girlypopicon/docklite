@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,7 +10,7 @@ import (
 	"docklite-agent/internal/store"
 )
 
-func cleanupOldBackups(storeHandle *store.SQLiteStore, destinationID int64, retentionDays int) error {
+func cleanupOldBackups(ctx context.Context, storeHandle *store.SQLiteStore, destinationID int64, retentionDays int) error {
 	if retentionDays <= 0 {
 		return nil
 	}
@@ -19,8 +20,9 @@ func cleanupOldBackups(storeHandle *store.SQLiteStore, destinationID int64, rete
 		return err
 	}
 	for _, record := range records {
-		_ = RemoveBackupArtifacts(record.BackupPath)
-		_ = storeHandle.DeleteBackup(record.ID)
+		if RemoveRecordArtifacts(ctx, storeHandle, record) == nil {
+			_ = storeHandle.DeleteBackup(record.ID)
+		}
 	}
 	return nil
 }
@@ -75,7 +77,7 @@ func pruneKeepLast(storeHandle *store.SQLiteStore, targetType string, targetID i
 
 // pruneJobKeepLast keeps only the newest keep successful packages a schedule made. Like pruneKeepLast, failures are never
 // counted, so they can't push a good backup out.
-func pruneJobKeepLast(storeHandle *store.SQLiteStore, jobID int64, keep int) {
+func pruneJobKeepLast(ctx context.Context, storeHandle *store.SQLiteStore, jobID int64, keep int) {
 	if keep <= 0 {
 		return
 	}
@@ -92,7 +94,8 @@ func pruneJobKeepLast(storeHandle *store.SQLiteStore, jobID int64, keep int) {
 		if kept <= keep {
 			continue
 		}
-		_ = RemoveBackupArtifacts(r.BackupPath)
-		_ = storeHandle.DeleteBackup(r.ID)
+		if RemoveRecordArtifacts(ctx, storeHandle, r) == nil { // a copy that can't be deleted yet stays listed, and is tried again next time
+			_ = storeHandle.DeleteBackup(r.ID)
+		}
 	}
 }

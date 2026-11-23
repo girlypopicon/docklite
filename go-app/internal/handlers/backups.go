@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -55,6 +56,7 @@ func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 		RetentionDays *int              `json:"retention_days"`
 		Notes         string            `json:"notes"`
 		Wait          bool              `json:"wait"`
+		DestinationID int64             `json:"destination_id"` // send a "local" backup to this destination instead (an S3 bucket, a second server)
 	}
 	if err := readJSON(w, r, &body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -87,8 +89,18 @@ func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	// A backup made by hand always goes in this agent's own backup folder, where the list and downloads look.
-	dest.Config = ""
+	// A backup made by hand goes in this agent's own backup folder, where the list and downloads look, unless a
+	// destination was named (not for downloads: those are for the browser).
+	if body.DestinationID > 0 && delivery == "local" {
+		named, err := h.store.GetBackupDestinationByID(body.DestinationID)
+		if err != nil || named == nil || named.Enabled == 0 {
+			writeError(w, http.StatusNotFound, "that destination isn't available")
+			return
+		}
+		dest = named
+	} else {
+		dest.Config = ""
+	}
 	subDir := backup.PackageSubDir
 	if delivery == "download" {
 		subDir = "downloads"
@@ -103,8 +115,9 @@ func (h *Handlers) BackupExport(w http.ResponseWriter, r *http.Request) {
 		cutoff := time.Now().UTC().AddDate(0, 0, -*body.RetentionDays).Format("2006-01-02 15:04:05")
 		if records, err := h.store.ListOldBackups(dest.ID, cutoff); err == nil {
 			for _, record := range records {
-				_ = backup.RemoveBackupArtifacts(record.BackupPath)
-				_ = h.store.DeleteBackup(record.ID)
+				if backup.RemoveRecordArtifacts(r.Context(), h.store, record) == nil {
+					_ = h.store.DeleteBackup(record.ID)
+				}
 			}
 		}
 	}
@@ -171,6 +184,9 @@ func (h *Handlers) BackupDestinations(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
+		for i := range destinations {
+			destinations[i].Config = string(backup.RedactConfig(destinations[i].Config))
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"destinations": destinations})
 	case http.MethodPost:
 		var body struct {
@@ -187,20 +203,26 @@ func (h *Handlers) BackupDestinations(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "missing required fields: name, type, config")
 			return
 		}
-		if body.Type != "local" {
-			writeError(w, http.StatusBadRequest, "only local destinations are supported")
+		config, hostKey, err := h.prepareDestinationConfig(r.Context(), body.Type, "", string(body.Config))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		enabled := 1
 		if body.Enabled != nil {
 			enabled = *body.Enabled
 		}
-		id, err := h.store.CreateBackupDestination(body.Name, body.Type, string(body.Config), enabled)
+		id, err := h.store.CreateBackupDestination(body.Name, body.Type, config, enabled)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"id": id, "message": "Backup destination created successfully"})
+		h.audit(r, "backup.destination.create", body.Name, map[string]any{"type": body.Type})
+		out := map[string]any{"id": id, "message": "Backup destination created successfully"}
+		if hostKey != "" {
+			out["host_key"] = hostKey
+		}
+		writeJSON(w, http.StatusOK, out)
 	case http.MethodPut:
 		var body struct {
 			ID      int64           `json:"id"`
@@ -218,18 +240,30 @@ func (h *Handlers) BackupDestinations(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		params := make(map[string]any)
+		existing, err := h.store.GetBackupDestinationByID(body.ID)
+		if err != nil || existing == nil {
+			writeError(w, http.StatusNotFound, "destination not found")
+			return
+		}
 		if body.Name != nil {
 			params["name"] = *body.Name
 		}
+		typ := existing.Type
 		if body.Type != nil {
-			if *body.Type != "local" {
-				writeError(w, http.StatusBadRequest, "only local destinations are supported")
+			if *body.Type != existing.Type {
+				writeError(w, http.StatusBadRequest, "a destination's type can't change; make a new one")
 				return
 			}
 			params["type"] = *body.Type
 		}
+		hostKey := ""
 		if body.Config != nil {
-			params["config"] = string(body.Config)
+			config, hk, err := h.prepareDestinationConfig(r.Context(), typ, existing.Config, string(body.Config))
+			if err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			params["config"], hostKey = config, hk
 		}
 		if body.Enabled != nil {
 			params["enabled"] = *body.Enabled
@@ -238,7 +272,12 @@ func (h *Handlers) BackupDestinations(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"message": "Backup destination updated successfully"})
+		h.audit(r, "backup.destination.update", strconv.FormatInt(body.ID, 10), nil)
+		out := map[string]any{"message": "Backup destination updated successfully"}
+		if hostKey != "" {
+			out["host_key"] = hostKey
+		}
+		writeJSON(w, http.StatusOK, out)
 	case http.MethodDelete:
 		idStr := r.URL.Query().Get("id")
 		id, err := strconv.ParseInt(idStr, 10, 64)
@@ -441,7 +480,7 @@ func (h *Handlers) BackupHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, record := range backups {
 		if record.BackupPath != "" {
-			_ = backup.RemoveBackupArtifacts(record.BackupPath)
+			_ = backup.RemoveRecordArtifacts(r.Context(), h.store, record)
 		}
 	}
 	deleted, err := h.store.ClearBackupHistory()
@@ -675,7 +714,10 @@ func (h *Handlers) deleteBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if record.BackupPath != "" {
-		_ = backup.RemoveBackupArtifacts(record.BackupPath)
+		if err := backup.RemoveRecordArtifacts(r.Context(), h.store, *record); err != nil && r.URL.Query().Get("force") != "1" {
+			writeError(w, http.StatusBadGateway, "couldn't delete the copy at its destination ("+err.Error()+"). The entry was kept; try again, or add force=1 to forget it anyway.")
+			return
+		}
 	}
 	if err := h.store.DeleteBackup(id); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -705,8 +747,8 @@ func (h *Handlers) cleanupBackups(w http.ResponseWriter, r *http.Request) {
 	}
 	var deleted int64
 	for _, record := range records {
-		if record.BackupPath != "" {
-			_ = backup.RemoveBackupArtifacts(record.BackupPath)
+		if record.BackupPath != "" && backup.RemoveRecordArtifacts(r.Context(), h.store, record) != nil {
+			continue // still at its destination: keep the entry and try again next time
 		}
 		if err := h.store.DeleteBackup(record.ID); err == nil {
 			deleted++
@@ -769,10 +811,10 @@ func (h *Handlers) listBackupFiles() ([]map[string]any, error) {
 			return nil
 		}
 		rel = filepath.ToSlash(rel)
-		if !strings.HasPrefix(rel, "sites/") && !strings.HasPrefix(rel, "databases/") && !strings.HasPrefix(rel, "downloads/") && !strings.HasPrefix(rel, backup.PackageSubDir+"/") {
+		if !strings.HasPrefix(rel, "sites/") && !strings.HasPrefix(rel, "databases/") && !strings.HasPrefix(rel, "downloads/") && !strings.HasPrefix(rel, incomingDir+"/") && !strings.HasPrefix(rel, backup.PackageSubDir+"/") {
 			return nil
 		}
-		if !strings.HasSuffix(rel, ".tar.gz") && !strings.HasSuffix(rel, ".dump.gz") && !backup.IsPackage(rel) {
+		if !strings.HasSuffix(rel, ".tar.gz") && !strings.HasSuffix(rel, ".dump.gz") && !backup.IsPackage(rel) && !backup.IsPackage(strings.TrimSuffix(rel, backup.EncryptedExt)) {
 			return nil
 		}
 		info, infoErr := entry.Info()
@@ -798,16 +840,31 @@ type jobView struct {
 	KeepLast      int               `json:"keep_last"`
 	What          string            `json:"what"`           // "example.com + 2 databases"
 	SelectionData *backup.Selection `json:"selection_data"` // the selection, also for schedules made before packages
+	// DestinationName is where the schedule sends its backups ("Local Server", "Cloudflare R2"); Problems are things the
+	// selection names that can't be backed up right now (a container that is gone, one that isn't a site or database).
+	DestinationName string   `json:"destination_name"`
+	Problems        []string `json:"problems,omitempty"`
 }
 
 func (h *Handlers) describeJobs(jobs []store.BackupJob) []jobView {
 	out := make([]jobView, 0, len(jobs))
+	var index backup.ContainerIndex // only looked up when a schedule is for a group or container
+	destNames := map[int64]string{}
+	if dests, err := h.store.GetBackupDestinations(); err == nil {
+		for _, d := range dests {
+			destNames[d.ID] = d.Name
+		}
+	}
 	for _, j := range jobs {
-		v := jobView{BackupJob: j}
+		v := jobView{BackupJob: j, DestinationName: destNames[j.Destination]}
 		if sel, err := backup.SelectionForJob(j); err == nil {
 			v.SelectionData = &sel
-			if res, err := sel.Resolve(h.store); err == nil {
+			if (len(sel.Groups) > 0 || len(sel.Containers) > 0) && index == nil {
+				index = backup.IndexContainers(context.Background(), h.docker)
+			}
+			if res, err := sel.ResolveWith(h.store, index); err == nil {
 				v.What = sel.Describe(res)
+				v.Problems = res.Missing
 			}
 		}
 		if sched, err := backup.ParseSchedule(j.Frequency); err == nil {

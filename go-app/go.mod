@@ -3,10 +3,12 @@ module docklite-agent
 go 1.22.0
 
 require (
+	filippo.io/age v1.2.1
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/go-acme/lego/v4 v4.17.4
 	github.com/gorilla/websocket v1.5.3
+	github.com/pkg/sftp v1.13.7
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	golang.org/x/crypto v0.33.0
 	modernc.org/sqlite v1.29.0
@@ -31,6 +33,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.59 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect

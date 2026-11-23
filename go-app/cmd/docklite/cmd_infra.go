@@ -282,8 +282,49 @@ func init() {
 
 	// ---- backups ----
 	register(command{
-		Path: []string{"backups", "list"}, Summary: "Backups that exist, and whether each succeeded", Usage: "backups list", AdminOnly: true,
-		Run: func(a *app, args []string) error { return a.getAndEmit("/api/backups") },
+		Path: []string{"backups", "list"}, Summary: "Every backup made, whether it worked, and where it went (use the id with fetch or delete)", Usage: "backups list", AdminOnly: true,
+		Run: func(a *app, args []string) error {
+			data, err := a.get("/api/backups")
+			if err != nil {
+				return err
+			}
+			if a.opts.JSON {
+				a.emit(data)
+				return nil
+			}
+			var resp struct {
+				Backups []struct {
+					ID        int64  `json:"id"`
+					Scope     string `json:"scope"`
+					Status    string `json:"status"`
+					Path      string `json:"backup_path"`
+					Size      int64  `json:"size_bytes"`
+					CreatedAt string `json:"created_at"`
+				} `json:"backups"`
+			}
+			if err := json.Unmarshal(data, &resp); err != nil {
+				return err
+			}
+			rows := [][]string{}
+			for _, b := range resp.Backups {
+				where := b.Path
+				if i := strings.Index(where, "://"); i > 0 {
+					where = where[:i] // s3, sftp, server
+				} else if where != "" {
+					where = "this server"
+				}
+				if strings.HasSuffix(b.Path, ".age") {
+					where += " (locked)"
+				}
+				rows = append(rows, []string{fmt.Sprint(b.ID), b.Scope, b.Status, humanSize(b.Size), where, b.CreatedAt})
+			}
+			if len(rows) == 0 {
+				a.say("No backups yet. Make one with: docklite backups create --all")
+				return nil
+			}
+			a.table([]string{"ID", "WHAT", "STATE", "SIZE", "WHERE", "MADE"}, rows)
+			return nil
+		},
 	})
 	register(command{
 		Path: []string{"backups", "delete"}, Summary: "Delete a backup and its file", Usage: "backups delete <id>", AdminOnly: true, Destructive: true,

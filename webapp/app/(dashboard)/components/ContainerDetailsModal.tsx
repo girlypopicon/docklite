@@ -22,6 +22,7 @@ import SiteHttpsCard from './SiteHttpsCard';
 import SiteTypeCard from './SiteTypeCard';
 import ForwardCard from './ForwardCard';
 import LimitsCard from './LimitsCard';
+import BackupPlanCard from './BackupPlanCard';
 import { containerDisplayName } from '@/lib/container-names';
 
 interface ContainerStats {
@@ -316,6 +317,7 @@ export default function ContainerDetailsModal({ containerId, containerName, onCl
                 />
               )}
               <LimitsCard containerId={containerId} />
+              <BackupPlanCard containerName={details.name} />
               {/* Real-time Stats */}
               {isRunning && stats && stats.cpu !== undefined && (
                 <div className="card-vapor p-6 rounded-xl">

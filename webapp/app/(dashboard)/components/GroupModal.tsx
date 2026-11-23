@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { ContainerInfo, BoxGroup } from '@/types';
-import { LinkSimple, Plus } from '@phosphor-icons/react';
+import { HardDrives, LinkSimple, Plus } from '@phosphor-icons/react';
+import BackupPlanModal, { useCanManageBackups } from './BackupPlanModal';
 import { containerDisplayName } from '@/lib/container-names';
 import { groupIconFor } from '@/lib/box-styles';
 import CloseButton from './CloseButton';
@@ -21,6 +22,8 @@ interface GroupModalProps {
 export default function GroupModal({ group, boxes, addable, renderBox, onAdd, onClose }: GroupModalProps) {
   useEscape(onClose);
   const [pick, setPick] = useState('');
+  const [backingUp, setBackingUp] = useState(false);
+  const canBackUp = useCanManageBackups();
   const Icon = groupIconFor(group.icon);
 
   return (
@@ -54,6 +57,15 @@ export default function GroupModal({ group, boxes, addable, renderBox, onAdd, on
               : 'A group keeps related containers together on your desktop.'}
           </p>
         </div>
+
+        {canBackUp && boxes.length > 0 && (
+          <div className="mb-5">
+            <button type="button" className="btn-neon px-4 py-2 text-sm font-bold inline-flex items-center gap-2" onClick={() => setBackingUp(true)}>
+              <HardDrives size={16} /> Back up this group…
+            </button>
+          </div>
+        )}
+        {backingUp && <BackupPlanModal kind="group" name={group.name} groupId={group.id} onClose={() => setBackingUp(false)} />}
 
         {boxes.length === 0 ? (
           <p className="py-10 text-center" style={{ color: 'var(--text-secondary)' }}>

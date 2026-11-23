@@ -62,8 +62,9 @@ func init() {
 	})
 	register(command{
 		Path: []string{"backups", "create"}, Summary: "Back up sites and/or databases now, all into one .litpkg kept on this server",
-		Usage: "backups create [<domain>...] [--with-databases] [--database <name>,...] [--all-sites] [--all-databases] [--all] [--notes TEXT]", AdminOnly: true,
+		Usage: "backups create [<domain>...] [--with-databases] [--database <name>,...] [--group <name>,...] [--container <name>,...] [--all-sites] [--all-databases] [--all] [--to <destination>] [--notes TEXT]", AdminOnly: true,
 		Examples: []string{
+			"docklite backups create --group \"Client A\" --to \"Cloudflare R2\"",
 			"docklite backups create glowrom.com",
 			"docklite backups create glowrom.com --with-databases",
 			"docklite backups create --database shopdb",
@@ -71,10 +72,11 @@ func init() {
 		},
 		Run: func(a *app, args []string) error {
 			var pick selectionFlags
-			var notes string
+			var notes, to string
 			pos, err := a.flags("backups create", args, func(fs *flag.FlagSet) {
 				pick.define(fs)
 				fs.StringVar(&notes, "notes", "", "")
+				fs.StringVar(&to, "to", "", "")
 			})
 			if err != nil {
 				return err
@@ -83,7 +85,11 @@ func init() {
 			if err != nil {
 				return err
 			}
-			data, err := a.post("/api/backups/export", map[string]any{"selection": sel, "delivery": "local", "notes": notes})
+			destID, err := a.destinationID(to)
+			if err != nil {
+				return err
+			}
+			data, err := a.post("/api/backups/export", map[string]any{"selection": sel, "delivery": "local", "notes": notes, "destination_id": destID})
 			if err != nil {
 				return err
 			}
@@ -104,7 +110,11 @@ func init() {
 			if done.Status != "success" {
 				return fmt.Errorf("the backup failed: %s", done.Error)
 			}
-			a.say("Backed up into %s (%s). See it with: docklite backups files", done.Location, humanSize(done.Size))
+			if to != "" {
+				a.say("Backed up to %s (%s). See it with: docklite backups list", to, humanSize(done.Size))
+			} else {
+				a.say("Backed up into %s (%s). See it with: docklite backups files", done.Location, humanSize(done.Size))
+			}
 			for _, w := range done.Warnings {
 				a.say("Warning: %s", w)
 			}
@@ -290,14 +300,15 @@ func init() {
 	})
 	register(command{
 		Path: []string{"backups", "schedule"}, Summary: "Back up automatically: every day (or week) at a time you choose, keeping the newest N",
-		Usage: "backups schedule [<domain>...] [--with-databases] [--database <name>,...] [--all-sites] [--all-databases] [--all] [--daily-at HH:MM | --weekly sun@HH:MM | --every-hours N] [--keep N]", AdminOnly: true,
-		Examples: []string{"docklite backups schedule --all --daily-at 03:00 --keep 7", "docklite backups schedule glowrom.com --with-databases --weekly sun@04:00 --keep 4"},
+		Usage: "backups schedule [<domain>...] [--with-databases] [--database <name>,...] [--group <name>,...] [--container <name>,...] [--all-sites] [--all-databases] [--all] [--to <destination>] [--daily-at HH:MM | --weekly sun@HH:MM | --every-hours N] [--keep N]", AdminOnly: true,
+		Examples: []string{"docklite backups schedule --group \"Client A\" --daily-at 02:00 --keep 14 --to \"Second server\"", "docklite backups schedule --all --daily-at 03:00 --keep 7", "docklite backups schedule glowrom.com --with-databases --weekly sun@04:00 --keep 4"},
 		Run: func(a *app, args []string) error {
 			var pick selectionFlags
-			var dailyAt, weekly string
+			var dailyAt, weekly, to string
 			var everyHours, keep int
 			pos, err := a.flags("backups schedule", args, func(fs *flag.FlagSet) {
 				pick.define(fs)
+				fs.StringVar(&to, "to", "", "")
 				fs.StringVar(&dailyAt, "daily-at", "", "")
 				fs.StringVar(&weekly, "weekly", "", "")
 				fs.IntVar(&everyHours, "every-hours", 0, "")
@@ -325,7 +336,11 @@ func init() {
 				freq += fmt.Sprintf(";keep=%d", keep)
 			}
 			// destination_id 0: the agent uses (and if need be creates) its local destination
-			body := map[string]any{"selection": sel, "frequency": freq, "retention_days": 0, "enabled": 1}
+			destID, err := a.destinationID(to)
+			if err != nil {
+				return err
+			}
+			body := map[string]any{"selection": sel, "frequency": freq, "retention_days": 0, "enabled": 1, "destination_id": destID}
 			if _, err := a.post("/api/backups/jobs", body); err != nil {
 				return err
 			}
@@ -357,6 +372,7 @@ func init() {
 type selectionFlags struct {
 	withDatabases, allSites, allDatabases, all bool
 	databases                                  string
+	groups, containers                         string // names, separated by commas
 }
 
 func (p *selectionFlags) define(fs *flag.FlagSet) {
@@ -365,6 +381,74 @@ func (p *selectionFlags) define(fs *flag.FlagSet) {
 	fs.BoolVar(&p.allSites, "all-sites", false, "")
 	fs.BoolVar(&p.allDatabases, "all-databases", false, "")
 	fs.BoolVar(&p.all, "all", false, "")
+	fs.StringVar(&p.groups, "group", "", "")
+	fs.StringVar(&p.containers, "container", "", "")
+}
+
+func splitNames(s string) []string {
+	var out []string
+	for _, n := range strings.Split(s, ",") {
+		if n = strings.TrimSpace(n); n != "" {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// groupIDs looks groups up by name.
+func (a *app) groupIDs(names []string) ([]int64, error) {
+	data, err := a.get("/api/groups")
+	if err != nil {
+		return nil, err
+	}
+	var resp struct {
+		Groups []struct {
+			ID   int64  `json:"id"`
+			Name string `json:"name"`
+		} `json:"groups"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for _, n := range names {
+		found := false
+		for _, g := range resp.Groups {
+			if strings.EqualFold(g.Name, n) {
+				ids, found = append(ids, g.ID), true
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("there is no group called %s (see: docklite groups list)", n)
+		}
+	}
+	return ids, nil
+}
+
+// destinationID looks a backup destination up by name ("" means the default: a folder on this server).
+func (a *app) destinationID(name string) (int64, error) {
+	if strings.TrimSpace(name) == "" {
+		return 0, nil
+	}
+	data, err := a.get("/api/backups/destinations")
+	if err != nil {
+		return 0, err
+	}
+	var resp struct {
+		Destinations []struct {
+			ID   int64  `json:"id"`
+			Name string `json:"name"`
+		} `json:"destinations"`
+	}
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return 0, err
+	}
+	for _, d := range resp.Destinations {
+		if strings.EqualFold(d.Name, name) {
+			return d.ID, nil
+		}
+	}
+	return 0, fmt.Errorf("there is no backup destination called %s (see: docklite backups destinations)", name)
 }
 
 // selection looks the named sites and databases up and builds the selection the agent takes.
@@ -375,8 +459,8 @@ func (p *selectionFlags) selection(a *app, domains []string) (map[string]any, er
 			dbNames = append(dbNames, n)
 		}
 	}
-	if len(domains) == 0 && len(dbNames) == 0 && !p.allSites && !p.allDatabases && !p.all {
-		return nil, usageError("say what to back up: one or more domains, --database <name>, --all-sites, --all-databases or --all")
+	if len(domains) == 0 && len(dbNames) == 0 && !p.allSites && !p.allDatabases && !p.all && p.groups == "" && p.containers == "" {
+		return nil, usageError("say what to back up: one or more domains, --database <name>, --group <name>, --container <name>, --all-sites, --all-databases or --all")
 	}
 	data, err := a.get("/api/backups/targets")
 	if err != nil {
@@ -396,6 +480,16 @@ func (p *selectionFlags) selection(a *app, domains []string) (map[string]any, er
 		return nil, err
 	}
 	sel := map[string]any{}
+	if g := splitNames(p.groups); len(g) > 0 {
+		ids, err := a.groupIDs(g)
+		if err != nil {
+			return nil, err
+		}
+		sel["groups"] = ids
+	}
+	if c := splitNames(p.containers); len(c) > 0 {
+		sel["containers"] = c
+	}
 	var siteIDs, dbIDs []int64
 	for _, d := range domains {
 		found := false

@@ -5,6 +5,35 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.23.0 (2026-11-23)
+
+### Added
+- **Send backups somewhere else.** A backup destination can now be a **bucket** (Cloudflare R2, Backblaze B2, Amazon S3, Wasabi, MinIO or any
+  S3-compatible service), **another server over SSH/SFTP**, or **a DockLite server you already connected** on the Servers page (it keeps the
+  files in its own backups folder). The backup is made and checked here, copied there, and the local copy removed. Large backups go up in
+  parts, so a dropped connection costs a part, not the whole upload. Schedules, "keep the newest N" and retention days work on all of them,
+  and a copy that can't be deleted yet stays listed and is tried again instead of being forgotten.
+- **Lock backups with a key, wherever they go.** Any destination (a plain folder too) can lock every backup before it leaves the server, with
+  [age](https://age-encryption.org). DockLite keeps only the public half of the key, so a stolen server or bucket can't open old backups; the
+  private half is shown once when the destination is made and is only needed to restore. A locked backup opens without DockLite:
+  `age -d -i key.txt -o backup.litpkg backup.litpkg.age`.
+- **Back up a group or a container.** A schedule or a backup made now can be for a dashboard group (every container in it when the backup
+  runs, so ones added later are included) or for named containers. A website container brings its databases. The package records the group
+  so it can be put back. `docklite backups create/schedule --group "Client A" --container web-a --to "Cloudflare R2"`.
+- **"Back up this container" and "Back up this group"** in the container details and the group window: pick where, when and how many to keep,
+  or back up right now. The same plans show on the Backups page.
+- **A Destinations tab on the Backups page** to add, test and remove destinations, with a guided "make my key" step that makes you confirm
+  the key is saved before anything is created. Restore points show where each backup is kept and which are locked; restoring one that is
+  elsewhere or locked first fetches and unlocks a copy (kept for an hour).
+- **CLI:** `backups destinations`, `backups destination add/test/remove`, `backups key new`, `backups fetch <id> [--key-file]`, and
+  `backups list` is now a readable table (ids work with `fetch` and `delete`). Secrets can be given as `-` to read them from standard input.
+
+### Notes
+- Destination passwords and bucket secrets are stored in the DockLite database like server tokens are, and are never sent back to the
+  browser. An SFTP server's key is saved the first time and every later connection must match it.
+- Not tried against a live bucket yet: the S3 requests are tested against a stand-in service, and SFTP against a small SSH server started
+  by the tests (including the pinned-key and wrong-password cases). Use **Test** on a new destination before relying on it.
+
 ## 1.22.2 (2026-11-23)
 
 ### Added

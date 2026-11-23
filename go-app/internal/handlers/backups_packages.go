@@ -221,7 +221,7 @@ func (h *Handlers) selectionAllowed(r *http.Request, sel backup.Selection) (bool
 	if isAdminRole(r) {
 		return true, nil
 	}
-	if sel.AllSites || sel.AllDatabases || len(sel.Sites) > 0 || len(sel.SiteDatabases) > 0 {
+	if sel.AllSites || sel.AllDatabases || len(sel.Sites) > 0 || len(sel.SiteDatabases) > 0 || len(sel.Groups) > 0 || len(sel.Containers) > 0 {
 		return false, nil
 	}
 	userID, ok := readUserIDFromContext(r)
@@ -240,7 +240,7 @@ func (h *Handlers) selectionAllowed(r *http.Request, sel backup.Selection) (bool
 // startPackage makes a package in the background, with a progress bar the dashboard polls. jobKey keeps one schedule
 // from running twice at once (0 for a backup made by hand). When wait is set it returns only once the backup is done.
 func (h *Handlers) startPackage(job *store.BackupJob, dest store.BackupDestination, sel backup.Selection, subDir, notes string, download, wait bool) (int64, *backup.PackageResult, error) {
-	backupID, err := backup.StartPackageRecord(h.store, job, dest, sel)
+	backupID, err := backup.StartPackageRecord(h.store, h.docker, job, dest, sel)
 	if err != nil {
 		return 0, nil, err
 	}
