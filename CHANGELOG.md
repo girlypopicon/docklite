@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.22.0 (2026-11-23)
+
 ### Fixed
 - **The "container isn't running" page lost its styling in 1.20.0**: the box→container rename also changed the CSS words `box-sizing` and
   `box-shadow`. Restored (the page is rewritten on its own when the agent starts).
