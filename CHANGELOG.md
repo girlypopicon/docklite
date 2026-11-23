@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.23.0 (2026-11-23)
+
 ### Added
 - **Send backups somewhere else.** A backup destination can now be a **bucket** (Cloudflare R2, Backblaze B2, Amazon S3, Wasabi, MinIO or any
   S3-compatible service), **another server over SSH/SFTP**, or **a DockLite server you already connected** on the Servers page (it keeps the
