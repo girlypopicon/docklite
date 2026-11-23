@@ -5,6 +5,12 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+### Added
+- **`docklite nginx enable <domain>`** switches a site's nginx file back on (nginx checks it first, and it is switched off again if nginx
+  rejects it). No root password needed: the agent does it through its helper.
+- **`docklite doctor` warns about a site whose container runs but whose nginx file is switched off or missing**, so visitors can't reach it.
+  This is how a leftover from a rename or move shows up (`dre.green` on smoll was one).
+
 ## 1.22.1 (2026-11-23)
 
 ### Fixed

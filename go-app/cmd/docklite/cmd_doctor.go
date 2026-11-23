@@ -201,6 +201,32 @@ func runDoctor(a *app, args []string) error {
 		}
 	}
 
+	if data, err := a.get("/api/nginx/sites"); err == nil {
+		var r struct {
+			Sites []nginxSiteRow `json:"sites"`
+		}
+		_ = json.Unmarshal(data, &r)
+		running := map[string]bool{}
+		if cs, err := a.listContainers(); err == nil {
+			for _, c := range cs {
+				if c.State == "running" && c.domain() != "" && c.kind() == "site" {
+					running[c.domain()] = true
+				}
+			}
+		}
+		off, noFile := disabledButRunning(r.Sites, running)
+		for _, d := range off {
+			add("nginx "+d, "warn", "the container is running but its nginx file is switched off, so visitors can't reach it (a leftover, or switched off by mistake?)",
+				"docklite nginx enable "+d+" --yes   (or delete the container if it's a leftover: docklite containers delete "+d+" --yes)")
+		}
+		for _, d := range noFile {
+			add("nginx "+d, "warn", "the container is running but the site has no nginx file", "Network → Nginx in the dashboard: open "+d+" and save its default config (or delete the container if it is a leftover)")
+		}
+		if len(off)+len(noFile) == 0 {
+			add("nginx sites", "ok", "every running site is switched on in nginx", "")
+		}
+	}
+
 	if data, err := a.get("/api/ssl/checks"); err == nil {
 		var r struct {
 			Problems []struct {
