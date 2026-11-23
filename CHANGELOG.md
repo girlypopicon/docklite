@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.22.1 (2026-11-23)
+
 ### Fixed
 - **Switching a site's type could say it worked and do nothing.** If a switch to Node was rolled back (the site crashed as Node, so the old
   container was put back), the saved type stayed on "node" while a static container ran. The next switch to Node then answered "already node"
