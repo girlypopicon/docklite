@@ -74,6 +74,7 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Check everything is healthy | `docklite doctor` |
 | See what's running | `docklite containers list` (add `--kind site`, `--running`) |
 | Restart a site | `docklite containers restart example.com` |
+| Switch a site's nginx file back on | `docklite nginx enable example.com --yes` (`docklite nginx sites` shows which are on; `doctor` warns about running sites that are off) |
 | Show a "back soon" page while you work on a site | `docklite nginx maintenance on example.com --message "Back by 3pm"` (then `... off example.com`; `all` for every site; `status` to see) |
 | Cap a container's CPU, memory and processes | `docklite containers limits example.com --cpus 0.5 --memory 512 --pids 200` (`--none` removes them; no restart needed) |
 | Read a site's logs | `docklite containers logs example.com --tail 200` |

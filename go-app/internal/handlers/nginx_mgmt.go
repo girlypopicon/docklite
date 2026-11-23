@@ -39,6 +39,10 @@ func (h *Handlers) NginxSites(w http.ResponseWriter, r *http.Request) {
 		h.nginxListSites(w, r)
 		return
 	}
+	if d, ok := strings.CutSuffix(domain, "/enable"); ok {
+		h.nginxEnableSite(w, r, d)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
@@ -106,6 +110,40 @@ func (h *Handlers) nginxListSites(w http.ResponseWriter, r *http.Request) {
 		entries = append(entries, nginxEntryStatus(s.Domain, s.TemplateType))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"sites": entries})
+}
+
+// nginxEnableSite switches a site's nginx file back on (POST /api/nginx/sites/{domain}/enable): it links the file into
+// sites-enabled, has nginx check the result, and undoes the link if nginx doesn't like it.
+func (h *Handlers) nginxEnableSite(w http.ResponseWriter, r *http.Request, domain string) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	site, _ := h.store.GetSiteByDomain(domain)
+	if site == nil {
+		writeError(w, http.StatusNotFound, "domain not managed by DockLite")
+		return
+	}
+	entry := nginxEntryStatus(domain, site.TemplateType)
+	if !entry.HasConfig {
+		writeError(w, http.StatusConflict, "this site has no nginx file to switch on")
+		return
+	}
+	if entry.Enabled {
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": domain + " is already enabled"})
+		return
+	}
+	if err := enableNginxSite(domain); err != nil {
+		writeError(w, http.StatusInternalServerError, "could not enable the site: "+err.Error())
+		return
+	}
+	if err := reloadNginx(); err != nil {
+		_, _ = runRootHelper(nil, "site-disable", sanitizeNginxFilename(domain))
+		writeError(w, http.StatusConflict, "nginx rejected the site, so it was switched off again: "+err.Error())
+		return
+	}
+	h.audit(r, "nginx.enable", domain, nil)
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": domain + " is enabled"})
 }
 
 func (h *Handlers) nginxGetConfig(w http.ResponseWriter, r *http.Request, domain string) {
