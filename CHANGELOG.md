@@ -5,6 +5,8 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.22.2 (2026-11-23)
+
 ### Added
 - **`docklite nginx enable <domain>`** switches a site's nginx file back on (nginx checks it first, and it is switched off again if nginx
   rejects it). No root password needed: the agent does it through its helper.
