@@ -57,6 +57,12 @@ func (h *Handlers) ChangeSiteTemplate(w http.ResponseWriter, r *http.Request, co
 		return
 	}
 	includeWww := old.Config.Labels["docklite.include_www"] == "true"
+	// What the container really is is the truth. The saved type can be wrong (an earlier switch that was rolled back used
+	// to leave it on the new type), and trusting it made "switch to node" answer "already node" for a static container.
+	currentType := currentSiteType(site.TemplateType, old.Config.Labels["docklite.type"])
+	if currentType != site.TemplateType {
+		_ = h.store.UpdateSiteTemplate(site.ID, currentType)
+	}
 	oldPort := 80
 	if p, err := strconv.Atoi(old.Config.Labels["docklite.internal_port"]); err == nil && p > 0 {
 		oldPort = p
@@ -64,7 +70,7 @@ func (h *Handlers) ChangeSiteTemplate(w http.ResponseWriter, r *http.Request, co
 	newPort := 80
 	if newType == "node" {
 		newPort = 3000
-		if site.TemplateType == "node" && oldPort > 0 {
+		if currentType == "node" && oldPort > 0 {
 			newPort = oldPort
 		}
 		if req.Port != nil {
@@ -75,7 +81,7 @@ func (h *Handlers) ChangeSiteTemplate(w http.ResponseWriter, r *http.Request, co
 			return
 		}
 	}
-	if newType == site.TemplateType && newPort == oldPort {
+	if newType == currentType && newPort == oldPort {
 		writeJSON(w, http.StatusOK, map[string]any{"success": true, "template_type": newType, "message": "already " + newType})
 		return
 	}
@@ -94,7 +100,7 @@ func (h *Handlers) ChangeSiteTemplate(w http.ResponseWriter, r *http.Request, co
 		return
 	}
 	wasRunning := old.State != nil && old.State.Running
-	oldType := site.TemplateType
+	oldType := currentType
 
 	// Check before touching anything: a site that can't run as the new kind would only crash. Switching plain files to
 	// Node is the common case, so DockLite adds a small index.js that serves them first (never replacing a file), and
@@ -118,6 +124,8 @@ func (h *Handlers) ChangeSiteTemplate(w http.ResponseWriter, r *http.Request, co
 	}
 
 	restoreOld := func(reason error) error {
+		// The saved type must go back with the container, or the database says "node" while a static container runs.
+		_ = h.store.UpdateSiteTemplate(site.ID, oldType)
 		if backID, backErr := h.docker.CreateSiteContainer(ctx, site.Domain, oldType, includeWww, sitePath, oldPort, site.ID, site.UserID, site.FolderID); backErr == nil {
 			_ = h.store.UpdateSiteContainerID(site.ID, &backID)
 			h.repointNginx(ctx, site.Domain, backID, oldPort, includeWww)
@@ -270,4 +278,13 @@ func crashReason(logs string) string {
 		errLine = errLine[:200] + "..."
 	}
 	return "Its log says: " + errLine
+}
+
+// currentSiteType is the kind a site really runs as: its container's label when that is one of DockLite's kinds,
+// otherwise the saved type.
+func currentSiteType(saved, label string) string {
+	if label == "static" || label == "php" || label == "node" {
+		return label
+	}
+	return saved
 }
