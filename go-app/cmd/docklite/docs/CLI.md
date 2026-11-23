@@ -80,6 +80,8 @@ DockLite usually hosts **live websites and databases**. Be careful and be conser
 | Send another domain's visitors to a site (redirect, or `--mode proxy` to keep the new address) | `docklite sites forward old-name.com --to example.com` (both end up in one linked group; add more the same way) |
 | See the domains forwarded to a site | `docklite sites forwards example.com` |
 | Get HTTPS for a site | `docklite ssl issue example.com --www --email me@example.com` (DNS must point here first) |
+| Check first whether a certificate request will reach this server | `docklite ssl preflight example.com` (DNS, Cloudflare, a test request; says what to do) |
+| Use a Cloudflare origin certificate (proxied sites; 15 years, no renewal) | `docklite ssl origin example.com --www --strict --yes` (`--strict` also sets the domain's Cloudflare SSL mode to Full (strict)) |
 | See certificates and expiry | `docklite ssl status` |
 | See which certificates renew by themselves, and whether the last renewal worked | `docklite ssl auto-renew` |
 | Turn automatic renewal on for all certificates / off everywhere | `docklite ssl auto-renew all` / `docklite ssl auto-renew none` |

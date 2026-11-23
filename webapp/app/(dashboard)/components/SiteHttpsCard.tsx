@@ -91,6 +91,47 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
     }
   };
 
+  const [pre, setPre] = useState<{ message: string; recommendation: string; sslMode?: string } | null>(null);
+  const [preBusy, setPreBusy] = useState(false);
+
+  const runPreflight = async () => {
+    setPreBusy(true);
+    try {
+      const res = await fetch(`/api/ssl/preflight?domain=${encodeURIComponent(domain)}`, { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not check');
+      setPre(data);
+    } catch (err: any) {
+      toast.error(err.message || 'Could not check');
+    } finally {
+      setPreBusy(false);
+    }
+  };
+
+  const useOriginCert = async () => {
+    const strict = window.confirm(
+      'Install a Cloudflare origin certificate for this site?\n\nPress OK to also set Cloudflare\'s SSL mode for the whole domain to "Full (strict)" (needed for it to work; it affects every site on this domain). Press Cancel to choose.',
+    );
+    if (!strict && !window.confirm('Install the certificate without changing Cloudflare\'s SSL mode? You will need to set Full (strict) in Cloudflare yourself.')) return;
+    setPreBusy(true);
+    try {
+      const res = await fetch('/api/ssl/origin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, includeWww: true, strict }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Could not install the certificate');
+      toast.success(data.message || 'Origin certificate installed.');
+      if (data.warning) toast.error(data.warning);
+      setPre(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Could not install the certificate');
+    } finally {
+      setPreBusy(false);
+    }
+  };
+
   const loadDns = async () => {
     try {
       const res = await fetch(`/api/dns/site?domain=${encodeURIComponent(domain)}&www=1`);
@@ -278,6 +319,32 @@ export default function SiteHttpsCard({ domain }: { domain: string }) {
                 </button>
               </div>
               {showSsl && <div className="mt-3"><ZoneSslControls zoneId={cloudflare.zoneId} /></div>}
+            </div>
+          )}
+          {cloudflare && (
+            <div className="text-xs border-t border-neon-purple/20 pt-3 space-y-2" style={{ color: 'var(--text-secondary)' }}>
+              <span className="font-bold" style={{ color: 'var(--text-primary)' }}>Certificate check: </span>
+              {pre ? (
+                <>
+                  <span>{pre.message}</span>
+                  {pre.recommendation === 'origin' && (
+                    <div>
+                      <button type="button" disabled={preBusy} onClick={useOriginCert} className="btn-neon px-3 py-1 text-xs font-bold">
+                        {preBusy ? 'Working…' : 'Use a Cloudflare origin certificate'}
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span>See whether a certificate request will reach this server before you try.</span>
+                  <div>
+                    <button type="button" disabled={preBusy} onClick={runPreflight} className="btn-neon px-3 py-1 text-xs font-bold">
+                      {preBusy ? 'Checking…' : 'Check now'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
           {cloudflare && dns && dns.records && (

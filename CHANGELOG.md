@@ -5,6 +5,44 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.21.0 (2026-11-22)
+
+### Security
+First pass of the agent security review (details and what is still open: `docs/SECURITY_REVIEW.md`).
+- **Raw nginx editing is now super-admin only, checked and reversible.** Any admin could write raw nginx config, and nginx runs as root, so
+  that was a way from admin to root. The config is now checked against a short list of safe directives and paths, and if nginx rejects it the
+  previous config is put back instead of breaking reloads for every site.
+- **Token scopes now mean something.** A token created with scope `read` can no longer change anything; `write` or `*` can; unknown scopes are refused.
+- **Login limits** now also stop one address trying many usernames and one account being guessed from many addresses.
+- **Unknown usernames take as long to answer as real ones**, so response time no longer shows which usernames exist.
+- **Changing a password ends the account's older sessions** (they used to last up to 24 hours).
+- **Tokens issued at login now expire after 90 days** unless you set another date (they never expired before).
+
+### Fixed
+- **A site that already has a certificate keeps HTTPS when its nginx file is rebuilt** (transfers, restores, re-created containers). The file is
+  now written with the HTTPS block from the existing certificate instead of the plain HTTP template.
+- **The root helper keeps the previous version of a site's nginx file** (newest 5 per site, in `sites-available/.docklite-backups`) before
+  it writes a new one.
+
+### Added
+- **`docklite doctor` checks HTTPS setup**: a certificate that exists but whose nginx file has no HTTPS block, a Let's Encrypt certificate with
+  no renewal config (it would quietly expire), and nginx files naming certificate files that aren't there. It also checks the Docker socket.
+- **The agent checks Docker when it starts**: it warns in its log if the socket is missing, isn't a socket, is writable by everyone, or Docker doesn't answer.
+
+- **Check before issuing a certificate.** `docklite ssl preflight <domain>` (and **Check now** on the site's HTTPS card) looks at where the
+  domain points, makes the same kind of test request Let's Encrypt makes, and says in words whether it will work: no address yet, points
+  somewhere else, or Cloudflare's security checks are turning certificate requests away. It also warns when Cloudflare's SSL mode is
+  Flexible.
+- **Cloudflare origin certificates, per site.** `docklite ssl origin <domain> [--www] [--strict]` (and a button on the HTTPS card when the
+  check finds Cloudflare blocking Let's Encrypt) asks Cloudflare for a 15-year certificate for a proxied site, stores it root-only, and
+  switches the site's nginx file to it. No renewal to forget. `--strict` also sets the domain's Cloudflare SSL mode to Full (strict),
+  which it needs. The token needs the Zone → SSL and Certificates → Edit permission.
+- **Forwarding shows what happened in Cloudflare**: the new domain's DNS records created, already right, or left alone because they
+  point elsewhere (CLI and dashboard).
+
+### Changed
+- **Debug is off by default for real**: the `/api/debug` route doesn't exist unless `ENABLE_DEBUG_PAGES=true`.
+
 ## 1.20.0 (2026-11-22)
 
 ### Added

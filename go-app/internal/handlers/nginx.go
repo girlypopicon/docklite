@@ -52,6 +52,57 @@ func nginxVhostConfig(domain string, includeWww bool, upstreamPort int) string {
 `, serverNames, downIncludeLine, upstreamPort)
 }
 
+// nginxVhostConfigTLS is the vhost for a domain that already has a certificate on disk (a transfer, a restored
+// backup, a re-created container): port 80 sends visitors to HTTPS (except certificate checks), and a 443 block
+// uses the existing files. certDir is the folder holding fullchain.pem and privkey.pem.
+func nginxVhostConfigTLS(domain string, includeWww bool, upstreamPort int, certDir string) string {
+	serverNames := domain
+	if includeWww && !strings.HasPrefix(domain, "www.") {
+		serverNames = domain + " www." + domain
+	}
+	return fmt.Sprintf(`server {
+    listen 80;
+    listen [::]:80;
+    server_name %[1]s;
+    %[2]s
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name %[1]s;
+    %[2]s
+
+    ssl_certificate %[4]s/fullchain.pem;
+    ssl_certificate_key %[4]s/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+
+    client_max_body_size 100M;
+
+    location / {
+        proxy_pass http://127.0.0.1:%[3]d;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
+        proxy_buffering off;
+    }
+}
+`, serverNames, downIncludeLine, upstreamPort, certDir)
+}
+
 // rootHelper is the only command DockLite runs through sudo; see
 // docklite-helper at the repo root and setup_sudoers in install.sh.
 const rootHelper = "/usr/local/sbin/docklite-helper"
@@ -159,6 +210,14 @@ func setupNginxForDomain(domain string, includeWww bool, hostPort int) error {
 	if existing, err := readNginxSiteConfig(domain); err == nil && nginxConfigHasSSL(existing) {
 		if updated, found := setProxyPort(existing, hostPort); found {
 			config = updated
+		}
+	}
+	// No HTTPS in the vhost but a certificate on disk (after a transfer or restore): use it, so HTTPS isn't lost.
+	if !nginxConfigHasSSL(config) {
+		if _, err := runRootHelper(nil, "cert-exists", domain); err == nil {
+			config = nginxVhostConfigTLS(domain, includeWww, hostPort, "/etc/letsencrypt/live/"+domain)
+		} else if _, err := runRootHelper(nil, "origin-cert-exists", domain); err == nil {
+			config = nginxVhostConfigTLS(domain, includeWww, hostPort, originCertRoot+"/"+domain)
 		}
 	}
 	if err := writeNginxSiteConfig(domain, config); err != nil {

@@ -44,6 +44,11 @@ func (h *Handlers) NginxSites(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		h.nginxGetConfig(w, r, domain)
 	case http.MethodPut:
+		// nginx runs as root: only the owner of the server may hand it raw configuration.
+		if !isSuperAdminRole(r) {
+			writeError(w, http.StatusForbidden, "only the super admin can edit nginx configuration by hand")
+			return
+		}
 		h.nginxPutConfig(w, r, domain)
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -145,19 +150,16 @@ func (h *Handlers) nginxPutConfig(w http.ResponseWriter, r *http.Request, domain
 		return
 	}
 
-	if err := writeNginxSiteConfig(domain, body.Config); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	if err := validateNginxConfig(body.Config); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := enableNginxSite(domain); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	if err := applyNginxConfig(domain, body.Config); err != nil {
+		// nginx rejected it: the previous config is back, nothing changed.
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error() + " (your previous configuration was kept)"})
 		return
 	}
-	if err := reloadNginx(); err != nil {
-		// Config saved but nginx rejected it — surface the error
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
-		return
-	}
+	h.audit(r, "nginx.config", domain, nil)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

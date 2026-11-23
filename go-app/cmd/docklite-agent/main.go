@@ -20,11 +20,21 @@ import (
 func main() {
 	cfg := config.Load()
 
+	for _, problem := range docker.CheckSocket(cfg.DockerSocketPath) {
+		log.Printf("WARNING: %s", problem)
+	}
 	dockerClient, err := docker.NewClient(cfg.DockerSocketPath)
 	if err != nil {
 		log.Fatalf("failed to create docker client: %v", err)
 	}
 	defer dockerClient.Close()
+	{
+		pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := dockerClient.Ping(pingCtx); err != nil {
+			log.Printf("WARNING: Docker is not answering (%v). The agent keeps running and will work once Docker is up.", err)
+		}
+		cancel()
+	}
 
 	sqliteStore, err := store.NewSQLiteStore(cfg.DatabasePath)
 	if err != nil {

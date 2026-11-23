@@ -39,6 +39,10 @@ func (h *Handlers) Auth(next http.HandlerFunc) http.HandlerFunc {
 		if authToken != "" {
 			record, err := h.authenticateBearer(r.Context(), authToken)
 			if err == nil && record != nil {
+				if readOnlyToken(record) && !isSafeMethod(r.Method) {
+					writeError(w, http.StatusForbidden, "this token is read-only")
+					return
+				}
 				ctx := r.Context()
 				userID := record.UserID
 				if userID == nil && record.Role != nil && (*record.Role == "super_admin" || *record.Role == "admin") {
@@ -76,6 +80,11 @@ func (h *Handlers) Auth(next http.HandlerFunc) http.HandlerFunc {
 				userID, _ := readUserIDFromContext(r2)
 				user, err := h.store.GetUserByIDFull(userID)
 				if err != nil || user == nil {
+					writeError(w, http.StatusUnauthorized, "unauthorized")
+					return
+				}
+				// A session made before the password last changed is over.
+				if pv, _ := r2.Context().Value(ctxSessionPV).(string); pv != "" && pv != passwordVersion(user.PasswordHash) {
 					writeError(w, http.StatusUnauthorized, "unauthorized")
 					return
 				}
