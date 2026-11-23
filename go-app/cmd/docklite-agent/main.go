@@ -53,6 +53,7 @@ func main() {
 	}
 
 	handlers := handlers.New(dockerClient, sqliteStore, cfg.Token, cfg.BackupBaseDir, cfg.ListenAddr, cfg.NextjsURL)
+	dockerClient.SetLimitsProvider(handlers.StoredLimits)
 	router := api.NewRouter(handlers, cfg.NextjsURL)
 
 	backup.StartScheduler(sqliteStore, dockerClient, cfg.BackupBaseDir)

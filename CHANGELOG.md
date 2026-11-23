@@ -5,6 +5,21 @@ numbered release (and keeps `VERSION`, `webapp/package.json` and the git tag in 
 
 ## Unreleased
 
+## 1.22.0 (2026-11-23)
+
+### Fixed
+- **The "container isn't running" page lost its styling in 1.20.0**: the box→container rename also changed the CSS words `box-sizing` and
+  `box-shadow`. Restored (the page is rewritten on its own when the agent starts).
+
+### Added
+- **"Back soon" page.** `docklite nginx maintenance on example.com --message "Back by 3pm"` (or `all`) shows visitors a branded page with a
+  503 and a Retry-After header instead of the site, and `off` brings it back. It is instant: nothing reloads, because it only creates or
+  removes a small flag file. Also a card on the Network page (Nginx tab). Admins only.
+- **Limits per container: CPU, memory and processes.** On a container's details, a **Limits** card with quick choices (Small, Medium, Large,
+  No limit) and three boxes for exact numbers. Changes apply at once without a restart, are remembered, and are put back if the container is
+  re-created (a transfer, a type switch). Also `docklite containers limits <container> [--cpus N] [--memory MB] [--pids N] [--none]`.
+  Memory limits also stop swapping past the limit; the number of processes stops a runaway program from filling the server. Admins only.
+
 ## 1.21.0 (2026-11-22)
 
 ### Security
