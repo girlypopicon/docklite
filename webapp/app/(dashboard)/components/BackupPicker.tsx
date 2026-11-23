@@ -11,13 +11,15 @@ export type BackupSelection = {
   databases?: number[]; // single databases
   all_sites?: boolean; // every site's files, including sites added later
   all_databases?: boolean; // every database, including ones added later
+  groups?: number[]; // every container in these groups, including ones added later
+  containers?: string[]; // containers by name
 };
 
 type TargetDB = { id: number; name: string; type: string; site_id: number | null };
 type TargetSite = { id: number; domain: string; databases: TargetDB[] };
 
 export function selectionIsEmpty(sel: BackupSelection) {
-  return !sel.all_sites && !sel.all_databases && !sel.sites?.length && !sel.site_databases?.length && !sel.databases?.length;
+  return !sel.all_sites && !sel.all_databases && !sel.sites?.length && !sel.site_databases?.length && !sel.databases?.length && !sel.groups?.length && !sel.containers?.length;
 }
 
 const toggle = (list: number[] | undefined, id: number, on: boolean) => {
@@ -36,7 +38,7 @@ const QUICK: Array<{ id: QuickChoice; label: string }> = [
 
 // Which quick choice a selection is, if it is one of the three simple ones.
 function quickChoiceOf(sel: BackupSelection): QuickChoice {
-  const picked = !!(sel.sites?.length || sel.site_databases?.length || sel.databases?.length);
+  const picked = !!(sel.sites?.length || sel.site_databases?.length || sel.databases?.length || sel.groups?.length || sel.containers?.length);
   if (picked) return 'choose';
   if (sel.all_sites && sel.all_databases) return 'everything';
   if (sel.all_sites) return 'sites';

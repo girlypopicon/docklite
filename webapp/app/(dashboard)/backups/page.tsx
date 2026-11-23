@@ -14,14 +14,18 @@ import {
   Info,
   ShieldCheck,
   Sparkle,
+  CloudArrowUp,
+  LockSimple,
 } from '@phosphor-icons/react';
 import AddBackupJobModal from '../components/AddBackupJobModal';
 import CloseButton from '../components/CloseButton';
 import BackupPicker, { BackupSelection, selectionIsEmpty } from '../components/BackupPicker';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import BackupDestinationsPanel from '../components/BackupDestinationsPanel';
+import FetchBackupDialog from '../components/FetchBackupDialog';
 import { useToast } from '@/lib/hooks/useToast';
 
-type Tab = 'backups' | 'schedules' | 'restore';
+type Tab = 'backups' | 'schedules' | 'restore' | 'destinations';
 
 type BackupRecord = {
   id: number;
@@ -71,6 +75,7 @@ export default function BackupsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('schedules');
   const [showRunNow, setShowRunNow] = useState(false);
   const [restoreFocus, setRestoreFocus] = useState<string | undefined>(undefined);
+  const [fetching, setFetching] = useState<BackupRecord | null>(null);
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [jobs, setJobs] = useState<BackupJob[]>([]);
   const [destinations, setDestinations] = useState<BackupDestination[]>([]);
@@ -358,6 +363,11 @@ export default function BackupsPage() {
 
   // A row's Restore button opens the Restore tab with that backup already picked. Database restore isn't built yet.
   const handleRestoreRow = (backup: BackupRecord) => {
+    const path = backup.backup_path || '';
+    if (path.includes('://') || path.endsWith('.age')) {
+      setFetching(backup); // it has to come to this server, and be unlocked, first
+      return;
+    }
     if (backup.target_type !== 'site' && !isPackage(backup)) {
       toast.info('Restoring a database from here is coming in a later version. Site backups can be restored now.');
       return;
@@ -486,6 +496,17 @@ export default function BackupsPage() {
           <ShieldCheck size={20} weight="regular" className="inline mr-2" />
           Restore
         </button>
+        <button
+          onClick={() => setActiveTab('destinations')}
+          className={`px-3 sm:px-4 py-2 font-bold whitespace-nowrap transition-colors ${
+            activeTab === 'destinations'
+              ? 'border-b-2 border-neon-pink text-accent-pink'
+              : 'text-ink-muted hover:text-accent-cyan'
+          }`}
+        >
+          <CloudArrowUp size={20} weight="regular" className="inline mr-2" />
+          Destinations
+        </button>
       </div>
 
       <div className="cyber-card p-2 sm:p-6">
@@ -551,9 +572,23 @@ export default function BackupsPage() {
             )}
 
             {activeTab === 'restore' && <RestoreSiteBackups focusPath={restoreFocus} />}
+            {activeTab === 'destinations' && <BackupDestinationsPanel />}
           </>
         )}
       </div>
+
+      {fetching && (
+        <FetchBackupDialog
+          backupId={fetching.id}
+          path={fetching.backup_path || ''}
+          onClose={() => setFetching(null)}
+          onReady={(file) => {
+            setFetching(null);
+            setRestoreFocus(file);
+            setActiveTab('restore');
+          }}
+        />
+      )}
 
       {showRunNow && (
         <RunBackupDialog
@@ -735,7 +770,15 @@ function BackupsTab({
                       <td className="py-4 pr-4 text-gray-200">
                         {new Date(backup.created_at).toLocaleString()}
                       </td>
-                      <td className="py-4 pr-4 text-gray-200">{getBackupAppLabel(backup)}</td>
+                      <td className="py-4 pr-4 text-gray-200">
+                        {getBackupAppLabel(backup)}
+                        {whereLabel(backup.backup_path) && (
+                          <div className="text-xs text-ink-muted flex items-center gap-1 mt-1">
+                            {backup.backup_path?.endsWith('.age') && <LockSimple size={11} weight="bold" />}
+                            {whereLabel(backup.backup_path)}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-4 pr-4 text-gray-200 uppercase">{getBackupTypeLabel(backup)}</td>
                       <td className="py-4 pr-4 text-gray-200">{formatBytes(backup.size_bytes)}</td>
                       <td className="py-4 pr-4">
@@ -872,6 +915,20 @@ function SchedulesTab({ jobs, destinations, destinationMap, onEdit, onDuplicate,
       )}
     </div>
   );
+}
+
+// Where a backup is kept when it isn't a plain file on this server, and whether it is locked.
+function whereLabel(path?: string) {
+  if (!path) return '';
+  const where = path.startsWith('s3://')
+    ? 'In a bucket'
+    : path.startsWith('sftp://')
+      ? 'On another server'
+      : path.startsWith('server://')
+        ? 'On a DockLite server'
+        : '';
+  const locked = path.endsWith('.age') ? 'locked' : '';
+  return [where, locked].filter(Boolean).join(', ');
 }
 
 function isPackage(backup: BackupRecord) {

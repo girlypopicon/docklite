@@ -1,6 +1,10 @@
 package backup
 
 import (
+	"context"
+	"time"
+
+	"docklite-agent/internal/docker"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -18,10 +22,15 @@ type Selection struct {
 	Databases     []int64 `json:"databases,omitempty"`      // single databases, by id
 	AllSites      bool    `json:"all_sites,omitempty"`      // the files of every site
 	AllDatabases  bool    `json:"all_databases,omitempty"`  // every database, whether it belongs to a site or not
+	// Groups and Containers back up by dashboard card instead of by site or database. A group means every container in
+	// it when the backup runs, so a container added later is included. A container that is a site brings its linked
+	// databases too; a database container brings its dump.
+	Groups     []int64  `json:"groups,omitempty"`
+	Containers []string `json:"containers,omitempty"` // container names
 }
 
 func (s Selection) Empty() bool {
-	return !s.AllSites && !s.AllDatabases && len(s.Sites) == 0 && len(s.SiteDatabases) == 0 && len(s.Databases) == 0
+	return !s.AllSites && !s.AllDatabases && len(s.Sites) == 0 && len(s.SiteDatabases) == 0 && len(s.Databases) == 0 && len(s.Groups) == 0 && len(s.Containers) == 0
 }
 
 // ParseSelection reads a selection saved as JSON. An empty string is an empty selection.
@@ -69,6 +78,8 @@ func SelectionForJob(job store.BackupJob) (Selection, error) {
 // a DockLite rolled back to before packages reads them; it then backs up roughly the same thing the old way.
 func (s Selection) LegacyTarget(jobTable bool) (string, int64) {
 	switch {
+	case len(s.Groups) > 0 || len(s.Containers) > 0:
+		return "site", 0
 	case s.AllSites && jobTable:
 		return "all-sites", 0
 	case s.AllDatabases && len(s.Sites) == 0 && jobTable:
@@ -92,7 +103,8 @@ func (s Selection) LegacyTarget(jobTable bool) (string, int64) {
 type Resolved struct {
 	Sites     []store.SiteRecord
 	Databases []ResolvedDatabase
-	Missing   []string // things that were selected but no longer exist
+	Missing   []string       // things that were selected but no longer exist
+	Groups    []PackageGroup // the groups that were selected, as they were
 }
 
 type ResolvedDatabase struct {
@@ -102,6 +114,15 @@ type ResolvedDatabase struct {
 
 // Resolve looks up what a selection means right now.
 func (s Selection) Resolve(st *store.SQLiteStore) (*Resolved, error) {
+	return s.ResolveWith(st, nil)
+}
+
+// ContainerIndex maps container names to ids, so a group's members (named by container name) can be matched to the
+// sites and databases that live in them.
+type ContainerIndex map[string]string
+
+// ResolveWith is Resolve with the containers Docker has right now, needed for groups and containers.
+func (s Selection) ResolveWith(st *store.SQLiteStore, containers ContainerIndex) (*Resolved, error) {
 	sites, err := st.ListSites()
 	if err != nil {
 		return nil, err
@@ -181,6 +202,11 @@ func (s Selection) Resolve(st *store.SQLiteStore) (*Resolved, error) {
 			out.Missing = append(out.Missing, fmt.Sprintf("database #%d (deleted)", id))
 		}
 	}
+	if len(s.Groups) > 0 || len(s.Containers) > 0 {
+		if err := s.addByContainer(st, containers, sites, dbs, links, addSite, addDB, out); err != nil {
+			return nil, err
+		}
+	}
 	sort.Slice(out.Sites, func(i, j int) bool { return out.Sites[i].Domain < out.Sites[j].Domain })
 	sort.Slice(out.Databases, func(i, j int) bool { return out.Databases[i].Name < out.Databases[j].Name })
 	return out, nil
@@ -212,7 +238,15 @@ func (s Selection) Describe(r *Resolved) string {
 	if parts[0] == "all databases" {
 		parts[0] = "All databases"
 	}
-	return strings.Join(parts, " + ")
+	desc := strings.Join(parts, " + ")
+	if len(r.Groups) > 0 {
+		names := make([]string, len(r.Groups))
+		for i, g := range r.Groups {
+			names[i] = g.Name
+		}
+		return "Group " + strings.Join(names, ", ") + ": " + desc
+	}
+	return desc
 }
 
 func plural(n int, word string) string {
@@ -220,4 +254,83 @@ func plural(n int, word string) string {
 		return "1 " + word
 	}
 	return fmt.Sprintf("%d %ss", n, word)
+}
+
+// addByContainer adds what the selected groups and containers hold.
+func (s Selection) addByContainer(st *store.SQLiteStore, containers ContainerIndex, sites []store.SiteRecord, dbs []store.DatabaseRecord, links map[int64]int64, addSite func(store.SiteRecord), addDB func(store.DatabaseRecord), out *Resolved) error {
+	names := append([]string{}, s.Containers...)
+	for _, id := range s.Groups {
+		g, err := st.GetGroup(id)
+		if err != nil {
+			return err
+		}
+		if g == nil {
+			out.Missing = append(out.Missing, fmt.Sprintf("group #%d (deleted)", id))
+			continue
+		}
+		out.Groups = append(out.Groups, PackageGroup{Name: g.Name, Linked: g.Linked, Members: append([]string{}, g.Members...)})
+		names = append(names, g.Members...)
+	}
+	sameContainer := func(a, b string) bool {
+		return a != "" && b != "" && (strings.HasPrefix(a, b) || strings.HasPrefix(b, a))
+	}
+	seen := map[string]bool{}
+	for _, name := range names {
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		id, ok := containers[name]
+		if !ok {
+			out.Missing = append(out.Missing, fmt.Sprintf("container %s (not found)", name))
+			continue
+		}
+		found := false
+		for _, site := range sites {
+			if site.ContainerID != nil && sameContainer(*site.ContainerID, id) {
+				found = true
+				addSite(site)
+				for dbID, linked := range links {
+					if linked != site.ID {
+						continue
+					}
+					for _, db := range dbs {
+						if db.ID == dbID {
+							addDB(db)
+						}
+					}
+				}
+			}
+		}
+		for _, db := range dbs {
+			if sameContainer(db.ContainerID, id) {
+				found = true
+				addDB(db)
+			}
+		}
+		if !found {
+			out.Missing = append(out.Missing, fmt.Sprintf("container %s (it isn't a site or a database, so there is nothing to back up)", name))
+		}
+	}
+	return nil
+}
+
+// IndexContainers lists the containers Docker has, by name. Without Docker it is empty, and groups can't be resolved.
+func IndexContainers(ctx context.Context, dc *docker.Client) ContainerIndex {
+	idx := ContainerIndex{}
+	if dc == nil {
+		return idx
+	}
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	list, err := dc.VisibleContainers(ctx, true)
+	if err != nil {
+		return idx
+	}
+	for _, c := range list {
+		for _, n := range c.Names {
+			idx[strings.TrimPrefix(n, "/")] = c.ID
+		}
+	}
+	return idx
 }

@@ -2,18 +2,14 @@ package backup
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"docklite-agent/internal/docker"
 	"docklite-agent/internal/store"
 )
-
-type DestinationConfig struct {
-	Path string `json:"path"`
-}
 
 func StartScheduler(storeHandle *store.SQLiteStore, dockerClient *docker.Client, backupBaseDir string) {
 	go func() {
@@ -110,7 +106,7 @@ func executeBackupJob(ctx context.Context, storeHandle *store.SQLiteStore, docke
 // RunPackage makes one .litpkg for a selection and records it in the backup history. A schedule passes its job, so its
 // "keep the newest N" applies; a backup made by hand passes nil. subDir "" means the destination's packages folder.
 func RunPackage(ctx context.Context, storeHandle *store.SQLiteStore, dockerClient *docker.Client, backupBaseDir string, job *store.BackupJob, dest store.BackupDestination, sel Selection, subDir, notes string) (*PackageResult, error) {
-	id, err := StartPackageRecord(storeHandle, job, dest, sel)
+	id, err := StartPackageRecord(storeHandle, dockerClient, job, dest, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -134,10 +130,10 @@ func RunPackage(ctx context.Context, storeHandle *store.SQLiteStore, dockerClien
 }
 
 // StartPackageRecord adds the "in progress" row for a package backup, so its id is known before the work starts.
-func StartPackageRecord(storeHandle *store.SQLiteStore, job *store.BackupJob, dest store.BackupDestination, sel Selection) (int64, error) {
+func StartPackageRecord(storeHandle *store.SQLiteStore, dockerClient *docker.Client, job *store.BackupJob, dest store.BackupDestination, sel Selection) (int64, error) {
 	targetType, targetID := sel.LegacyTarget(false)
 	scope := "Backup"
-	if r, err := sel.Resolve(storeHandle); err == nil {
+	if r, err := sel.ResolveWith(storeHandle, IndexContainers(context.Background(), dockerClient)); err == nil {
 		scope = sel.Describe(r)
 	}
 	record := store.BackupRecord{
@@ -155,20 +151,31 @@ func StartPackageRecord(storeHandle *store.SQLiteStore, job *store.BackupJob, de
 
 // FinishPackage does the work for a row StartPackageRecord made and records the outcome on it.
 func FinishPackage(ctx context.Context, storeHandle *store.SQLiteStore, dockerClient *docker.Client, backupBaseDir string, backupID int64, job *store.BackupJob, dest store.BackupDestination, sel Selection, subDir, notes string) (*PackageResult, error) {
-	if dest.Type != "local" {
-		err := fmt.Errorf("%s backup not implemented", dest.Type)
+	fail := func(err error) (*PackageResult, error) {
 		msg := err.Error()
 		_ = storeHandle.UpdateBackupStatus(backupID, "failed", &msg, nil, nil)
 		return nil, err
+	}
+	switch dest.Type {
+	case "local", "s3", "sftp", "server":
+	default:
+		return fail(fmt.Errorf("%s backup not implemented", dest.Type))
 	}
 	if subDir == "" {
 		subDir = PackageSubDir
 	}
-	res, err := CreatePackage(ctx, storeHandle, dockerClient, destinationPath(dest, backupBaseDir), subDir, sel, notes)
+	// A package for another destination is built in a work folder and removed once it is there.
+	base := destinationPath(dest, backupBaseDir)
+	if dest.Type != "local" {
+		base = filepath.Join(backupBaseDir, outboxDir)
+	}
+	res, err := CreatePackage(ctx, storeHandle, dockerClient, base, subDir, sel, notes)
 	if err != nil {
-		msg := err.Error()
-		_ = storeHandle.UpdateBackupStatus(backupID, "failed", &msg, nil, nil)
-		return nil, err
+		return fail(err)
+	}
+	saved, err := Deliver(ctx, storeHandle, dest, res, subDir)
+	if err != nil {
+		return fail(err)
 	}
 	// A package that left something out still succeeded; the note says what is missing.
 	var note *string
@@ -176,26 +183,23 @@ func FinishPackage(ctx context.Context, storeHandle *store.SQLiteStore, dockerCl
 		text := strings.Join(res.Problems, "; ")
 		note = &text
 	}
-	_ = storeHandle.UpdateBackupStatus(backupID, "success", note, &res.Size, &res.Path)
+	_ = storeHandle.UpdateBackupStatus(backupID, "success", note, &res.Size, &saved)
 	_ = storeHandle.SetBackupScope(backupID, res.Description)
 
 	if job != nil {
 		if sched, err := ParseSchedule(job.Frequency); err == nil && sched.KeepLast > 0 {
-			pruneJobKeepLast(storeHandle, job.ID, sched.KeepLast)
+			pruneJobKeepLast(ctx, storeHandle, job.ID, sched.KeepLast)
 		}
 		if job.RetentionDays > 0 {
-			_ = cleanupOldBackups(storeHandle, dest.ID, job.RetentionDays)
+			_ = cleanupOldBackups(ctx, storeHandle, dest.ID, job.RetentionDays)
 		}
 	}
 	return res, nil
 }
 
 func destinationPath(dest store.BackupDestination, backupBaseDir string) string {
-	if dest.Config != "" {
-		var cfg DestinationConfig
-		if err := json.Unmarshal([]byte(dest.Config), &cfg); err == nil && cfg.Path != "" {
-			return cfg.Path
-		}
+	if cfg := ParseDestConfig(dest.Config); cfg.Path != "" {
+		return cfg.Path
 	}
 	return backupBaseDir
 }

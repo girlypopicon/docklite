@@ -43,8 +43,16 @@ type PackageManifest struct {
 	Selection   Selection         `json:"selection"`
 	Sites       []PackageSite     `json:"sites"`
 	Databases   []PackageDatabase `json:"databases"`
+	Groups      []PackageGroup    `json:"groups,omitempty"`   // the groups this was made from, so they can be put back
 	Problems    []string          `json:"problems,omitempty"` // things that were selected but left out, and why
 	Notes       string            `json:"notes,omitempty"`
+}
+
+// PackageGroup is a dashboard group as it was when the package was made.
+type PackageGroup struct {
+	Name    string   `json:"name"`
+	Linked  bool     `json:"linked"`
+	Members []string `json:"members"` // container names
 }
 
 type PackageSite struct {
@@ -85,7 +93,7 @@ func CreatePackage(ctx context.Context, st *store.SQLiteStore, dockerClient *doc
 	if sel.Empty() {
 		return nil, fmt.Errorf("nothing was selected to back up")
 	}
-	resolved, err := sel.Resolve(st)
+	resolved, err := sel.ResolveWith(st, IndexContainers(ctx, dockerClient))
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +120,7 @@ func CreatePackage(ctx context.Context, st *store.SQLiteStore, dockerClient *doc
 		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 		Description: sel.Describe(resolved),
 		Selection:   sel,
+		Groups:      resolved.Groups,
 		Sites:       []PackageSite{},
 		Databases:   []PackageDatabase{},
 		Problems:    append([]string{}, resolved.Missing...),
